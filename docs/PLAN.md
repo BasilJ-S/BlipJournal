@@ -5,7 +5,7 @@ scope, the interfaces it must expose or consume, and acceptance criteria. Tasks 
 same phase with no arrow between them can run in parallel. Every task ends with a review
 before merge.
 
-Conventions for all tasks: read `AGENTS.md` first. Core tasks must add tests. App tasks
+Conventions for all tasks: read `AGENTS.md` first. Core tasks must add tests. Every task creates or updates the `DESIGN.md` of the component it touches. App tasks
 must compile with zero warnings. Do not widen scope; note follow-ups at the bottom of
 this file instead.
 

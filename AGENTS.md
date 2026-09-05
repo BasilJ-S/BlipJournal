@@ -18,6 +18,13 @@ xcodebuild -scheme OpenBlip -destination 'platform=iOS Simulator,name=iPhone 17'
 - `project.yml` XcodeGen spec. The `.xcodeproj` is generated and gitignored. Never edit it by hand.
 - `docs/PLAN.md` work breakdown. Each task lists scope, interfaces, and acceptance criteria.
 
+## Documentation
+
+- Every component directory (each folder under `OpenBlipCore/Sources/OpenBlipCore/` and each feature folder under `OpenBlip/`) has a `DESIGN.md` next to the code.
+- `DESIGN.md` is terse and human readable, one screen at most: purpose, key types, invariants, decisions and why, known limitations. It exists so someone can pick the component up cold.
+- A PR that changes a component's behaviour, interface, or invariants must update that component's `DESIGN.md` in the same PR. Reviewers reject PRs where docs and code disagree.
+- `README.md` holds the product spec. `docs/PLAN.md` holds the task breakdown. `docs/tasks/` holds per-task handoffs.
+
 ## Rules
 
 - All logic that can live in `OpenBlipCore` must live there, with tests. UI files hold view code only.

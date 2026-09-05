@@ -1,6 +1,6 @@
 name: OpenBlip
 options:
-  bundleIdPrefix: dev.openblip   # TODO: replace with a reverse domain you own
+  bundleIdPrefix: io.github.basilj-s
   deploymentTarget:
     iOS: "26.0"
   createIntermediateGroups: true
@@ -41,7 +41,7 @@ targets:
         com.apple.developer.usernotifications.time-sensitive: true
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: dev.openblip.OpenBlip
+        PRODUCT_BUNDLE_IDENTIFIER: io.github.basilj-s.OpenBlip
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         ENABLE_USER_SCRIPT_SANDBOXING: YES
 schemes:
