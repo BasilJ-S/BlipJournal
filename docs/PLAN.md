@@ -33,9 +33,9 @@ enum PromptStatus: String { case pending, answered, missed, dismissed }
 struct Prompt { id; surveyId; day: String /* yyyy-MM-dd local */; scheduledAt; expiresAt; status; respondedAt: Date? }
 struct Entry { id; surveyId; promptId: String?; startedAt; completedAt }
 enum AnswerValue { case scale(Int), single(String), multi([String]), yesNo(Bool), text(String) }
-struct Answer { id; entryId; questionId; questionVersionId; value: AnswerValue }
+struct Answer { id; entryId; questionId; questionVersionId; answeredAt: Date; value: AnswerValue }
 struct LabelVersion { label: String; validFrom: Date }
-enum SurveyTemplate { static func makeDefault() -> (survey: Survey, sampling: SamplingConfig) }
+enum SurveyTemplate { static func makeDefault(now: Date = Date()) -> Survey }   // sampling rides on the survey
 ```
 
 `Survey` and `Question` are the *current view*: latest version of every definition,
@@ -64,7 +64,7 @@ option(id, questionId, createdAt)
 optionVersion(id, optionId, label, position, isArchived, createdAt)
 prompt(id, surveyId, day, scheduledAt, expiresAt, status, respondedAt)
 entry(id, surveyId, promptId, startedAt, completedAt)
-answer(id, entryId, questionId, questionVersionId, kind, numericValue, textValue, boolValue)
+answer(id, entryId, questionId, questionVersionId, answeredAt, kind, numericValue, textValue, boolValue)
 answerOption(answerId, optionId)   -- one row per selected option
 ```
 
@@ -115,6 +115,7 @@ final class Store: Sendable {
     func hardDeleteSurvey(_ id: String) throws
     func hardDeleteQuestion(_ id: String) throws
     func hardDeleteOption(_ id: String) throws
+    func eraseEverything() throws   // every row in every table, then reseed the default survey
 
     // Export
     func exportSnapshot(surveyId: String) throws -> ExportSnapshot
@@ -159,6 +160,28 @@ step, and it is the only place in the app that deletes a definition row.
   app has nobody to race with.
 - Once it commits, the erased text is gone from later exports and backups. Files already
   exported are outside the app; the export screen already says as much.
+
+**Erasing the bytes.** A `DELETE` unlinks a row but leaves its bytes in free pages, and
+the write-ahead log keeps a copy until it is checkpointed. For a delete whose whole
+purpose is privacy that is not good enough.
+
+- `Store.open` sets `PRAGMA secure_delete = ON` in the GRDB `Configuration.prepareDatabase`
+  closure, so freed pages are overwritten as they are freed. It costs writes; this app
+  does not write enough for that to matter.
+- Every `hardDelete`, `deleteEntry` and `eraseEverything` ends with
+  `PRAGMA wal_checkpoint(TRUNCATE)` then `VACUUM`, in that order, after the deleting
+  transaction has committed. `VACUUM` cannot run inside a transaction, so it is a
+  separate step rather than part of the delete.
+- Say plainly what this does and does not buy. It removes the bytes from the database,
+  its WAL and its journal. It cannot guarantee erasure from the flash underneath, because
+  wear levelling means no application controls that. iOS Data Protection is what covers
+  the residue, and the README should not promise more than that.
+- `eraseEverything` reseeds the default survey afterwards, so the app comes back in its
+  first-launch state rather than a broken empty one.
+
+Acceptance for erasure, at every level and for `deleteEntry`: give the thing a label or a
+free-text answer that is a unique sentinel string, delete it, then byte-search the
+database file, the `-wal` and the `-shm` for that string and find nothing.
 
 File protection: `open(at:)` sets `.protectionKey: .complete` on the directory before
 creating the database, guarded by `#if os(iOS)`.
@@ -285,9 +308,26 @@ exposes it to views via the environment. `LockView` using `LAContext` with
 after the app has been in the background for more than 30 seconds. `RootView` with three
 tabs: Journal, Insights, Settings. Force light mode. Replace `PlaceholderView`.
 
+The Journal tab lists entries newest first, showing the date, whether the entry was
+prompted or manual, and a one-line summary. Tapping one opens a detail view of its
+answers, which carries a **Delete entry** action. Free text is the other place private
+words land, so an entry has to be destroyable on its own, not only as collateral of
+deleting a question.
+
+- The confirmation follows the same rules as a definition delete in A4: destructive
+  styling, an explicit confirm, no swipe gesture, no typed string, and it says what
+  survives.
+- Deleting an entry leaves its prompt's status as `answered`. The person did answer at
+  the time, and rewriting that would move the compliance numbers, which is the same
+  reason a hard-deleted question leaves its emptied entries in place.
+- It goes through `Store.deleteEntry`, so it gets the checkpoint and vacuum with
+  everything else.
+
 Acceptance: app launches in the simulator, lock appears, unlocking shows tabs; entering
 background and returning after the grace period re-locks; store file exists under the
-protected directory.
+protected directory; the Journal lists prompted and manual entries distinguishably;
+deleting an entry removes it from the list, leaves its prompt `answered`, and leaves no
+trace of a sentinel free-text answer in the database files.
 
 ### A2. Notifications
 
@@ -300,8 +340,15 @@ an explanation screen, never cold. `UNUserNotificationCenterDelegate` routes a t
 runner with the prompt id, or to a "this prompt expired" sheet that marks it missed and
 offers a manual entry. Sampling changes call `deleteFuturePendingPrompts` then re-plan.
 
+Anything that destroys prompts must be followed by a reconcile pass: a survey hard delete
+and `eraseEverything` both remove prompt rows, and their pending notification requests
+have to go with them. The reconcile handles it by construction, since it makes the centre
+match the store exactly, but it does not run by itself. The caller triggers it, and that
+is the easy thing to forget, which is why it is written down here.
+
 Acceptance: after launch, `UNUserNotificationCenter.pendingNotificationRequests` equals
-the store's pending prompts; a delivered notification tapped within expiry opens the
+the store's pending prompts; hard-deleting a survey that has pending prompts leaves no
+notification requests for it, and neither does erasing all data; a delivered notification tapped within expiry opens the
 runner for that prompt; tapped after expiry shows the expired sheet and the prompt is
 `missed`.
 
@@ -370,8 +417,18 @@ status, and export. Export screen: pick a survey, pick wide or long CSV or JSON 
 show the "exported files are not encrypted" warning, then `ShareLink` to a temp file in
 the protected directory. About screen with license and repo link.
 
+**Delete all data**, backed by `Store.eraseEverything()`. It is the simplest privacy
+promise the app can make and the first thing people look for, so it is a plain item in
+Settings rather than something buried. It gets the strongest confirmation in the app and
+the same style as every other one: it names what goes in counts drawn from the store, it
+says the app will return to its first-launch state with the default survey back, and it
+says the deletion cannot be undone and does not reach files already exported. After it
+runs, trigger A2's reconcile so no notification requests survive.
+
 Acceptance: exported CSV opens in Numbers with correct columns; temp file is removed
-after the share sheet closes.
+after the share sheet closes; Delete all data empties every table, leaves the default
+survey seeded and nothing else, leaves no pending notification requests, and leaves no
+trace of a sentinel string in the database files.
 
 ### A7. Release readiness
 
