@@ -15,7 +15,7 @@ public enum SurveyTemplate {
     /// - Parameter now: The creation timestamp to stamp on the survey.
     public static func makeDefault(now: Date = Date()) -> Survey {
         Survey(
-            name: "Daily check-in",
+            name: "Check-in",
             createdAt: now,
             sampling: .default,
             questions: [

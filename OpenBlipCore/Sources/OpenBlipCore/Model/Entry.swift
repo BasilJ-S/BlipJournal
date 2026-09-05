@@ -81,52 +81,42 @@ public enum AnswerValue: Sendable, Equatable, Hashable {
 }
 
 extension AnswerValue: Codable {
-    /// The `kind` discriminator written to JSON.
-    ///
-    /// These are the case names, not ``QuestionKind`` raw values, so the JSON names
-    /// the shape of the payload rather than the question it happens to answer.
-    private enum Discriminator: String, Codable {
-        case scale, single, multi, yesNo, text
-    }
-
     private enum CodingKeys: String, CodingKey {
         case kind, value, optionId, optionIds
     }
 
-    /// Writes a flat object: the `kind` discriminator plus this case's payload key.
+    /// Writes a flat object: the ``kind`` discriminator plus this case's payload key.
+    ///
+    /// The discriminator is a ``QuestionKind`` raw value, the same vocabulary a
+    /// question uses, so a backup file names question kinds exactly one way.
     public func encode(to encoder: any Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(kind, forKey: .kind)
         switch self {
         case .scale(let value):
-            try container.encode(Discriminator.scale, forKey: .kind)
             try container.encode(value, forKey: .value)
         case .single(let optionId):
-            try container.encode(Discriminator.single, forKey: .kind)
             try container.encode(optionId, forKey: .optionId)
         case .multi(let optionIds):
-            try container.encode(Discriminator.multi, forKey: .kind)
             try container.encode(optionIds, forKey: .optionIds)
         case .yesNo(let value):
-            try container.encode(Discriminator.yesNo, forKey: .kind)
             try container.encode(value, forKey: .value)
         case .text(let value):
-            try container.encode(Discriminator.text, forKey: .kind)
             try container.encode(value, forKey: .value)
         }
     }
 
-    /// Reads the `kind` discriminator, then the payload key that kind requires.
+    /// Reads the ``QuestionKind`` discriminator, then the payload key that kind requires.
     ///
-    /// Throws when the discriminator is unknown or the payload does not match it.
+    /// Throws when the discriminator is not a known kind or the payload does not match it.
     public init(from decoder: any Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
-        let kind = try container.decode(Discriminator.self, forKey: .kind)
-        switch kind {
+        switch try container.decode(QuestionKind.self, forKey: .kind) {
         case .scale:
             self = .scale(try container.decode(Int.self, forKey: .value))
-        case .single:
+        case .singleChoice:
             self = .single(optionId: try container.decode(String.self, forKey: .optionId))
-        case .multi:
+        case .multiChoice:
             self = .multi(optionIds: try container.decode([String].self, forKey: .optionIds))
         case .yesNo:
             self = .yesNo(try container.decode(Bool.self, forKey: .value))

@@ -24,9 +24,9 @@ SurveyTemplate.makeDefault()                  the six-question survey a new inst
 
 ## Invariants
 
-- **Identity.** Every identifier is a `String` holding a lowercase UUID from `ID.make()`.
-  Identifiers are stable across versions of a definition: renaming a question keeps its
-  `id` and adds a version row upstream.
+- **Identity.** Every identifier is a `String` holding a lowercase UUID from
+  `Identifier.make()`. Identifiers are stable across versions of a definition: renaming a
+  question keeps its `id` and adds a version row upstream.
 - **The current view.** `Survey` and `Question` are the newest version of every
   definition, archived ones included. `activeQuestions` and `activeOptions` are what the
   runner shows: not archived, sorted by `position` with `id` as the tiebreaker so the
@@ -51,26 +51,26 @@ SurveyTemplate.makeDefault()                  the six-question survey a new inst
 - **`AnswerValue` hand-writes `Codable`.** The synthesised enum encoding is a nested,
   case-name-keyed object that is unreadable in a JSON backup and brittle to reorder. The
   hand-written form is a flat object with a `kind` discriminator and one payload key:
-  `{"kind":"scale","value":5}`, `{"kind":"multi","optionIds":["a","b"]}`. Backups are a
-  user-facing file, so the shape is a contract; changing it needs a schema version bump.
-  The discriminator is the *case* name (`single`, `multi`), not the `QuestionKind` raw
-  value (`singleChoice`, `multiChoice`), because it names the shape of the payload rather
-  than the question that happens to be answered.
+  `{"kind":"scale","value":5}`, `{"kind":"multiChoice","optionIds":["a","b"]}`. Backups
+  are a user-facing file, so the shape is a contract; changing it needs a schema version
+  bump. The discriminator is the `QuestionKind` raw value rather than the enum's own case
+  name, so a backup names question kinds in exactly one vocabulary; `AnswerValue.kind`
+  is the single mapping between the two.
 - **Raw values are contracts.** `QuestionKind` and `PromptStatus` raw values are written
   to SQLite and to CSV. Renaming a case is a migration, not a refactor.
 - **`validationErrors` returns a list, not a `Bool`.** The editor shows every problem at
-  once. The order is fixed, and `gapDoesNotFit` is only evaluated for a well-formed
-  window so one mistake does not produce a cascade of errors.
+  once. The order is fixed, and `gapDoesNotFit` is only evaluated once the window and the
+  gap are each well formed, so one mistake does not produce a cascade of errors. A gap of
+  zero is legal and means "no minimum"; a negative one is not, because the sampler would
+  then be free to place prompts in any order.
 - **`label(at:)` falls back to the earliest version.** An answer can carry a timestamp
   just before the first recorded version (a clock change, or a definition backfilled by a
   migration). Showing the oldest known wording beats showing nothing; only an empty
   history returns `nil`.
-- **`Identifier` is an alias for `ID`.** `Identifiable` gives every conforming type an
-  `ID` associated type that shadows the `ID` enum inside that type's body, and
-  module-qualifying does not help because the `OpenBlipCore` enum shadows the module name.
-  Memberwise initialisers therefore default `id` to `Identifier.make()`. It is public
-  only because a public default argument cannot reference an internal name; new call
-  sites should say `ID.make()`.
+- **The ID helper is called `Identifier`, not `ID`.** `Identifiable` gives every
+  conforming type an `ID` associated type, which would shadow an enum of that name inside
+  the body of every type here, so `id: String = ID.make()` would not compile. One name
+  avoids the question of which spelling to use.
 
 ## Known limitations
 

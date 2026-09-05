@@ -17,7 +17,7 @@ struct PlaceholderView: View {
         VStack(spacing: 12) {
             Text("OpenBlip")
                 .font(.largeTitle.bold())
-            Text("Core schema version \(OpenBlipCore.schemaVersion)")
+            Text("Core schema version \(CoreSchema.version)")
                 .foregroundStyle(.secondary)
         }
         .padding()

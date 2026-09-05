@@ -43,8 +43,9 @@ public struct SamplingConfig: Sendable, Equatable, Hashable, Codable {
     /// Every rule this schedule breaks. Empty means the schedule is usable.
     ///
     /// Errors are returned in a fixed order so a UI can show them deterministically.
-    /// ``ValidationError/gapDoesNotFit`` is only reported for a well-formed window, so
-    /// a single mistake produces a single error rather than a cascade.
+    /// ``ValidationError/gapDoesNotFit`` is only reported once the window and the gap
+    /// are each well formed, because comparing against a negative window length or a
+    /// negative gap says nothing useful; one mistake should not produce a cascade.
     public var validationErrors: [ValidationError] {
         var errors: [ValidationError] = []
 
@@ -58,7 +59,15 @@ public struct SamplingConfig: Sendable, Equatable, Hashable, Codable {
             && windowEndMinutes <= 1440
         if !windowIsWellFormed {
             errors.append(.windowOutOfRange)
-        } else if (promptsPerDay - 1) * minGapMinutes >= windowEndMinutes - windowStartMinutes {
+        }
+
+        let gapIsInRange = (0...1440).contains(minGapMinutes)
+        if !gapIsInRange {
+            errors.append(.minGapOutOfRange)
+        }
+
+        if windowIsWellFormed, gapIsInRange,
+           (promptsPerDay - 1) * minGapMinutes >= windowEndMinutes - windowStartMinutes {
             errors.append(.gapDoesNotFit)
         }
 
@@ -77,6 +86,10 @@ public struct SamplingConfig: Sendable, Equatable, Hashable, Codable {
         case promptsPerDayOutOfRange
         /// The window is not `0 <= start < end <= 1440`.
         case windowOutOfRange
+        /// `minGapMinutes` is outside `0...1440`. A negative gap is meaningless and
+        /// would let the sampler place prompts in any order it liked; zero is allowed
+        /// and means "no minimum".
+        case minGapOutOfRange
         /// `(promptsPerDay - 1) * minGapMinutes` is not shorter than the window, so the
         /// requested prompts cannot all fit while respecting the gap.
         case gapDoesNotFit

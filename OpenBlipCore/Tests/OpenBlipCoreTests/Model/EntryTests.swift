@@ -57,7 +57,7 @@ struct AnswerValueTests {
         #expect(try JSONDecoder().decode(AnswerValue.self, from: data) == value)
     }
 
-    @Test("the encoded discriminator names the case, not the question kind")
+    @Test("the encoded discriminator is the QuestionKind raw value")
     func discriminators() throws {
         func kindField(of value: AnswerValue) throws -> String? {
             let data = try JSONEncoder().encode(value)
@@ -66,10 +66,18 @@ struct AnswerValueTests {
         }
 
         #expect(try kindField(of: .scale(5)) == "scale")
-        #expect(try kindField(of: .single(optionId: "a")) == "single")
-        #expect(try kindField(of: .multi(optionIds: ["a"])) == "multi")
+        #expect(try kindField(of: .single(optionId: "a")) == "singleChoice")
+        #expect(try kindField(of: .multi(optionIds: ["a"])) == "multiChoice")
         #expect(try kindField(of: .yesNo(true)) == "yesNo")
         #expect(try kindField(of: .text("hi")) == "text")
+    }
+
+    @Test("the discriminator matches the value's own kind for every case",
+          arguments: AnswerValueTests.cases)
+    func discriminatorMatchesKind(value: AnswerValue) throws {
+        let data = try JSONEncoder().encode(value)
+        let object = try JSONSerialization.jsonObject(with: data) as? [String: Any]
+        #expect(object?["kind"] as? String == value.kind.rawValue)
     }
 
     @Test("the payload keys are stable")
@@ -107,18 +115,22 @@ struct AnswerValueTests {
         }
 
         #expect(try decode(#"{"kind":"scale","value":5}"#) == .scale(5))
-        #expect(try decode(#"{"kind":"multi","optionIds":["a","b"]}"#)
+        #expect(try decode(#"{"kind":"multiChoice","optionIds":["a","b"]}"#)
             == .multi(optionIds: ["a", "b"]))
-        #expect(try decode(#"{"kind":"single","optionId":"x"}"#) == .single(optionId: "x"))
+        #expect(try decode(#"{"kind":"singleChoice","optionId":"x"}"#) == .single(optionId: "x"))
         #expect(try decode(#"{"kind":"yesNo","value":true}"#) == .yesNo(true))
         #expect(try decode(#"{"kind":"text","value":"note"}"#) == .text("note"))
     }
 
-    @Test("an unknown discriminator fails to decode")
-    func rejectsUnknownKind() {
-        let json = Data(#"{"kind":"nonsense","value":1}"#.utf8)
+    @Test("an unknown discriminator fails to decode", arguments: [
+        #"{"kind":"nonsense","value":1}"#,
+        // The case-name spellings this encoding deliberately does not use.
+        #"{"kind":"single","optionId":"x"}"#,
+        #"{"kind":"multi","optionIds":["a"]}"#,
+    ])
+    func rejectsUnknownKind(json: String) {
         #expect(throws: (any Error).self) {
-            try JSONDecoder().decode(AnswerValue.self, from: json)
+            try JSONDecoder().decode(AnswerValue.self, from: Data(json.utf8))
         }
     }
 

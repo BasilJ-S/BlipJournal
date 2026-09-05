@@ -110,6 +110,33 @@ struct SamplingConfigTests {
         #expect(config.validationErrors == [.windowOutOfRange])
     }
 
+    @Test("a gap outside 0...1440 is the only error raised", arguments: [-1, -60, 1441])
+    func minGapOutOfRange(gap: Int) {
+        var config = SamplingConfig.default
+        config.minGapMinutes = gap
+        #expect(config.validationErrors == [.minGapOutOfRange])
+    }
+
+    @Test("the edges of the gap range are accepted")
+    func minGapEdges() {
+        var none = SamplingConfig.default
+        none.minGapMinutes = 0
+        #expect(none.validationErrors.isEmpty)
+
+        // A whole-day gap only fits a schedule that asks for at most one prompt.
+        var whole = SamplingConfig.default
+        whole.promptsPerDay = 1
+        whole.minGapMinutes = 1440
+        #expect(whole.validationErrors.isEmpty)
+    }
+
+    @Test("a negative gap does not also report gapDoesNotFit")
+    func gapErrorDoesNotCascade() {
+        var config = SamplingConfig.default
+        config.minGapMinutes = -600
+        #expect(config.validationErrors == [.minGapOutOfRange])
+    }
+
     @Test("expiry outside 1...240 is the only error raised", arguments: [0, -5, 241])
     func expiryOutOfRange(expiry: Int) {
         var config = SamplingConfig.default
@@ -134,11 +161,11 @@ struct SamplingConfigTests {
             promptsPerDay: 50,
             windowStartMinutes: 900,
             windowEndMinutes: 100,
-            minGapMinutes: 60,
+            minGapMinutes: -1,
             expiryMinutes: 0
         )
         #expect(config.validationErrors == [
-            .promptsPerDayOutOfRange, .windowOutOfRange, .expiryOutOfRange,
+            .promptsPerDayOutOfRange, .windowOutOfRange, .minGapOutOfRange, .expiryOutOfRange,
         ])
     }
 

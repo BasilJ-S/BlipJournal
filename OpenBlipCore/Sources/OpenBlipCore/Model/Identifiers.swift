@@ -5,7 +5,11 @@ import Foundation
 /// Identifiers are plain `String`s holding a lowercase, hyphenated UUID. A string
 /// keeps the model free of any database or platform type, survives JSON export
 /// unchanged, and can be used as a SQLite `TEXT PRIMARY KEY` without conversion.
-public enum ID {
+///
+/// Named `Identifier` rather than `ID` because `Identifiable` gives every conforming
+/// type an `ID` associated type, which would shadow this enum inside the body of every
+/// type in the model.
+public enum Identifier {
     /// A freshly generated identifier.
     ///
     /// Lowercased so that every identifier the app writes has one canonical spelling;
@@ -14,13 +18,3 @@ public enum ID {
         UUID().uuidString.lowercased()
     }
 }
-
-/// Another spelling of ``ID``, for use inside `Identifiable` types.
-///
-/// `Identifiable` gives every conforming type an `ID` associated type, and inside that
-/// type's body it shadows the ``ID`` enum, so `ID.make()` does not compile there.
-/// Module-qualifying it does not help either, because the ``OpenBlipCore`` enum shadows
-/// the module name. This alias is what the memberwise initialisers say instead. It is
-/// public only because a public default argument cannot reference an internal name;
-/// prefer ``ID`` when writing new call sites.
-public typealias Identifier = ID
