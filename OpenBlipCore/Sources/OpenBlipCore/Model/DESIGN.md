@@ -36,6 +36,17 @@ SurveyTemplate.makeDefault()                  the six-question survey a new inst
   rewrite history. Storage assigns `questionVersionId`; the model only carries it.
 - **Recoverability.** Every answer must remain enough to reconstruct exactly what the
   person saw. See below.
+- **Archiving is the delete, and it does not cascade into rows.** A question's own
+  `isArchived` hides the question and everything under it, so archiving a question must
+  not write archived versions of its options: their flags stay as they were, and
+  unarchiving the question brings back exactly the option set that was visible before.
+  `activeOptions` therefore answers only about an option's own flag — by the time anyone
+  asks, the caller has already decided the question is on screen. The same holds one
+  level up for a survey and its questions.
+- **One exception to insert-only: hard delete.** A person can permanently erase an
+  archived definition and every answer to it. That is a Storage operation on a definition
+  the model has already marked archived; nothing here models it, and no type carries a
+  "deleted" state, because after it runs there is nothing left to carry one.
 - **`kind` fixes the shape.** `scale` is non-nil only for scale questions; `options` and
   `allowsCustomOptions` are only meaningful when `QuestionKind.usesOptions`. Nothing here
   enforces that — these are value types with no validation hook — so the constructing
