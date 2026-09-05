@@ -52,6 +52,24 @@ struct LabelVersionTests {
         #expect(only.label(at: second) == "Only")
     }
 
+    @Test("versions sharing a validFrom are broken by the receiver's order")
+    func tiesFollowReceiverOrder() {
+        let tied = [
+            LabelVersion(label: "Older", validFrom: second),
+            LabelVersion(label: "Newer", validFrom: second),
+        ]
+        #expect(tied.label(at: second) == "Newer")
+        #expect(Array(tied.reversed()).label(at: second) == "Older")
+    }
+
+    @Test("a tie resolves the same way every time")
+    func tiesAreDeterministic() {
+        let tied = (0..<20).map { LabelVersion(label: "v\($0)", validFrom: second) }
+        for _ in 0..<100 {
+            #expect(tied.label(at: second) == "v19")
+        }
+    }
+
     @Test("round-trips through JSON")
     func roundTrips() throws {
         let data = try JSONEncoder().encode(history)

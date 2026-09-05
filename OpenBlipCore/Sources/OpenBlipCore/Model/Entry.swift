@@ -128,8 +128,10 @@ extension AnswerValue: Codable {
 
 /// One answer inside an ``Entry``.
 ///
-/// Every answer pins the exact definition it was given against, so an export can show
-/// either the wording at the time or the wording today.
+/// Between ``questionVersionId`` and ``answeredAt``, an answer carries enough to
+/// reconstruct exactly what the person saw when they gave it: the question's wording and
+/// configuration, the options that were on offer, and which of them they picked. See
+/// "Recoverability" in `Model/DESIGN.md` for the full recipe.
 public struct Answer: Identifiable, Sendable, Equatable, Hashable, Codable {
     /// Stable identity.
     public var id: String
@@ -139,7 +141,19 @@ public struct Answer: Identifiable, Sendable, Equatable, Hashable, Codable {
     public var questionId: String
     /// The identifier of the question version row that was current when the answer was
     /// given. Storage assigns it; the model only carries it.
+    ///
+    /// This pins the question's wording, position, scale bounds and required flag
+    /// exactly, with no time arithmetic involved.
     public var questionVersionId: String
+    /// When this particular answer was given.
+    ///
+    /// Per answer rather than per entry, because an entry is autosaved as the person
+    /// works through it and can stay open for minutes: a custom option added at question
+    /// four must not appear in the reconstructed choices for question two. This is the
+    /// timestamp every "what did it look like then" lookup keys on, including
+    /// ``LabelVersion`` history for options, which carry no version identifier of their
+    /// own.
+    public var answeredAt: Date
     /// The answer itself.
     public var value: AnswerValue
 
@@ -149,12 +163,14 @@ public struct Answer: Identifiable, Sendable, Equatable, Hashable, Codable {
         entryId: String,
         questionId: String,
         questionVersionId: String,
+        answeredAt: Date = Date(),
         value: AnswerValue
     ) {
         self.id = id
         self.entryId = entryId
         self.questionId = questionId
         self.questionVersionId = questionVersionId
+        self.answeredAt = answeredAt
         self.value = value
     }
 }

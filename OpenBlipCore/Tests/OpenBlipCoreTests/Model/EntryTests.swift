@@ -167,12 +167,15 @@ struct AnswerValueTests {
 
 @Suite("Answer")
 struct AnswerTests {
+    private let answeredAt = Date(timeIntervalSinceReferenceDate: 800_000_000)
+
     @Test("round-trips through JSON")
     func roundTrips() throws {
         let answer = Answer(
             entryId: "entry",
             questionId: "question",
             questionVersionId: "version",
+            answeredAt: answeredAt,
             value: .multi(optionIds: ["a", "b"])
         )
         let data = try JSONEncoder().encode(answer)
@@ -188,5 +191,50 @@ struct AnswerTests {
             value: .yesNo(true)
         )
         #expect(!answer.id.isEmpty)
+    }
+
+    @Test("answeredAt is per answer, so answers in one entry can differ")
+    func answeredAtIsPerAnswer() {
+        let first = Answer(
+            entryId: "entry",
+            questionId: "q1",
+            questionVersionId: "v1",
+            answeredAt: answeredAt,
+            value: .scale(5)
+        )
+        let second = Answer(
+            entryId: "entry",
+            questionId: "q2",
+            questionVersionId: "v2",
+            answeredAt: answeredAt.addingTimeInterval(90),
+            value: .multi(optionIds: ["new-option"])
+        )
+        #expect(first.entryId == second.entryId)
+        #expect(first.answeredAt < second.answeredAt)
+    }
+
+    @Test("answeredAt resolves the option labels that were on offer")
+    func answeredAtDrivesLabelLookup() {
+        // An option renamed between two answers in the same entry.
+        let history = [
+            LabelVersion(label: "Screen time", validFrom: answeredAt.addingTimeInterval(-3600)),
+            LabelVersion(label: "Phone", validFrom: answeredAt.addingTimeInterval(60)),
+        ]
+        let early = Answer(
+            entryId: "entry",
+            questionId: "q",
+            questionVersionId: "v",
+            answeredAt: answeredAt,
+            value: .single(optionId: "o")
+        )
+        let late = Answer(
+            entryId: "entry",
+            questionId: "q",
+            questionVersionId: "v",
+            answeredAt: answeredAt.addingTimeInterval(120),
+            value: .single(optionId: "o")
+        )
+        #expect(history.label(at: early.answeredAt) == "Screen time")
+        #expect(history.label(at: late.answeredAt) == "Phone")
     }
 }

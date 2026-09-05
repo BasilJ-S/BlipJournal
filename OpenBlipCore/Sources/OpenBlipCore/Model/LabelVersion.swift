@@ -24,11 +24,17 @@ extension Array where Element == LabelVersion {
     ///
     /// The fallback matters because an answer can carry a timestamp slightly before the
     /// first recorded version (clock changes, or a definition backfilled by a
-    /// migration); showing the oldest known wording beats showing nothing. The receiver
-    /// may be in any order.
+    /// migration); showing the oldest known wording beats showing nothing.
+    ///
+    /// The receiver may be in any order. Two versions sharing a `validFrom` are broken
+    /// by the receiver's own order, newest last, which is why storage must hand back
+    /// history in version order — `(createdAt, rowid)` in the C2 schema. Without that
+    /// tiebreak an export could show a different label on each run.
     public func label(at date: Date) -> String? {
         guard !isEmpty else { return nil }
-        let ordered = sorted { $0.validFrom < $1.validFrom }
+        let ordered = enumerated()
+            .sorted { ($0.element.validFrom, $0.offset) < ($1.element.validFrom, $1.offset) }
+            .map(\.element)
         let current = ordered.last { $0.validFrom <= date }
         return (current ?? ordered[0]).label
     }
