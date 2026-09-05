@@ -1,5 +1,19 @@
 # Task C1: Domain model
 
+**Status: done, merged in #2.** What follows is the brief as it was written, kept as the
+record of what was asked. Where it and the code disagree, the code and
+`OpenBlipCore/Sources/OpenBlipCore/Model/DESIGN.md` are authoritative. The differences,
+all agreed in review:
+
+- The ID helper is `Identifier`, not `ID`. `Identifiable` gives conforming types an `ID`
+  associated type that shadows it.
+- `SamplingConfig.ValidationError` has a fifth case, `minGapOutOfRange` (`0...1440`).
+- `Answer` carries `answeredAt`. It is what makes the options a person saw replayable.
+- `AnswerValue`'s JSON discriminator is the `QuestionKind` raw value, so `singleChoice`
+  and `multiChoice` rather than `single` and `multi`.
+- The placeholder `OpenBlipCore` enum is now `CoreSchema.version`, since a type named
+  after the module shadows the module.
+
 Implementation handoff for OpenBlipCore. Read `AGENTS.md` and the "Architecture" and
 "Defaults" sections of `README.md` before starting. Do not read or touch anything under
 `OpenBlip/` (the app target).
