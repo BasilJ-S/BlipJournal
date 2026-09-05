@@ -14,8 +14,8 @@ start in parallel against these types.
 
 - Branch from `main`: `c1-domain-model`.
 - Commit as the repo's local git identity (already configured). Do not change it.
-- Push the branch when done. Do not open a pull request and do not merge. The planner
-  reviews the branch and opens the PR; the maintainer merges.
+- Push the branch and open a draft pull request when done. Do not merge. The planner
+  reviews the PR as a comment; the maintainer merges. See "Change control" in `AGENTS.md`.
 
 ## Files to create
 
