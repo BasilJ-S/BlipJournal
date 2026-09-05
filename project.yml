@@ -1,0 +1,55 @@
+name: OpenBlip
+options:
+  bundleIdPrefix: dev.openblip   # TODO: replace with a reverse domain you own
+  deploymentTarget:
+    iOS: "26.0"
+  createIntermediateGroups: true
+  generateEmptyDirectories: true
+settings:
+  base:
+    SWIFT_VERSION: "6.0"
+    SWIFT_STRICT_CONCURRENCY: complete
+    IPHONEOS_DEPLOYMENT_TARGET: "26.0"
+    TARGETED_DEVICE_FAMILY: "1"          # iPhone only for v0
+    CODE_SIGN_STYLE: Automatic
+    MARKETING_VERSION: "0.1.0"
+    CURRENT_PROJECT_VERSION: "1"
+packages:
+  OpenBlipCore:
+    path: OpenBlipCore
+targets:
+  OpenBlip:
+    type: application
+    platform: iOS
+    sources:
+      - path: OpenBlip
+    dependencies:
+      - package: OpenBlipCore
+        product: OpenBlipCore
+    info:
+      path: OpenBlip/Info.plist
+      properties:
+        CFBundleDisplayName: OpenBlip
+        UILaunchScreen: {}
+        UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait]
+        UIUserInterfaceStyle: Light
+        NSFaceIDUsageDescription: OpenBlip uses Face ID to keep your journal private.
+        ITSAppUsesNonExemptEncryption: false
+    entitlements:
+      path: OpenBlip/OpenBlip.entitlements
+      properties:
+        com.apple.developer.usernotifications.time-sensitive: true
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: dev.openblip.OpenBlip
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        ENABLE_USER_SCRIPT_SANDBOXING: YES
+schemes:
+  OpenBlip:
+    build:
+      targets:
+        OpenBlip: all
+    run:
+      config: Debug
+    test:
+      config: Debug
