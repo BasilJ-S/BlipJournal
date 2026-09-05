@@ -108,20 +108,78 @@ final class Store: Sendable {
     func answers(entryId: String) throws -> [Answer]
     func deleteEntry(_ id: String) throws
 
+    // Hard delete: the one exception to insert-only. Archived targets only.
+    func deletionImpact(surveyId: String) throws -> DeletionImpact
+    func deletionImpact(questionId: String) throws -> DeletionImpact
+    func deletionImpact(optionId: String) throws -> DeletionImpact
+    func hardDeleteSurvey(_ id: String) throws
+    func hardDeleteQuestion(_ id: String) throws
+    func hardDeleteOption(_ id: String) throws
+
     // Export
     func exportSnapshot(surveyId: String) throws -> ExportSnapshot
     func backup() throws -> Backup   // every table, for JSON export
 }
+
+struct DeletionImpact {
+    var answers: Int          // answer rows that will go
+    var entries: Int          // entries holding at least one of them
+    var entriesEmptied: Int   // of those, entries left holding nothing
+    var options: Int          // option definitions that will go
+    var versions: Int         // definition version rows that will go
+    var prompts: Int          // survey-level delete only
+    var oldest: Date?         // answeredAt of the oldest answer that will go
+    var newest: Date?
+}
 ```
+
+**Hard delete.** Archiving is how a person removes a question or an option, and it is
+insert-only like every other edit. Erasing for good is a separate, deliberate second
+step, and it is the only place in the app that deletes a definition row.
+
+- Every `hardDelete` throws unless the target's current version has `isArchived == true`.
+  The safety property is structural, not a UI convention: nothing in use can be erased,
+  because it has to leave the survey first.
+- One transaction each. A half-applied delete would leave answers pointing at definitions
+  that no longer exist.
+- **Question.** Deletes the question, its versions, its options and their versions, every
+  answer to it, and those answers' `answerOption` rows. Entries are kept, including any
+  left holding no answers: an entry records that a prompt was answered, so removing it
+  would quietly rewrite the compliance numbers. `DeletionImpact.entriesEmptied` exists so
+  the confirmation can say this is about to happen.
+- **Option.** Deletes the option, its versions, and every `answerOption` row naming it.
+  An answer left with no selection at all goes too, which is every single-choice answer
+  that named it; multi-choice answers keep their other selections. This is the one rule
+  worth a second opinion, since the alternative — delete every answer that touched the
+  option — loses more but is easier to say in one sentence.
+- **Survey.** Deletes everything belonging to it: definitions, sampling history, prompts,
+  entries, answers. Never touches another survey.
+- `deletionImpact` runs the same queries the delete will and counts what they match, so
+  the number shown to a person is the number that goes. It takes no lock; a single-user
+  app has nobody to race with.
+- Once it commits, the erased text is gone from later exports and backups. Files already
+  exported are outside the app; the export screen already says as much.
 
 File protection: `open(at:)` sets `.protectionKey: .complete` on the directory before
 creating the database, guarded by `#if os(iOS)`.
 
+Archiving a question does not touch its options: their own `isArchived` stays as it was,
+so unarchiving the question restores the option set that was visible before rather than
+bringing everything back at once. The same holds for a survey and its questions.
+
 Acceptance: tests cover create survey from template and read it back; rename a question
 twice and see three label versions with the newest as current; archive an option and see
-it still present in the current view with `isArchived == true`; save an entry then
-overwrite it with `saveEntry` and see one entry; `deleteFuturePendingPrompts` leaves past
-and non-pending prompts alone; migration runs cleanly on an empty database.
+it still present in the current view with `isArchived == true`; archive a question that
+has one archived option and see its other options still unarchived, then unarchive it and
+get the same set back; save an entry then overwrite it with `saveEntry` and see one
+entry; `saveEntry` does not rewrite an existing answer's `answeredAt`;
+`deleteFuturePendingPrompts` leaves past and non-pending prompts alone; migration runs
+cleanly on an empty database. For hard delete: it refuses an unarchived target at every
+level; `deletionImpact` counts match what the delete actually removes; deleting a
+question leaves its entries in place and its sibling questions' answers untouched;
+deleting an option drops a single-choice answer but only prunes a multi-choice one;
+deleting a survey leaves a second survey's rows alone; a backup taken afterwards contains
+no trace of the deleted text.
 
 ### C3. Sampling
 
@@ -269,9 +327,31 @@ labels; option list with add, rename, archive; sampling settings form with valid
 (`windowEnd > windowStart`, `promptsPerDay * minGap` fits in the window, expiry > 0).
 Every write goes through the versioning API. Saving sampling triggers A2's re-plan.
 
+The verb in the UI is **Archive**, never Delete. Archived questions and options live on an
+Archived screen, where each one offers **Delete permanently**. That flow is the only way
+to destroy data, and it is designed so nobody erases more than they meant to:
+
+- Reachable only from Archived, so it is never next to an everyday action. No swipe
+  gesture anywhere; a swipe archives at most.
+- One item at a time. No "empty archive", no multi-select. v0 accepts the tedium.
+- The confirmation is built from `deletionImpact`, not from boilerplate. It names the item
+  in full, gives real counts, and dates the oldest answer that will go: "Delete
+  “What are you doing?” permanently. This erases 47 answers, the oldest from 3 March, and
+  10 options. It cannot be undone."
+- It says what survives, in the same breath: "Your other questions and their answers are
+  not affected." Being told what is safe is what stops someone over-deleting; a warning
+  alone does not.
+- Warn separately when `entriesEmptied > 0`: some entries will be left with nothing in
+  them, and they stay, so the compliance numbers do not move.
+- Destructive styling and an explicit confirm. No typed confirmation string: it teaches
+  people to type past the words rather than read them.
+
 Acceptance: renaming a question then viewing `labelHistory` shows both labels;
 archived items disappear from the runner but remain in the editor under "Archived";
-invalid sampling cannot be saved.
+invalid sampling cannot be saved; Delete permanently appears only under Archived and its
+confirmation counts match what the store actually removes; deleting a question leaves the
+rest of the survey and its entries intact; VoiceOver reads the confirmation as one
+message rather than as scattered labels.
 
 ### A5. Insights
 
