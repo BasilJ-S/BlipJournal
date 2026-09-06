@@ -39,8 +39,10 @@ struct JournalView: View {
         // onDismiss covers the swipe-down case too: the runner autosaves, so a
         // dismissed sheet can still have written an entry the list must show.
         .sheet(item: $runnerSurvey, onDismiss: reload) { survey in
-            SurveyRunnerView(survey: survey, promptId: nil) {
-                runnerSurvey = nil
+            NavigationStack {
+                SurveyRunnerView(survey: survey, promptId: nil) {
+                    runnerSurvey = nil
+                }
             }
         }
         .alert("Something went wrong", isPresented: Binding(

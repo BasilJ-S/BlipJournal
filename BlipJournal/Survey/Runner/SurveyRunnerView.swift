@@ -12,6 +12,7 @@ struct SurveyRunnerView: View {
         Group { if let draft { content(draft) } else { ProgressView("Loading entry") } }
             .navigationTitle(draft?.survey.name ?? survey?.name ?? "Entry").navigationBarTitleDisplayMode(.inline)
             .interactiveDismissDisabled(draft != nil).task { load() }
+            .onChange(of: draft?.lastError) { _, value in if let value { errorMessage = value } }
             .onChange(of: scenePhase) { _, phase in if phase == .background, let draft { Task { try? await draft.flush() } } }
             .alert("Something went wrong", isPresented: Binding(get: { errorMessage != nil }, set: { if !$0 { errorMessage = nil } })) { Button("OK", role: .cancel) {} } message: { Text(errorMessage ?? "") }
             .alert("Add option", isPresented: Binding(get: { addQuestion != nil }, set: { if !$0 { addQuestion = nil } })) { TextField("Option", text: $option); Button("Add") { add() }; Button("Cancel", role: .cancel) {} } message: { Text("Enter a new choice.") }
@@ -24,11 +25,11 @@ struct SurveyRunnerView: View {
     }
     @ViewBuilder private func card(_ q: Question, _ draft: EntryDraft) -> some View {
         VStack(alignment: .leading, spacing: 8) { Text(q.label).font(.headline); if q.isRequired { Text("Required").font(.caption).foregroundStyle(.secondary) }; switch q.kind {
-        case .scale: if let scale = q.scale { ScaleInput(scale: scale, value: draft.values[q.id].flatMap { if case .scale(let n) = $0 { n } else { nil } }, onChange: { number in Task { try? await draft.set(.scale(number), for: q.id) } }) }
-        case .singleChoice, .multiChoice: ChipGrid(question: q, value: draft.values[q.id], onChange: { value in Task { try? await draft.set(value, for: q.id) } }, onAdd: { addQuestion = q })
-        case .yesNo: YesNoInput(value: draft.values[q.id].flatMap { if case .yesNo(let b) = $0 { b } else { nil } }, onChange: { answer in Task { try? await draft.set(.yesNo(answer), for: q.id) } })
+        case .scale: if let scale = q.scale { ScaleInput(scale: scale, value: draft.values[q.id].flatMap { if case .scale(let n) = $0 { n } else { nil } }, onChange: { number in Task { do { try await draft.set(.scale(number), for: q.id) } catch { errorMessage = String(describing: error) } } }) }
+        case .singleChoice, .multiChoice: ChipGrid(question: q, value: draft.values[q.id], onChange: { value in Task { do { try await draft.set(value, for: q.id) } catch { errorMessage = String(describing: error) } } }, onAdd: { addQuestion = q })
+        case .yesNo: YesNoInput(value: draft.values[q.id].flatMap { if case .yesNo(let b) = $0 { b } else { nil } }, onChange: { answer in Task { do { try await draft.set(.yesNo(answer), for: q.id) } catch { errorMessage = String(describing: error) } } })
         case .text: TextInput(value: draft.values[q.id].flatMap { if case .text(let s) = $0 { s } else { nil } } ?? "", onChange: { draft.setText($0, for: q.id) }, onCommit: { Task { try? await draft.flush() } }) }
-        if draft.hasAnswer(for: q.id) { Button("Clear answer") { Task { try? await draft.set(nil, for: q.id) } }.frame(minHeight: 44).accessibilityLabel("Clear answer for \(q.label)") }
+        if draft.hasAnswer(for: q.id) { Button("Clear answer") { Task { do { try await draft.set(nil, for: q.id) } catch { errorMessage = String(describing: error) } } }.frame(minHeight: 44).accessibilityLabel("Clear answer for \(q.label)") }
         }.padding().frame(maxWidth: .infinity, alignment: .leading).background(.thinMaterial, in: RoundedRectangle(cornerRadius: 14))
     }
     private func load() { guard draft == nil else { return }; do { if let entry { draft = try EntryDraft(store: appModel.store, entry: entry) } else if let survey { draft = try EntryDraft(store: appModel.store, survey: survey, promptId: promptId) } } catch { errorMessage = String(describing: error) } }

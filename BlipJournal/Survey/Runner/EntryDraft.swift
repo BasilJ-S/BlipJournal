@@ -13,6 +13,7 @@ private actor SaveQueue {
         previous = task
         try await task.value
     }
+    func drain() async throws { try await previous?.value }
 }
 
 @MainActor @Observable
@@ -24,10 +25,12 @@ final class EntryDraft {
     private var ids: [String: String] = [:]
     private var dates: [String: Date] = [:]
     private var pendingText = false
+    private var revision = 0
     private var debounce: Task<Void, Never>?
     private(set) var survey: Survey
     private(set) var entry: Entry
     private(set) var values: [String: AnswerValue]
+    private(set) var lastError: String?
 
     var missingRequired: [Question] { survey.activeQuestions.filter { $0.isRequired && !hasAnswer(for: $0.id) } }
     var canComplete: Bool { missingRequired.isEmpty }
@@ -56,6 +59,7 @@ final class EntryDraft {
         if pendingText { try await flush() }
         if let value, !value.isEmptyForRunner { values[questionId] = value; if ids[questionId] == nil { ids[questionId] = Identifier.make(); dates[questionId] = now } }
         else { values.removeValue(forKey: questionId); ids.removeValue(forKey: questionId); dates.removeValue(forKey: questionId) }
+        revision += 1
         try await save()
     }
 
@@ -64,12 +68,16 @@ final class EntryDraft {
         values[questionId] = .text(text)
         if text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { ids.removeValue(forKey: questionId); dates.removeValue(forKey: questionId) }
         else if ids[questionId] == nil { ids[questionId] = Identifier.make(); dates[questionId] = now }
-        pendingText = true; debounce?.cancel(); debounce = Task { [weak self] in
+        pendingText = true; revision += 1; debounce?.cancel(); debounce = Task { [weak self] in
             try? await Task.sleep(for: .milliseconds(300)); guard !Task.isCancelled else { return }; try? await self?.flush()
         }
     }
 
-    func flush() async throws { debounce?.cancel(); debounce = nil; guard pendingText else { return }; pendingText = false; try await save() }
+    func flush() async throws {
+        debounce?.cancel(); debounce = nil
+        if pendingText { try await save(); pendingText = false }
+        try await queue.drain()
+    }
     func addOption(label: String, to questionId: String, now: Date = Date()) async throws {
         let option = try store.addOption(questionId: questionId, label: label, now: now); guard let survey = try store.survey(survey.id) else { throw StoreError.notFound }; self.survey = survey
         if survey.questions.first(where: { $0.id == questionId })?.kind == .singleChoice { try await set(.single(optionId: option.id), for: questionId, now: now) }
@@ -82,7 +90,14 @@ final class EntryDraft {
             guard !value.isEmptyForRunner else { return nil }; guard let id = ids[questionId], let version = versions[questionId] else { throw Error.missingVersion }
             return Answer(id: id, entryId: entry.id, questionId: questionId, questionVersionId: version, answeredAt: dates[questionId] ?? Date(), value: value)
         }
-        try await queue.save(store, entry, answers)
+        let revisionAtStart = revision
+        do {
+            try await queue.save(store, entry, answers)
+            if revision == revisionAtStart { lastError = nil }
+        } catch {
+            lastError = String(describing: error)
+            throw error
+        }
     }
 }
 
