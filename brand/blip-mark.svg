@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" role="img" aria-labelledby="title">
+  <title>Blip mark</title>
+  <clipPath id="blipClip">
+    <path clip-rule="evenodd" d="M0 0H100V100H0Z M26 25 H54 A21 21 0 0 1 75 46 V74 A21 21 0 0 1 54 95 H26 A21 21 0 0 1 5 74 V46 A21 21 0 0 1 26 25 Z"/>
+  </clipPath>
+  <g fill="none" stroke="#1F1A17" stroke-width="9">
+    <rect clip-path="url(#blipClip)" x="29.5" y="9.5" width="61" height="61" rx="16.5"/>
+    <rect x="9.5" y="29.5" width="61" height="61" rx="16.5"/>
+  </g>
+  <circle cx="40" cy="60" r="11" fill="#B37CFF"/>
+</svg>

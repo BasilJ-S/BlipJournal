@@ -4,6 +4,18 @@ An open source Experience Sampling Method (ESM) journal for iOS. Blip Journal pi
 at random moments during the day and asks a short, fully customisable survey. Every
 answer stays on your phone, encrypted at rest, and can be exported to CSV at any time.
 
+<p align="center">
+  <img src="brand/blip-mark.svg" width="96" alt="Blip stacked-card mark" />
+</p>
+
+## Brand
+
+Blip is the short in-app name; Blip Journal is the full product name. The visual system
+uses warm paper (`#FBF7F2`), sand (`#F6EFE5`), ink (`#1F1A17`), and one violet accent
+(`#B37CFF`). The stacked-card mark is two rounded journal entries with a violet blip
+on the front card. The source artwork is [`brand/blip-mark.svg`](brand/blip-mark.svg),
+and the app recreates the mark in SwiftUI for flexible sizing.
+
 Think of Apple's State of Mind logging, but with random sampling, surveys you define
 yourself, and no cloud.
 
