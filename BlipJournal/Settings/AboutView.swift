@@ -8,7 +8,17 @@ struct AboutView: View {
         let version = info?["CFBundleShortVersionString"] as? String ?? "Unknown"
         let build = info?["CFBundleVersion"] as? String ?? "Unknown"
         Form {
-            Section { Text("Blip Journal").font(.title2).accessibilityAddTraits(.isHeader); Text("A private, simple way to notice patterns in your days by recording brief check-ins."); Text("Version \(version) (\(build))") }
+            Section {
+                HStack(spacing: 16) {
+                    BlipMark(size: 76)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Blip Journal").font(.system(.title2, design: .rounded).weight(.heavy))
+                        Text("Version \(version) (\(build))").font(.footnote).foregroundStyle(.secondary)
+                    }
+                }
+                .accessibilityElement(children: .combine)
+                Text("A private, simple way to notice patterns in your days by recording brief check-ins.")
+            }
             Section("Privacy") { Text("Blip Journal makes no network requests and collects no data.") }
             Section("Licence") { DisclosureGroup("MIT Licence") { Text(mitLicence).font(.footnote).textSelection(.enabled) } }
             Section { Link(destination: URL(string: "https://github.com/BasilJ-S/BlipJournal")!) { Label("View source repository", systemImage: "link") }.accessibilityLabel("View Blip Journal source repository") }
