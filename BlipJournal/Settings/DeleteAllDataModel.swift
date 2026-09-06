@@ -17,14 +17,25 @@ final class DeleteAllDataModel {
     }
 
     func deleteAll() async throws {
+        try await Self.performReset(
+            erase: { _ = try self.appModel.store.eraseEverything() },
+            refresh: { try self.appModel.refresh() },
+            promptsDestroyed: { await self.appModel.notifications.promptsDestroyed(now: $0) },
+            clearRoute: { self.appModel.notifications.pendingRoute = nil })
+    }
+
+    static func performReset(
+        erase: @escaping @MainActor () throws -> Void,
+        refresh: @escaping @MainActor () throws -> Void,
+        promptsDestroyed: @escaping @MainActor (Date) async -> Void,
+        clearRoute: @escaping @MainActor () -> Void
+    ) async throws {
         var eraseError: Error?
-        do { _ = try appModel.store.eraseEverything() }
-        catch { eraseError = error }
-        await appModel.notifications.promptsDestroyed(now: Date())
-        appModel.notifications.pendingRoute = nil
+        do { try erase() } catch { eraseError = error }
+        await promptsDestroyed(Date())
+        clearRoute()
         var refreshError: Error?
-        do { try appModel.refresh() }
-        catch { refreshError = error }
+        do { try refresh() } catch { refreshError = error }
         if let eraseError { throw eraseError }
         if let refreshError { throw refreshError }
     }
