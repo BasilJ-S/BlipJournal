@@ -36,7 +36,15 @@ struct ExportView: View {
 
 private struct ActivityView: UIViewControllerRepresentable {
     let url: URL; let completion: () -> Void
-    func makeUIViewController(context: Context) -> UIActivityViewController { let controller = UIActivityViewController(activityItems: [url], applicationActivities: nil); controller.completionWithItemsHandler = { _, _, _, _ in completion() }; return controller }
+    func makeCoordinator() -> Coordinator { Coordinator(completion: completion) }
+    func makeUIViewController(context: Context) -> UIActivityViewController { let controller = UIActivityViewController(activityItems: [url], applicationActivities: nil); controller.completionWithItemsHandler = { _, _, _, _ in context.coordinator.finish() }; return controller }
     func updateUIViewController(_ controller: UIActivityViewController, context: Context) {}
-    static func dismantleUIViewController(_ controller: UIActivityViewController, coordinator: ()) { controller.completionWithItemsHandler?([], false, nil, nil) }
+    static func dismantleUIViewController(_ controller: UIActivityViewController, coordinator: Coordinator) { coordinator.finish(); controller.completionWithItemsHandler = nil }
+
+    final class Coordinator {
+        private let completion: () -> Void
+        private var didFinish = false
+        init(completion: @escaping () -> Void) { self.completion = completion }
+        func finish() { guard !didFinish else { return }; didFinish = true; completion() }
+    }
 }

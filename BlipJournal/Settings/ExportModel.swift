@@ -50,6 +50,7 @@ final class ExportModel {
     var range: DateRange = .all
     var customStart: Date
     var customEnd: Date
+    private var customDatesInitialized = false
 
     init(store: Store, calendar: Calendar = .autoupdatingCurrent, fileManager: FileManager = .default, baseDirectory: URL? = nil) {
         self.store = store
@@ -99,9 +100,10 @@ final class ExportModel {
     }
 
     func setRange(_ newValue: DateRange, now: Date = Date()) {
-        if newValue == .custom && range != .custom {
+        if newValue == .custom && !customDatesInitialized {
             if range == .all { customEnd = now; customStart = calendar.date(byAdding: .day, value: -29, to: calendar.startOfDay(for: now)) ?? now }
             else if let days = range.days { customEnd = now; customStart = calendar.date(byAdding: .day, value: -(days - 1), to: calendar.startOfDay(for: now)) ?? now }
+            customDatesInitialized = true
         }
         range = newValue
     }

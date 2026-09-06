@@ -17,9 +17,15 @@ final class DeleteAllDataModel {
     }
 
     func deleteAll() async throws {
-        _ = try appModel.store.eraseEverything()
+        var eraseError: Error?
+        do { _ = try appModel.store.eraseEverything() }
+        catch { eraseError = error }
         await appModel.notifications.promptsDestroyed(now: Date())
-        try appModel.refresh()
         appModel.notifications.pendingRoute = nil
+        var refreshError: Error?
+        do { try appModel.refresh() }
+        catch { refreshError = error }
+        if let eraseError { throw eraseError }
+        if let refreshError { throw refreshError }
     }
 }
