@@ -97,6 +97,6 @@ struct LaunchFailureView: View {
         }
         .padding()
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(Color(.systemBackground))
+        .blipScreenBackground()
     }
 }

@@ -25,18 +25,15 @@ struct LockView: View {
     var body: some View {
         VStack(spacing: 24) {
             Spacer()
-            Image(systemName: "lock.fill")
-                .font(.system(size: 56))
-                .foregroundStyle(.secondary)
-                .accessibilityHidden(true)
+            BlipMark(size: 72)
             Text("Blip Journal")
-                .font(.largeTitle.bold())
+                .font(.system(.largeTitle, design: .rounded).weight(.heavy))
             content
             Spacer()
         }
         .padding()
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(Color(.systemBackground))
+        .blipScreenBackground()
         .task { await authenticate() }
     }
 

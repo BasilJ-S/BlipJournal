@@ -18,5 +18,8 @@ struct SettingsView: View {
             NavigationLink("About") { AboutView() }
         }
         .navigationTitle("Settings")
+        .fontDesign(.rounded)
+        .scrollContentBackground(.hidden)
+        .blipScreenBackground()
     }
 }

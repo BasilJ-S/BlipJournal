@@ -11,6 +11,8 @@ struct SurveyRunnerView: View {
     var body: some View {
         Group { if let draft { content(draft) } else { ProgressView("Loading entry") } }
             .navigationTitle(draft?.survey.name ?? survey?.name ?? "Entry").navigationBarTitleDisplayMode(.inline)
+            .fontDesign(.rounded)
+            .blipScreenBackground()
             .interactiveDismissDisabled(draft != nil).task { load() }
             .onChange(of: draft?.lastError) { _, value in if let value { errorMessage = value } }
             .onChange(of: scenePhase) { _, phase in if phase == .background, let draft { Task { try? await draft.flush() } } }
@@ -30,7 +32,7 @@ struct SurveyRunnerView: View {
         case .yesNo: YesNoInput(value: draft.values[q.id].flatMap { if case .yesNo(let b) = $0 { b } else { nil } }, onChange: { answer in Task { do { try await draft.set(.yesNo(answer), for: q.id) } catch { errorMessage = String(describing: error) } } })
         case .text: TextInput(value: draft.values[q.id].flatMap { if case .text(let s) = $0 { s } else { nil } } ?? "", onChange: { draft.setText($0, for: q.id) }, onCommit: { Task { try? await draft.flush() } }) }
         if draft.hasAnswer(for: q.id) { Button("Clear answer") { Task { do { try await draft.set(nil, for: q.id) } catch { errorMessage = String(describing: error) } } }.frame(minHeight: 44).accessibilityLabel("Clear answer for \(q.label)") }
-        }.padding().frame(maxWidth: .infinity, alignment: .leading).background(.thinMaterial, in: RoundedRectangle(cornerRadius: 14))
+        }.padding().frame(maxWidth: .infinity, alignment: .leading).background(BlipBrand.sand, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
     }
     private func load() { guard draft == nil else { return }; do { if let entry { draft = try EntryDraft(store: appModel.store, entry: entry) } else if let survey { draft = try EntryDraft(store: appModel.store, survey: survey, promptId: promptId) } } catch { errorMessage = String(describing: error) } }
     private func add() { guard let q = addQuestion, let draft else { return }; let label = option.trimmingCharacters(in: .whitespacesAndNewlines); guard !label.isEmpty, !q.activeOptions.contains(where: { $0.label.caseInsensitiveCompare(label) == .orderedSame }) else { return }; Task { do { try await draft.addOption(label: label, to: q.id); addQuestion = nil } catch { errorMessage = String(describing: error) } } }

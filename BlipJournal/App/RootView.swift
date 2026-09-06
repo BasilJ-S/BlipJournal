@@ -22,6 +22,10 @@ struct RootView: View {
             }
         }
         .preferredColorScheme(.light)
+        .tint(BlipBrand.violet)
+        .toolbarBackground(BlipBrand.paper, for: .tabBar, .navigationBar)
+        .toolbarBackground(.visible, for: .tabBar, .navigationBar)
+        .blipScreenBackground()
         .sheet(isPresented: Binding(
             get: { appModel.notifications.pendingRoute != nil },
             set: { isPresented in
