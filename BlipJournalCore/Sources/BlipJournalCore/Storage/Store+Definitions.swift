@@ -50,6 +50,19 @@ extension Store {
         }
     }
 
+    /// Appends a current survey version with its archived flag cleared.
+    public func unarchiveSurvey(_ id: String, now: Date = Date()) throws {
+        try dbQueue.write { db in
+            guard let current = try currentSurveyVersion(db, surveyId: id) else {
+                throw StoreError.notFound
+            }
+            try SurveyVersionRow(
+                id: Identifier.make(), surveyId: id, name: current.name,
+                isArchived: false, createdAt: now
+            ).insert(db)
+        }
+    }
+
     /// Appends a sampling row. `Survey.sampling` is always the newest one.
     public func updateSampling(surveyId: String, _ config: SamplingConfig, now: Date = Date()) throws {
         try dbQueue.write { db in
