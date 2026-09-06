@@ -54,6 +54,12 @@ final class NotificationCoordinator: NotificationCoordinating {
     /// cleared.
     @ObservationIgnored private var generation = 0
 
+    /// Refreshes can suspend while talking to the notification centre. Keep later
+    /// refreshes behind the current one so a reset cannot reconcile against stale store
+    /// state while an older refresh is still adding requests.
+    @ObservationIgnored private var refreshInProgress = false
+    @ObservationIgnored private var refreshWaiters: [CheckedContinuation<Void, Never>] = []
+
     nonisolated static let categoryIdentifier = "PROMPT"
 
     init(
@@ -84,6 +90,9 @@ final class NotificationCoordinator: NotificationCoordinating {
     }
 
     func refresh(now: Date) async {
+        await waitForRefreshTurn()
+        defer { finishRefreshTurn() }
+
         generation += 1
         let myGeneration = generation
 
@@ -102,6 +111,25 @@ final class NotificationCoordinator: NotificationCoordinating {
         } catch {
             // A store read/write failure here leaves the notification centre as it was;
             // the next refresh retries from scratch.
+        }
+    }
+
+    private func waitForRefreshTurn() async {
+        guard refreshInProgress else {
+            refreshInProgress = true
+            return
+        }
+
+        await withCheckedContinuation { continuation in
+            refreshWaiters.append(continuation)
+        }
+    }
+
+    private func finishRefreshTurn() {
+        if refreshWaiters.isEmpty {
+            refreshInProgress = false
+        } else {
+            refreshWaiters.removeFirst().resume()
         }
     }
 

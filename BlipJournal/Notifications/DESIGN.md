@@ -30,12 +30,12 @@ NotificationSettingsView.swift   Settings → Notifications
    (below). Otherwise stop here: the store stays consistent (prompts are planned and
    marked missed on schedule) but nothing is requested until permission is granted.
 
-A generation counter bumped at the start of every `refresh` guards steps 5 onward: a run
-still awaiting the client when a newer run starts (a reset racing a stale in-flight
-refresh) checks the counter before each destructive client call and gives up rather than
-resurrecting requests the newer run already cleared. Steps 1-4 always run to completion
-once started, since they are plain synchronous store writes with no client round trip to
-race.
+Refreshes are serialized through the coordinator. A later refresh waits for an earlier
+one to finish all of its notification-centre work, so a reset cannot reconcile against
+stale store state while an older refresh is still adding requests. A generation counter
+also guards steps 5 onward: a run that becomes stale gives up before later destructive
+client calls. Steps 1-4 always run to completion once started, since they are plain
+synchronous store writes with no client round trip to race.
 
 ## Reconcile rule
 

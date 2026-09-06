@@ -275,4 +275,29 @@ struct NotificationCoordinatorTests {
         await coordinator.refresh(now: now.addingTimeInterval(120))
         #expect(await client.pendingRequestIdentifiers().isEmpty)
     }
+
+    @Test func resetWaitsForInFlightAddBeforeReconciling() async throws {
+        let store = try Store.inMemory()
+        try makeSurvey(store: store, now: now)
+        let client = FakeNotificationCenterClient()
+        client.authorizationStatusToReturn = .authorized
+        client.holdNextAdd()
+        let coordinator = makeCoordinator(store: store, client: client)
+
+        let initialRefresh = Task { @MainActor in
+            await coordinator.refresh(now: now)
+        }
+        await client.waitUntilAddStarted()
+
+        try store.eraseEverything(now: now)
+        let reset = Task { @MainActor in
+            await coordinator.promptsDestroyed(now: now)
+        }
+        client.releaseBlockedAdd()
+
+        await initialRefresh.value
+        await reset.value
+
+        #expect(await client.pendingRequestIdentifiers().isEmpty)
+    }
 }

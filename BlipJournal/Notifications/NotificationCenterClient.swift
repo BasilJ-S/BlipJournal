@@ -142,7 +142,26 @@ final class FakeNotificationCenterClient: NotificationCenterClient, @unchecked S
     var authorizationStatusToReturn: UNAuthorizationStatus = .notDetermined
     var requestAuthorizationGrants = true
 
+    private var holdAdd = false
+    private var addStarted = false
+    private var blockedAddContinuation: CheckedContinuation<Void, Never>?
+
     init() {}
+
+    func holdNextAdd() {
+        holdAdd = true
+    }
+
+    func waitUntilAddStarted() async {
+        while !addStarted {
+            await Task.yield()
+        }
+    }
+
+    func releaseBlockedAdd() {
+        blockedAddContinuation?.resume()
+        blockedAddContinuation = nil
+    }
 
     func authorizationStatus() async -> UNAuthorizationStatus {
         authorizationStatusToReturn
@@ -164,6 +183,13 @@ final class FakeNotificationCenterClient: NotificationCenterClient, @unchecked S
 
     func add(_ spec: NotificationRequestSpec) async throws {
         addCallCount += 1
+        if holdAdd {
+            holdAdd = false
+            await withCheckedContinuation { continuation in
+                blockedAddContinuation = continuation
+                addStarted = true
+            }
+        }
         pending[spec.identifier] = PendingEntry(content: spec.content, scheduledAt: spec.dateComponents)
     }
 
