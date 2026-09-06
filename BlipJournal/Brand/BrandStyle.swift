@@ -15,10 +15,10 @@ struct BlipMark: View {
             let scale = min(canvasSize.width, canvasSize.height) / 100
             let cardSize = 61 * scale
             let radius = 16.5 * scale
-            let back = RoundedRectangle(cornerRadius: radius, style: .continuous)
+            let back = RoundedRectangle(cornerRadius: radius, style: .circular)
                 .path(in: CGRect(x: 29.5 * scale, y: 9.5 * scale, width: cardSize, height: cardSize))
             let frontRect = CGRect(x: 9.5 * scale, y: 29.5 * scale, width: cardSize, height: cardSize)
-            let front = RoundedRectangle(cornerRadius: radius, style: .continuous).path(in: frontRect)
+            let front = RoundedRectangle(cornerRadius: radius, style: .circular).path(in: frontRect)
 
             // The rear card is visible only outside the front card's footprint.
             var outsideFront = Path(CGRect(origin: .zero, size: canvasSize))
