@@ -58,14 +58,3 @@ struct QuestionEditorView: View {
     private func archive(_ option: ChoiceOption) { var updated = option; updated.isArchived = true; do { try EditorModel(store: appModel.store, notifications: appModel.notifications).updateOption(updated); try appModel.refresh() } catch { errorMessage = String(describing: error) } }
     private func moveOptions(from: IndexSet, to: Int) { do { try EditorModel(store: appModel.store, notifications: appModel.notifications).moveOptions(questionId: questionId, from: from, to: to); try appModel.refresh() } catch { errorMessage = String(describing: error) } }
 }
-
-private struct ScaleFields: View {
-    @Binding var scale: ScaleConfig
-    var body: some View {
-        Stepper("Minimum: \(scale.min)", value: $scale.min, in: -100...100)
-        Stepper("Maximum: \(scale.max)", value: $scale.max, in: -100...100)
-        TextField("Minimum label", text: $scale.minLabel)
-        TextField("Maximum label", text: $scale.maxLabel)
-        if !scale.isValid { Text("Choose endpoints from -100 to 100 with at least two values.").foregroundStyle(.red).font(.footnote) }
-    }
-}

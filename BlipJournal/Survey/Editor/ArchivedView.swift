@@ -9,22 +9,58 @@ struct ArchivedView: View {
     @State private var pendingTarget: ArchivedTarget?
     @State private var errorMessage: String?
 
+    private var allSurveys: [Survey] { (try? appModel.store.surveys(includeArchived: true)) ?? [] }
+    private var archivedSurveys: [Survey] { allSurveys.filter { $0.isArchived && includes($0.id) } }
+    private var archivedQuestions: [(Question, Survey)] {
+        Self.archivedQuestions(in: allSurveys, scope: scope).filter { $0.0.isArchived }
+    }
+    private var archivedOptions: [(ChoiceOption, Question, Survey)] {
+        Self.archivedOptions(in: allSurveys, scope: scope)
+    }
+
+    @ViewBuilder private var surveysSection: some View {
+        Section("Surveys") {
+            ForEach(archivedSurveys) { survey in
+                row("Survey: \(survey.name)", target: .survey(survey))
+            }
+        }
+    }
+
+    @ViewBuilder private var questionsSection: some View {
+        Section("Questions") {
+            ForEach(archivedQuestions, id: \.0.id) { question, survey in
+                row("\(question.label) — \(survey.name)", target: .question(question, in: survey))
+            }
+        }
+    }
+
+    @ViewBuilder private var optionsSection: some View {
+        Section("Options") {
+            ForEach(archivedOptions, id: \.0.id) { option, question, survey in
+                row("\(option.label) — \(question.label) — \(survey.name)", target: .option(option, in: question, survey))
+            }
+        }
+    }
+
     var body: some View {
-        let all = (try? appModel.store.surveys(includeArchived: true)) ?? []
-        let surveys = all.filter { $0.isArchived && includes($0.id) }
-        let allQuestions = Self.archivedQuestions(in: all, scope: scope)
-        let questions = allQuestions.filter { pair in pair.0.isArchived }
-        let options = Self.archivedOptions(in: all, scope: scope)
         List {
-            Section("Surveys") { ForEach(surveys) { survey in row("Survey: \(survey.name)", target: .survey(survey)) } }
-            Section("Questions") { ForEach(questions, id: \.[0].id) { question, survey in row("\(question.label) — \(survey.name)", target: .question(question, in: survey)) } }
-            Section("Options") { ForEach(options, id: \.[0].id) { option, question, survey in row("\(option.label) — \(question.label) — \(survey.name)", target: .option(option, in: question, survey)) } }
+            surveysSection
+            questionsSection
+            optionsSection
         }
         .navigationTitle("Archived")
-        .confirmationDialog("Delete permanently?", item: $pendingTarget) { target in
-            Button("Delete permanently", role: .destructive) { delete(target) }
+        .confirmationDialog("Delete permanently?", isPresented: Binding(
+            get: { pendingTarget != nil },
+            set: { if !$0 { pendingTarget = nil } })) {
+            if let target = pendingTarget {
+                Button("Delete permanently", role: .destructive) { delete(target) }
+            }
             Button("Cancel", role: .cancel) {}
-        } message: { target in DeletionConfirmation.message(for: target, store: appModel.store) }
+        } message: {
+            if let target = pendingTarget {
+                Text(DeletionConfirmation.message(for: target, store: appModel.store))
+            }
+        }
         .alert("Could not change archive", isPresented: Binding(get: { errorMessage != nil }, set: { if !$0 { errorMessage = nil } })) { Button("OK", role: .cancel) {} } message: { Text(errorMessage ?? "") }
     }
 

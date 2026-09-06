@@ -23,7 +23,7 @@ struct EditorModelTests {
             ], now: now)
         var archivedSource = try #require(try store.survey(source.id))
         archivedSource.questions[0].isArchived = true
-        try store.updateQuestion(archivedSource.questions[0], label: archivedSource.questions[0].label,
+        try store.updateQuestion(archivedSource.questions[0].id, label: archivedSource.questions[0].label,
                                  position: 0, isRequired: false, isArchived: true, scale: nil,
                                  allowsCustomOptions: false, now: now.addingTimeInterval(1))
         let blank = try editor.createSurvey(name: "Blank", now: now)
