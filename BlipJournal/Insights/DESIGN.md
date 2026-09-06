@@ -22,11 +22,15 @@ straight from `Analytics`, or a small aggregate (a mean, a count, a percentage)
   (a legend from `.chartSymbolScale`), a secondary rolling-mean line. Y axis is the
   question's own `min...max`, labelled at the two ends; X axis by day.
 - **By hour / By weekday.** `BucketBarChart` (vertical): one bar per non-empty bucket,
-  its count annotated at a fixed, non-scaling text size. Y domain is the same
-  `min...max` as "Over time" so bar heights read on the same scale.
+  its count annotated at a fixed, non-scaling text size. Bars run from zero to the
+  actual mean, including negative means. Their numeric domain is
+  `min(0, scale.min)...max(0, scale.max)`; this is deliberately separate from the
+  timeline's `scale.min...scale.max` domain. Endpoint annotations get reserved chart
+  space and category labels remain outside the plot area.
 - **By option.** A picker over the survey's active choice questions (when more than
   one), then `BucketBarChart` (horizontal) of mean per option, in `Analytics.byOption`'s
-  own order.
+  own order. It uses the same zero-baseline rule and positions count annotations on
+  the correct side for positive and negative bars.
 - **Response rate.** `ComplianceTile`: the rate as a percentage, or "No prompts yet";
   answered/missed/dismissed/pending counts in a row.
 
@@ -80,6 +84,9 @@ preset and back.
 - No correlation, no significance testing, no comparison across surveys — `Analytics`
   does not offer them, so neither does this screen.
 - No export of charts.
+- Bucket chart accessibility numeric axes use the same zero-inclusive domain as the
+  visual bars; the selected question label, actual means, and bucket categories remain
+  available through the chart descriptor and accessibility summary.
 - `MoodOverTimeChart` has no `accessibilityChartDescriptor`: combining raw and
   rolling-mean series into one cheap descriptor was not worth it next to its
   `accessibilityLabel`. The bar charts (`byHour`, `byWeekday`, `byOption`) each get one.

@@ -5,6 +5,20 @@ import BlipJournalCore
 
 @MainActor
 struct InsightsModelTests {
+    @Test(arguments: [
+        (1, 7, 0.0, 7.0),
+        (0, 100, 0.0, 100.0),
+        (-100, 0, -100.0, 0.0),
+        (-5, 5, -5.0, 5.0),
+    ])
+    func bucketDomainIncludesZeroAndScaleBounds(
+        min: Int, max: Int, expectedLower: Double, expectedUpper: Double
+    ) {
+        let domain = BucketBarChart.barDomain(for: ScaleConfig(min: min, max: max))
+        #expect(domain.lowerBound == expectedLower)
+        #expect(domain.upperBound == expectedUpper)
+    }
+
     /// Gregorian calendar in Toronto, weeks starting Monday, so DST transitions and
     /// weekday buckets behave the way a real device would, whatever the test host is set to.
     private let toronto: Calendar = {
