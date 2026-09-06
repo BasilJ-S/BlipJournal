@@ -25,6 +25,9 @@ yourself, and no cloud.
   definitions.
 - **Honest data.** Unprompted (manual) entries are tagged as such. Expired prompts are
   recorded as missed so compliance is visible.
+- **Yours to erase.** Delete a single entry, permanently erase anything you have archived
+  along with every answer to it, or wipe everything from Settings. Erasing overwrites the
+  data in the database rather than merely unlinking it.
 - **Built-in charts.** Mood over time, by hour, by weekday, by activity or impact, and
   compliance rate.
 - **App Store compliant.** Privacy manifest, "Data Not Collected" privacy label, no
@@ -70,8 +73,20 @@ OpenBlip/            iOS app target. SwiftUI only.
   `NSFileProtectionComplete`, so the WAL and journal files inherit it.
 - **Insert-only definitions.** Surveys, questions, and options each have a stable ID and
   a separate version table. Renaming a label, reordering, changing a scale range, or
-  archiving inserts a new version row. Nothing in a definition table is ever updated or
-  deleted. The current definition is the newest version row.
+  archiving inserts a new version row. Editing never updates or deletes a definition row.
+  The current definition is the newest version row.
+- **Archiving, then erasing.** Removing a question or an option archives it: it leaves the
+  survey you answer, and past answers still resolve to the wording you saw at the time.
+  Archived things are listed on their own screen, and from there you can permanently erase
+  one, which deletes it and every answer to it outright. That is the one place the app
+  deletes a definition, it only ever acts on something already archived, and it tells you
+  exactly what will go before it goes. Individual entries can be deleted from the Journal,
+  and Settings has a "Delete all data" action.
+- **Erasure means the bytes.** The database runs with `secure_delete` on, and every
+  erasure checkpoints the write-ahead log and vacuums, so the removed rows are not left
+  sitting in free pages or in the log. What no app can promise is erasure from the flash
+  storage underneath, because wear levelling is outside its control; iOS Data Protection
+  is what covers that residue.
 - Answers reference the question ID, the question version ID, and option IDs, never the
   label text. Exports can therefore show either the label at the time of the answer or
   the current label.
