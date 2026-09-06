@@ -13,7 +13,10 @@ this file instead.
 
 Repo, license, README spec, AGENTS.md, empty core package, XcodeGen spec, app entry point.
 
-## Phase 1: OpenBlipCore
+## Phase 1: OpenBlipCore (done)
+
+Merged in #2 (C1), #8 (C2), #7 (C3), #6 (C4), #5 (C5). Each `DESIGN.md` under
+`OpenBlipCore/Sources/OpenBlipCore/` is authoritative where it and this file disagree.
 
 ### C1. Domain model
 
@@ -247,6 +250,7 @@ within the local window.
 ### C4. Export
 
 Scope: `Sources/OpenBlipCore/Export/`. Pure functions over an `ExportSnapshot`.
+JSON backup lives in C2 (Storage), since it is a dump of table rows.
 Depends on C1. The `ExportSnapshot` loader lives in C2; agree the struct shape here
 first.
 
@@ -262,8 +266,6 @@ enum CSVExporter {
     static func wide(_ s: ExportSnapshot, calendar: Calendar) -> String
     static func long(_ s: ExportSnapshot, calendar: Calendar) -> String
 }
-struct Backup: Codable { var schemaVersion: Int; var exportedAt: Date; /* every table */ }
-enum BackupExporter { static func json(_ b: Backup) throws -> Data }
 ```
 
 Column sets are in README under "Export formats". Timestamps in ISO 8601 with local
@@ -297,7 +299,13 @@ Acceptance: hand-computed fixtures for each function; empty input yields empty o
 
 ## Phase 2: OpenBlip app
 
-Every app task depends on C2. Interfaces below are what the app consumes.
+Sequencing: **A1 runs alone first.** It builds the shell and, for every later screen, a
+stub file with a fixed signature (see "Extension points" in `docs/tasks/A1-app-shell.md`).
+**A2, A3, A4, A5 and A6 then run in parallel**, each replacing only its own stubs and
+adding its own folder; none edits a shared file. A7 runs last. Handoffs: `docs/tasks/A1-app-shell.md`,
+`A2-notifications.md`, `A3-survey-runner.md`, `A4-survey-editor.md`, `A5-insights.md`,
+`A6-export-and-settings.md`. The app layout gains `OpenBlip/Journal/` (entries list and
+detail, owned by A1). Where a handoff and this file disagree, the handoff wins.
 
 ### A1. App shell and lock
 

@@ -1,5 +1,7 @@
 # Task C5: Analytics
 
+**Status: done, merged in #5.** Kept as the record of what was asked. Where it and the code disagree, the code and the component's `DESIGN.md` are authoritative; the PR description lists the agreed deviations.
+
 Implementation handoff for `OpenBlipCore/Sources/OpenBlipCore/Analytics/`. Read
 `AGENTS.md`, the "Insights" bullet under "UI subsystem" in `README.md`, the C5 and A5
 sections of `docs/PLAN.md`, and `Export/ExportSnapshot.swift`, which already exists on

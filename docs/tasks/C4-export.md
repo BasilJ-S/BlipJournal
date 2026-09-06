@@ -1,5 +1,7 @@
 # Task C4: CSV export
 
+**Status: done, merged in #6.** Kept as the record of what was asked. Where it and the code disagree, the code and the component's `DESIGN.md` are authoritative; the PR description lists the agreed deviations.
+
 Implementation handoff for `OpenBlipCore/Sources/OpenBlipCore/Export/`. Read `AGENTS.md`,
 the "Export formats" section of `README.md`, the C4 section of `docs/PLAN.md`,
 `Model/DESIGN.md` ("Recoverability"), and `Export/ExportSnapshot.swift`, which already

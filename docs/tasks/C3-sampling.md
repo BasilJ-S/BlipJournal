@@ -1,5 +1,7 @@
 # Task C3: Sampling
 
+**Status: done, merged in #7.** Kept as the record of what was asked. Where it and the code disagree, the code and the component's `DESIGN.md` are authoritative; the PR description lists the agreed deviations.
+
 Implementation handoff for `OpenBlipCore/Sources/OpenBlipCore/Sampling/`. Read
 `AGENTS.md`, the "Notification subsystem" section of `README.md`, the C3 section of
 `docs/PLAN.md`, and `Model/SamplingConfig.swift` and `Model/Prompt.swift`. Do not touch
