@@ -18,7 +18,17 @@ files, not this list.
 
 Every destination takes `init()` and reads `AppModel` from the environment.
 
+## A6 behaviour
+
+CSV exports are UTF-8 with a byte-order mark for Excel compatibility. JSON backups have
+no BOM and always contain the complete database; date filtering applies only to CSV.
+Temporary exports live in protected `Application Support/BlipJournal/exports/` and are
+removed when sharing ends or the export screen disappears.
+
+Delete-all erases and reseeds in the store transaction, asks the notification coordinator
+to remove pending and delivered prompts, clears its pending route, refreshes the app, and
+reports that notifications are paused. iOS notification authorization is not revoked.
+
 ## Known limitations
 
-- "Delete all data" is styled red but is a plain link; the confirmation and the call to
-  `Store.eraseEverything` belong to A6.
+- There is no import, and JSON backups cannot be date-filtered.
