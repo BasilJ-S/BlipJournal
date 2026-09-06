@@ -23,8 +23,10 @@ struct BlipMark: View {
             // The rear card is visible only outside the front card's footprint.
             var outsideFront = Path(CGRect(origin: .zero, size: canvasSize))
             outsideFront.addPath(front)
-            context.clip(to: outsideFront, style: FillStyle(eoFill: true))
-            context.stroke(back, with: .color(BlipBrand.ink), lineWidth: 9 * scale)
+            context.drawLayer { layer in
+                layer.clip(to: outsideFront, style: FillStyle(eoFill: true))
+                layer.stroke(back, with: .color(BlipBrand.ink), lineWidth: 9 * scale)
+            }
 
             context.stroke(front, with: .color(BlipBrand.ink), lineWidth: 9 * scale)
             let dot = Path(ellipseIn: CGRect(x: 29 * scale, y: 49 * scale, width: 22 * scale, height: 22 * scale))
