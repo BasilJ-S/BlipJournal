@@ -25,6 +25,7 @@ final class EntryDraft {
     private var ids: [String: String] = [:]
     private var dates: [String: Date] = [:]
     private var pendingText = false
+    private var dirty = false
     private var revision = 0
     private var debounce: Task<Void, Never>?
     private(set) var survey: Survey
@@ -59,7 +60,7 @@ final class EntryDraft {
         if pendingText { try await flush() }
         if let value, !value.isEmptyForRunner { values[questionId] = value; if ids[questionId] == nil { ids[questionId] = Identifier.make(); dates[questionId] = now } }
         else { values.removeValue(forKey: questionId); ids.removeValue(forKey: questionId); dates.removeValue(forKey: questionId) }
-        revision += 1
+        revision += 1; dirty = true
         try await save()
     }
 
@@ -68,14 +69,14 @@ final class EntryDraft {
         values[questionId] = .text(text)
         if text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { ids.removeValue(forKey: questionId); dates.removeValue(forKey: questionId) }
         else if ids[questionId] == nil { ids[questionId] = Identifier.make(); dates[questionId] = now }
-        pendingText = true; revision += 1; debounce?.cancel(); debounce = Task { [weak self] in
+        pendingText = true; revision += 1; dirty = true; debounce?.cancel(); debounce = Task { [weak self] in
             try? await Task.sleep(for: .milliseconds(300)); guard !Task.isCancelled else { return }; try? await self?.flush()
         }
     }
 
     func flush() async throws {
         debounce?.cancel(); debounce = nil
-        if pendingText { try await save(); pendingText = false }
+        if dirty { try await save(); pendingText = false }
         try await queue.drain()
     }
     func addOption(label: String, to questionId: String, now: Date = Date()) async throws {
@@ -93,7 +94,7 @@ final class EntryDraft {
         let revisionAtStart = revision
         do {
             try await queue.save(store, entry, answers)
-            if revision == revisionAtStart { lastError = nil }
+            if revision == revisionAtStart { dirty = false; lastError = nil }
         } catch {
             lastError = String(describing: error)
             throw error
