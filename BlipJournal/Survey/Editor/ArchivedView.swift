@@ -12,8 +12,9 @@ struct ArchivedView: View {
     var body: some View {
         let all = (try? appModel.store.surveys(includeArchived: true)) ?? []
         let surveys = all.filter { $0.isArchived && includes($0.id) }
-        let questions = all.flatMap { survey in survey.questions.filter { $0.isArchived && includes(survey.id) }.map { ($0, survey) } }
-        let options = questions.flatMap { question, survey in question.options.filter(\.isArchived).map { ($0, question, survey) } }
+        let allQuestions = Self.archivedQuestions(in: all, scope: scope)
+        let questions = allQuestions.filter { pair in pair.0.isArchived }
+        let options = Self.archivedOptions(in: all, scope: scope)
         List {
             Section("Surveys") { ForEach(surveys) { survey in row("Survey: \(survey.name)", target: .survey(survey)) } }
             Section("Questions") { ForEach(questions, id: \.[0].id) { question, survey in row("\(question.label) — \(survey.name)", target: .question(question, in: survey)) } }
@@ -28,6 +29,28 @@ struct ArchivedView: View {
     }
 
     private func includes(_ surveyId: String) -> Bool { if case .survey(let id) = scope { return id == surveyId }; return true }
+    static func archivedQuestions(in surveys: [Survey], scope: ArchivedScope) -> [(Question, Survey)] {
+        var result: [(Question, Survey)] = []
+        for survey in surveys where scopeIncludes(survey.id, scope: scope) {
+            result.append(contentsOf: survey.questions.map { ($0, survey) })
+        }
+        return result
+    }
+    static func archivedOptions(in surveys: [Survey], scope: ArchivedScope) -> [(ChoiceOption, Question, Survey)] {
+        var result: [(ChoiceOption, Question, Survey)] = []
+        for survey in surveys where scopeIncludes(survey.id, scope: scope) {
+            for question in survey.questions {
+                for option in question.options where option.isArchived {
+                    result.append((option, question, survey))
+                }
+            }
+        }
+        return result
+    }
+    private static func scopeIncludes(_ surveyId: String, scope: ArchivedScope) -> Bool {
+        if case .survey(let id) = scope { return id == surveyId }
+        return true
+    }
     @ViewBuilder private func row(_ title: String, target: ArchivedTarget) -> some View {
         HStack { Text(title); Spacer(); Button("Unarchive") { unarchive(target) }.buttonStyle(.borderless); Button("Delete permanently", role: .destructive) { pendingTarget = target }.buttonStyle(.borderless) }
     }

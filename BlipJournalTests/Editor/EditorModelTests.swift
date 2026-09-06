@@ -1,6 +1,7 @@
 import BlipJournalCore
 import Foundation
 import Testing
+import UserNotifications
 @testable import BlipJournal
 
 @MainActor
@@ -64,4 +65,59 @@ struct EditorModelTests {
         }
         #expect(try store.survey(survey.id)?.notificationPreview == .private)
     }
+
+    @Test func previewOnlySaveRefreshesContentWithoutReplanningPrompts() async throws {
+        let store = try Store.inMemory()
+        let spy = EditorNotificationSpy()
+        let editor = EditorModel(store: store, notifications: spy)
+        let survey = try editor.createSurvey(name: "Survey", now: now)
+        let prompt = Prompt(
+            id: "prompt", surveyId: survey.id, day: "2026-09-06",
+            scheduledAt: now.addingTimeInterval(3_600), expiresAt: now.addingTimeInterval(7_200))
+        try store.insertPrompts([prompt])
+
+        try await editor.saveNotificationPreview(
+            surveyId: survey.id, .custom(message: "A private reminder"), now: now)
+
+        #expect(try store.prompts(status: nil).map(\.id) == [prompt.id])
+        #expect(spy.refreshDates == [now])
+        #expect(spy.scheduleDates.isEmpty)
+        #expect(try store.survey(survey.id)?.notificationPreview == .custom(message: "A private reminder"))
+    }
+
+    @Test func archivedOptionsUnderActiveQuestionsRemainManageable() throws {
+        let store = try Store.inMemory()
+        let question = Question(
+            kind: .singleChoice, label: "Choice", position: 0,
+            options: [ChoiceOption(label: "Retired", position: 0, isArchived: true)])
+        let survey = try store.createSurvey(name: "Survey", sampling: .default, questions: [question], now: now)
+        let loaded = try #require(try store.survey(survey.id))
+        let archived = ArchivedView.archivedOptions(in: [loaded], scope: .all)
+        #expect(archived.count == 1)
+        #expect(archived.first?.1.isArchived == false)
+        #expect(archived.first?.0.label == "Retired")
+    }
+
+    @Test func customPreviewDraftTracksEmptyAndValidMessageChanges() {
+        let empty = SamplingSettingsView.effectivePreview(mode: 2, customMessage: " \n")
+        #expect(!empty.isValid)
+        let valid = SamplingSettingsView.effectivePreview(mode: 2, customMessage: "A reminder")
+        #expect(valid == .custom(message: "A reminder"))
+        #expect(valid.isValid)
+        let emptied = SamplingSettingsView.effectivePreview(mode: 2, customMessage: "")
+        #expect(!emptied.isValid)
+    }
+}
+
+@MainActor
+private final class EditorNotificationSpy: NotificationCoordinating {
+    var authorizationStatus: UNAuthorizationStatus { .notDetermined }
+    var pendingRoute: String?
+    var refreshDates: [Date] = []
+    var scheduleDates: [Date] = []
+
+    func requestAuthorization() async -> Bool { false }
+    func refresh(now: Date) async { refreshDates.append(now) }
+    func scheduleChanged(surveyId: String, now: Date) async { scheduleDates.append(now) }
+    func promptsDestroyed(now: Date) async {}
 }
