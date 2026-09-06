@@ -2,9 +2,9 @@
 
 Implementation handoff for `BlipJournal/Notifications/`. Read `AGENTS.md`, the "Notification
 subsystem" section of `README.md`, the A2 section of `docs/PLAN.md`,
-`BlipJournalCore/Sources/BlipJournalCore/Sampling/DESIGN.md`, `Storage/DESIGN.md`, and
-`BlipJournal/App/DESIGN.md` (the extension points). Requires A1 on `main`. Do not modify
-`BlipJournalCore/`.
+`BlipJournalCore/Sources/BlipJournalCore/Sampling/DESIGN.md`, `Storage/DESIGN.md`,
+`Model/DESIGN.md` (`NotificationPreview`), and `BlipJournal/App/DESIGN.md` (the extension
+points). Requires A0 and A1 on `main`. Do not modify `BlipJournalCore/`.
 
 ## Goal
 
@@ -64,11 +64,20 @@ final class FakeNotificationCenterClient: NotificationCenterClient // records re
    `SystemRandomNumberGenerator`.
 3. For each `missedPromptIds`: `setPromptStatus(id, .missed, respondedAt: now)`.
 4. `insertPrompts(plan.newPrompts)`.
-5. Reconcile: target = pending prompts with `scheduledAt > now`. Remove pending requests
-   not in target; add requests for target prompts not pending in the centre. Request
-   identifier = prompt ID. Content: title = survey name, body = "How are you right now?",
-   sound default, `interruptionLevel = .timeSensitive`, `categoryIdentifier = "PROMPT"`,
-   `userInfo["promptId"]`. Trigger = `UNCalendarNotificationTrigger` from
+5. Reconcile: target = pending prompts with `scheduledAt > now`. Remove every pending
+   request whose prompt is not in target (covers a survey hard-deleted or reset, a
+   prompt now missed or answered, and one superseded) — this removal must run whether or
+   not that prompt's content would also have changed, or a deleted survey's notification
+   lingers forever. Then, for every prompt in target, remove its pending request if one
+   exists and add a fresh one: content is computed new every time from the prompt's
+   survey, so a preview changed after a request was first built is never stale. Request
+   identifier = prompt ID. Content:
+   `let content = survey.notificationPreview.content(surveyName: survey.name)`, `title =
+   content.title`, `body = content.body`, sound default, `interruptionLevel =
+   .timeSensitive`, `categoryIdentifier = "PROMPT"`, `userInfo["promptId"]`. Never build
+   content from anything but `NotificationPreview.content(surveyName:)`: it is the one
+   place that decides what a locked screen may say, and it never includes an answer.
+   Trigger = `UNCalendarNotificationTrigger` from
    `calendar.dateComponents([.year,.month,.day,.hour,.minute], from: scheduledAt)`,
    non-repeating.
 6. `removeAllDeliveredNotifications()` for prompts no longer pending is not possible

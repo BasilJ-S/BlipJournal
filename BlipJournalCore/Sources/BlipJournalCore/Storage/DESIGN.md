@@ -19,13 +19,14 @@ Store+Export.swift      exportSnapshot, backup
 Backup.swift            Backup, BackupExporter
 ```
 
-## Schema (v1)
+## Schema (v2)
 
 ```
 survey(id, createdAt)
 surveyVersion(id, surveyId, name, isArchived, createdAt)
 surveySampling(id, surveyId, promptsPerDay, windowStartMinutes, windowEndMinutes,
                minGapMinutes, expiryMinutes, isEnabled, createdAt)
+surveyNotificationPreview(id, surveyId, mode, message, createdAt)
 question(id, surveyId, kind, createdAt)
 questionVersion(id, questionId, label, position, isRequired, isArchived,
                 scaleMin, scaleMax, scaleMinLabel, scaleMaxLabel, allowsCustomOptions, createdAt)
@@ -37,6 +38,11 @@ answer(id, entryId, questionId, questionVersionId, answeredAt, kind,
        numericValue, textValue, boolValue)   UNIQUE (entryId, questionId)
 answerOption(answerId, optionId)        PRIMARY KEY (answerId, optionId)
 ```
+
+`surveyNotificationPreview.mode` is `"private"`, `"surveyName"` or `"custom"`; `message`
+is set only for `"custom"`. Added by migration `v2`; a survey with no row here (any
+survey created before v2 was applied) resolves to `.private`, the same way an absent
+`surveySampling` row resolves to `SamplingConfig.default`.
 
 IDs are `TEXT PRIMARY KEY`. Timestamps are GRDB's default UTC string
 (`yyyy-MM-dd HH:mm:ss.SSS`), which sorts lexicographically; precision is one
@@ -66,8 +72,9 @@ delete removes is exactly what its code says. Indexes: every foreign key column 
   and `Answer` values, and `setPromptStatus` takes `respondedAt` outright. `backup(now:)`
   uses it as `exportedAt` so the JSON is reproducible.
 - **Definitions are insert-only.** Nothing outside `Store+HardDelete.swift` updates or
-  deletes a row of `survey`, `surveyVersion`, `surveySampling`, `question`,
-  `questionVersion`, `option` or `optionVersion`. `updateQuestion` and `updateOption`
+  deletes a row of `survey`, `surveyVersion`, `surveySampling`,
+  `surveyNotificationPreview`, `question`, `questionVersion`, `option` or
+  `optionVersion`. `updateQuestion` and `updateOption`
   write a version carrying every field; the caller passes the full intended state.
   Archiving touches only its own level: archiving a question writes nothing to its
   options, so unarchiving it restores exactly the option set that was visible.
@@ -113,7 +120,7 @@ version is archived, runs in one transaction, and removes rows children-first:
 answerOption (of doomed answers; at option level also any naming the option)
 answer → entry, prompt (survey only)
 optionVersion → option → questionVersion → question
-surveySampling → surveyVersion → survey (survey only)
+surveyNotificationPreview → surveySampling → surveyVersion → survey (survey only)
 ```
 
 - **Question:** its versions, options and option versions, every answer to it and their
@@ -130,9 +137,14 @@ surveySampling → surveyVersion → survey (survey only)
   builder per level feeds both), so the counts shown are the counts that go. It has the
   same preconditions as the delete. At survey level `entries` counts every entry of the
   survey, answerless ones included, and `entriesEmptied` is 0; `versions` counts survey
-  versions, sampling rows, question versions and option versions.
+  versions, sampling rows, notification preview rows, question versions and option
+  versions.
 - `eraseEverything` deletes every row of every table and reseeds
-  `SurveyTemplate.makeDefault(now:)` in the same transaction.
+  `SurveyTemplate.makeDefault(now:)` in the same transaction, **paused**: it writes the
+  template's sampling with `isEnabled` forced to `false` before inserting, so the
+  reseeded survey is never briefly enabled between the erasure and whatever the caller
+  does next. Timing, questions and the `.private` notification preview are the
+  template's own defaults, untouched.
 - **Vacuum helper.** Every destructive method (`deleteEntry`, the three hard deletes,
   `eraseEverything`) ends with `Store.checkpointAndVacuum()`: `PRAGMA
   wal_checkpoint(TRUNCATE)` (a no-op in rollback journal mode, kept so a switch to WAL
@@ -193,6 +205,8 @@ README promises no more than that.
 - `setPromptStatus` takes `respondedAt` as in PLAN.md rather than a `now`.
 - `deleteFuturePendingPrompts` keeps a pending prompt that has an entry.
 - `Store.databaseFileName` is public so a caller can find the file.
+- `eraseEverything` reseeds with `sampling.isEnabled = false` (A0), so a person who wipes
+  their data is not immediately re-prompted before they have looked at Settings.
 
 ## Known limitations
 

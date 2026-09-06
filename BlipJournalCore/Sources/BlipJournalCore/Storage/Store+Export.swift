@@ -85,6 +85,8 @@ extension Store {
                 surveys: try SurveyRow.fetchAll(db, sql: "SELECT * FROM survey ORDER BY id"),
                 surveyVersions: try SurveyVersionRow.fetchAll(db, sql: "SELECT * FROM surveyVersion \(versioned)"),
                 surveySamplings: try SurveySamplingRow.fetchAll(db, sql: "SELECT * FROM surveySampling \(versioned)"),
+                surveyNotificationPreviews: try SurveyNotificationPreviewRow.fetchAll(
+                    db, sql: "SELECT * FROM surveyNotificationPreview \(versioned)"),
                 questions: try QuestionRow.fetchAll(db, sql: "SELECT * FROM question ORDER BY id"),
                 questionVersions: try QuestionVersionRow.fetchAll(db, sql: "SELECT * FROM questionVersion \(versioned)"),
                 options: try OptionRow.fetchAll(db, sql: "SELECT * FROM option ORDER BY id"),

@@ -201,7 +201,7 @@ struct StoreHardDeleteTests {
 
         let impact = try f.store.deletionImpact(surveyId: f.survey.id)
         #expect(impact == DeletionImpact(
-            answers: 9, entries: 5, entriesEmptied: 0, options: 41, versions: 3 + 1 + 6 + 41, prompts: 2,
+            answers: 9, entries: 5, entriesEmptied: 0, options: 41, versions: 3 + 1 + 1 + 6 + 41, prompts: 2,
             oldest: t(100), newest: t(400)))
         let (before, after) = try f.expectImpactMatchesDelta(impact, surveyLevel: true) {
             try f.store.hardDeleteSurvey(f.survey.id)
@@ -210,7 +210,8 @@ struct StoreHardDeleteTests {
         #expect(after == after.restricted(to: other.id))
         #expect(after.restricted(to: other.id) == before.restricted(to: other.id))
         #expect(after.rowCounts == [
-            "survey": 1, "surveyVersion": 1, "surveySampling": 1, "question": 6, "questionVersion": 6,
+            "survey": 1, "surveyVersion": 1, "surveySampling": 1, "surveyNotificationPreview": 1,
+            "question": 6, "questionVersion": 6,
             "option": 41, "optionVersion": 41, "prompt": 1, "entry": 1, "answer": 1, "answerOption": 1,
         ])
         #expect(try f.store.survey(f.survey.id) == nil)
@@ -229,15 +230,20 @@ struct StoreHardDeleteTests {
 
         let backup = try f.store.backup(now: t(11))
         #expect(backup.rowCounts == [
-            "survey": 1, "surveyVersion": 1, "surveySampling": 1, "question": 6, "questionVersion": 6,
+            "survey": 1, "surveyVersion": 1, "surveySampling": 1, "surveyNotificationPreview": 1,
+            "question": 6, "questionVersion": 6,
             "option": 41, "optionVersion": 41, "prompt": 0, "entry": 0, "answer": 0, "answerOption": 0,
         ])
         #expect(try f.store.surveys(includeArchived: true) == [reseeded])
         #expect(reseeded.createdAt == t(10))
         #expect(reseeded.id != f.survey.id)
+        // Paused reset: sampling.isEnabled is the one field overridden from the template.
+        #expect(reseeded.sampling.isEnabled == false)
+        #expect(reseeded.notificationPreview == .private)
         var expected = SurveyTemplate.makeDefault(now: t(10))
         expected.id = reseeded.id
         expected.questions = reseeded.questions    // fresh identifiers; compare content below
+        expected.sampling.isEnabled = false
         #expect(reseeded == expected)
         #expect(reseeded.activeQuestions.map(\.label) == SurveyTemplate.makeDefault().activeQuestions.map(\.label))
         #expect(backup.surveyVersions.first?.createdAt == t(10))

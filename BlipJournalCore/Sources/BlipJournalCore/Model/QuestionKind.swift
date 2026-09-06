@@ -55,11 +55,11 @@ public struct ScaleConfig: Sendable, Equatable, Hashable, Codable {
         self.maxLabel = maxLabel
     }
 
-    /// Whether the range is usable: at least two points, and no wider than 11 points.
+    /// Whether the range is usable: `-100 <= min < max <= 100`.
     ///
-    /// The upper bound exists because the runner renders a scale as one row of tap
-    /// targets; beyond `max - min == 10` it stops fitting on a phone screen.
+    /// Every comparison is direct, never a difference, so an extreme `Int` (`.min`,
+    /// `.max`) cannot overflow it the way `max - min` would.
     public var isValid: Bool {
-        max > min && (max - min) <= 10
+        min >= -100 && max <= 100 && min < max
     }
 }

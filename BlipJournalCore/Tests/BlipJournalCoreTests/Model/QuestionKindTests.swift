@@ -42,12 +42,33 @@ struct ScaleConfigTests {
         #expect(!ScaleConfig(min: bounds.min, max: bounds.max).isValid)
     }
 
-    @Test("isValid accepts a span of exactly 10 and rejects 11")
-    func rejectsOverWideRange() {
-        #expect(ScaleConfig(min: 0, max: 10).isValid)
-        #expect(!ScaleConfig(min: 0, max: 11).isValid)
-        #expect(ScaleConfig(min: -5, max: 5).isValid)
-        #expect(!ScaleConfig(min: -6, max: 5).isValid)
+    @Test("isValid accepts the full -100...100 span and rejects one step past either end")
+    func acceptsFullRange() {
+        #expect(ScaleConfig(min: -100, max: 100).isValid)
+        #expect(!ScaleConfig(min: -101, max: 100).isValid)
+        #expect(!ScaleConfig(min: -100, max: 101).isValid)
+    }
+
+    @Test("isValid accepts a negative-only and a crossing-zero range, zero included", arguments: [
+        (min: -100, max: -1), (min: -50, max: 0), (min: 0, max: 1), (min: -1, max: 1),
+    ])
+    func acceptsNegativeAndCrossingZero(bounds: (min: Int, max: Int)) {
+        #expect(ScaleConfig(min: bounds.min, max: bounds.max).isValid)
+    }
+
+    @Test("isValid rejects equal and reversed endpoints")
+    func rejectsEqualAndReversed() {
+        #expect(!ScaleConfig(min: 0, max: 0).isValid)
+        #expect(!ScaleConfig(min: 5, max: -5).isValid)
+    }
+
+    @Test("isValid compares bounds directly, so extreme Int values never overflow")
+    func extremeValuesDoNotTrap() {
+        #expect(!ScaleConfig(min: Int.min, max: Int.max).isValid)
+        #expect(!ScaleConfig(min: Int.min, max: 0).isValid)
+        #expect(!ScaleConfig(min: 0, max: Int.max).isValid)
+        #expect(!ScaleConfig(min: Int.max, max: Int.max).isValid)
+        #expect(!ScaleConfig(min: Int.min, max: Int.min).isValid)
     }
 
     @Test("round-trips through JSON")

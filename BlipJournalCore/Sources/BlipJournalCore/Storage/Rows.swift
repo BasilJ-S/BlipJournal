@@ -40,6 +40,17 @@ public struct SurveySamplingRow: Sendable, Equatable, Codable, FetchableRecord, 
     public var createdAt: Date
 }
 
+/// A row of `surveyNotificationPreview`. `mode` is `"private"`, `"surveyName"` or
+/// `"custom"`; `message` is set only for `"custom"`.
+public struct SurveyNotificationPreviewRow: Sendable, Equatable, Codable, FetchableRecord, PersistableRecord {
+    public static let databaseTableName = "surveyNotificationPreview"
+    public var id: String
+    public var surveyId: String
+    public var mode: String
+    public var message: String?
+    public var createdAt: Date
+}
+
 /// A row of `question`.
 public struct QuestionRow: Sendable, Equatable, Codable, FetchableRecord, PersistableRecord {
     public static let databaseTableName = "question"

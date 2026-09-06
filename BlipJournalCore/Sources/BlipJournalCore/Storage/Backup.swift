@@ -13,6 +13,9 @@ public struct Backup: Sendable, Equatable, Codable {
     public var surveys: [SurveyRow]
     public var surveyVersions: [SurveyVersionRow]
     public var surveySamplings: [SurveySamplingRow]
+    /// Absent from a backup taken before schema v2. `decode` defaults a missing array to
+    /// empty rather than failing to read an otherwise valid file.
+    public var surveyNotificationPreviews: [SurveyNotificationPreviewRow]
     public var questions: [QuestionRow]
     public var questionVersions: [QuestionVersionRow]
     public var options: [OptionRow]
@@ -28,6 +31,7 @@ public struct Backup: Sendable, Equatable, Codable {
         surveys: [SurveyRow],
         surveyVersions: [SurveyVersionRow],
         surveySamplings: [SurveySamplingRow],
+        surveyNotificationPreviews: [SurveyNotificationPreviewRow],
         questions: [QuestionRow],
         questionVersions: [QuestionVersionRow],
         options: [OptionRow],
@@ -42,6 +46,7 @@ public struct Backup: Sendable, Equatable, Codable {
         self.surveys = surveys
         self.surveyVersions = surveyVersions
         self.surveySamplings = surveySamplings
+        self.surveyNotificationPreviews = surveyNotificationPreviews
         self.questions = questions
         self.questionVersions = questionVersions
         self.options = options
@@ -50,6 +55,36 @@ public struct Backup: Sendable, Equatable, Codable {
         self.entries = entries
         self.answers = answers
         self.answerOptions = answerOptions
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case schemaVersion, exportedAt, surveys, surveyVersions, surveySamplings,
+             surveyNotificationPreviews, questions, questionVersions, options, optionVersions,
+             prompts, entries, answers, answerOptions
+    }
+
+    /// Hand-written so a backup taken before schema v2, which has no
+    /// `surveyNotificationPreviews` key, still decodes: it defaults to empty rather than
+    /// failing `keyNotFound`. Every other field is required exactly as the synthesised
+    /// initialiser would require it. `encode(to:)` is left to synthesis: every field is
+    /// always written for a backup taken now.
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        schemaVersion = try container.decode(Int.self, forKey: .schemaVersion)
+        exportedAt = try container.decode(Date.self, forKey: .exportedAt)
+        surveys = try container.decode([SurveyRow].self, forKey: .surveys)
+        surveyVersions = try container.decode([SurveyVersionRow].self, forKey: .surveyVersions)
+        surveySamplings = try container.decode([SurveySamplingRow].self, forKey: .surveySamplings)
+        surveyNotificationPreviews =
+            try container.decodeIfPresent([SurveyNotificationPreviewRow].self, forKey: .surveyNotificationPreviews) ?? []
+        questions = try container.decode([QuestionRow].self, forKey: .questions)
+        questionVersions = try container.decode([QuestionVersionRow].self, forKey: .questionVersions)
+        options = try container.decode([OptionRow].self, forKey: .options)
+        optionVersions = try container.decode([OptionVersionRow].self, forKey: .optionVersions)
+        prompts = try container.decode([PromptRow].self, forKey: .prompts)
+        entries = try container.decode([EntryRow].self, forKey: .entries)
+        answers = try container.decode([AnswerRow].self, forKey: .answers)
+        answerOptions = try container.decode([AnswerOptionRow].self, forKey: .answerOptions)
     }
 }
 
