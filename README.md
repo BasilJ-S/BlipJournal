@@ -61,6 +61,7 @@ OpenBlipCore/        Swift package. No UIKit. Tested with `swift test` on macOS.
   Export/            CSV (wide, long) and JSON backup
 OpenBlip/            iOS app target. SwiftUI only.
   App/               Entry point, app model, biometric lock
+  Journal/           Entries list and entry detail with delete
   Notifications/     UNUserNotificationCenter adapter for the prompt planner
   Survey/            Survey runner (answering) and survey editor
   Insights/          Swift Charts views
