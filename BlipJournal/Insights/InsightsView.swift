@@ -17,9 +17,12 @@ struct InsightsView: View {
             }
         }
         .navigationTitle("Insights")
-        .task {
-            guard model == nil else { return }
-            let model = InsightsModel(store: appModel.store)
+        // Keyed by the app's write revision, not just first appearance, so entries
+        // and survey changes made elsewhere (Journal, Settings) do not leave a stale
+        // snapshot on screen. The existing model is reused, not recreated, so this
+        // never resets the person's survey, range or question selections.
+        .task(id: appModel.revision) {
+            let model = self.model ?? InsightsModel(store: appModel.store)
             self.model = model
             await reload(model)
         }

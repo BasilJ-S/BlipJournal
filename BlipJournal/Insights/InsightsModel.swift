@@ -223,7 +223,12 @@ final class InsightsModel {
     }
 
     var byOptionAccessibilitySummary: String {
-        Self.bucketSummary(byOption, label: scaleQuestion?.label ?? "Scale", axis: choiceQuestion?.label ?? "option")
+        // "selections", not "entries": an entry that chose several options is counted
+        // once per bucket by `Analytics.byOption`, so summing bucket counts here would
+        // overcount any multi-choice question.
+        Self.bucketSummary(
+            byOption, label: scaleQuestion?.label ?? "Scale", axis: choiceQuestion?.label ?? "option",
+            unit: "selections")
     }
 
     var complianceAccessibilitySummary: String {
@@ -235,12 +240,12 @@ final class InsightsModel {
             + "\(stats.dismissed) dismissed, \(stats.pending) pending."
     }
 
-    private static func bucketSummary(_ buckets: [BucketStat], label: String, axis: String) -> String {
+    private static func bucketSummary(_ buckets: [BucketStat], label: String, axis: String, unit: String = "entries") -> String {
         let withData = buckets.filter { $0.count > 0 }
         guard !withData.isEmpty else { return "\(label) by \(axis). No entries in this range." }
         let totalCount = withData.reduce(0) { $0 + $1.count }
         return "\(label) by \(axis). \(withData.count) of \(buckets.count) groups have data, "
-            + "\(totalCount) entries total."
+            + "\(totalCount) \(unit) total."
     }
 
     private static func formatted(_ value: Double) -> String {

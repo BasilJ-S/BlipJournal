@@ -228,6 +228,45 @@ struct InsightsModelTests {
         #expect(model.byOption.first { $0.id == happy.id }?.count == 1)
     }
 
+    @Test func byOptionAccessibilitySummaryDoesNotOvercountMultiChoiceEntries() throws {
+        let now = at(2026, 3, 10)
+        let store = try Store.inMemory()
+        let survey = try makeSurvey(store, now: at(2026, 1, 1))
+        let choiceQuestion = try #require(survey.activeQuestions.first { $0.kind == .multiChoice })
+        let calm = try #require(choiceQuestion.activeOptions.first { $0.label == "Calm" })
+        let happy = try #require(choiceQuestion.activeOptions.first { $0.label == "Happy" })
+
+        // One entry selecting two options must be reported as one selection-count of
+        // two, not two "entries": `Analytics.byOption` counts it once per bucket.
+        try addEntry(store, survey: survey, at: at(2026, 3, 9), options: [calm.id, happy.id])
+
+        let model = InsightsModel(store: store, calendar: toronto)
+        try model.load(now: now)
+
+        let totalBucketCount = model.byOption.reduce(0) { $0 + $1.count }
+        #expect(totalBucketCount == 2)
+        #expect(model.byOptionAccessibilitySummary.contains("2 selections total"))
+        #expect(!model.byOptionAccessibilitySummary.contains("entries total"))
+    }
+
+    // MARK: Reload staleness
+
+    @Test func reloadReflectsEntriesWrittenAfterTheInitialLoad() throws {
+        let now = at(2026, 3, 10)
+        let store = try Store.inMemory()
+        let survey = try makeSurvey(store, now: at(2026, 1, 1))
+
+        let model = InsightsModel(store: store, calendar: toronto)
+        try model.load(now: now)
+        #expect(model.series.isEmpty)
+
+        try addEntry(store, survey: survey, at: at(2026, 3, 9))
+        #expect(model.series.isEmpty) // stale until the caller reloads
+
+        try model.load(now: now)
+        #expect(model.series.count == 1)
+    }
+
     // MARK: Compliance
 
     @Test func complianceCountsOnlySelectedSurveyAndRangeExcludingFuture() throws {

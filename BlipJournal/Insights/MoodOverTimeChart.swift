@@ -20,12 +20,15 @@ struct MoodOverTimeChart: View {
     var body: some View {
         Chart {
             ForEach(points) { point in
-                PointMark(x: .value("Date", point.date, unit: .day), y: .value("Value", point.value))
+                // Exact timestamp, not `unit: .day`: several readings on one day must
+                // keep their own x-position rather than collapsing onto one. Day
+                // granularity belongs to the axis labels only.
+                PointMark(x: .value("Date", point.date), y: .value("Value", point.value))
                     .symbol(by: .value("Source", sourceLabel(point)))
                     .foregroundStyle(Color.accentColor)
             }
             ForEach(rolling) { point in
-                LineMark(x: .value("Date", point.date, unit: .day), y: .value("Rolling mean", point.value))
+                LineMark(x: .value("Date", point.date), y: .value("Rolling mean", point.value))
                     .foregroundStyle(.secondary)
                     .interpolationMethod(.monotone)
             }
@@ -47,7 +50,10 @@ struct MoodOverTimeChart: View {
             }
         }
         .chartXAxis {
-            AxisMarks(values: .automatic(desiredCount: dynamicTypeSize.isAccessibilitySize ? 3 : 6))
+            AxisMarks(values: .automatic(desiredCount: dynamicTypeSize.isAccessibilitySize ? 3 : 6)) { _ in
+                AxisGridLine()
+                AxisValueLabel(format: .dateTime.month(.abbreviated).day())
+            }
         }
         .frame(height: 220)
         .accessibilityLabel(accessibilitySummary)
