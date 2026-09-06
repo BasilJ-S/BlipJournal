@@ -12,7 +12,8 @@ no persistence.
 ```
 Survey ──< Question ──< ChoiceOption          definitions, insert-only upstream
   │          └─ ScaleConfig?                  scale questions only
-  └─ SamplingConfig                           this survey's own schedule
+  ├─ SamplingConfig                           this survey's own schedule
+  └─ NotificationPreview                      what a prompt notification shows
 
 Prompt      one scheduled ping: surveyId, day, scheduledAt, expiresAt, status
 Entry ──< Answer ─ AnswerValue                one response and its answers
@@ -54,6 +55,11 @@ SurveyTemplate.makeDefault()                  the six-question survey a new inst
 - **Schedules are minutes, not dates.** `SamplingConfig` stores times of day as minutes
   after local midnight so a schedule means the same thing on every date and across a DST
   transition. Turning them into instants is the sampler's job.
+- **A notification preview never carries an answer.** `NotificationPreview.content(surveyName:)`
+  is pure and total: `.private` and `.custom` never mention the survey; `.surveyName` is
+  the only case that does, and only its current name. `.custom`'s message is the one
+  place a value here can be invalid (`isValid` is false for a blank message once
+  trimmed); Storage is the enforcement point, the same as `SamplingConfig.validationErrors`.
 - **Expiry is inclusive.** `Prompt.isExpired(at:)` is true at exactly `expiresAt`, and
   always false once a prompt has an outcome.
 - **No mutation helpers.** There is no `rename`, no `archive`, no save. Definitions are

@@ -108,6 +108,8 @@ public struct Survey: Identifiable, Sendable, Equatable, Hashable, Codable {
     public var isArchived: Bool
     /// This survey's own prompt schedule. Surveys do not share one.
     public var sampling: SamplingConfig
+    /// What a prompt notification for this survey shows before it is opened.
+    public var notificationPreview: NotificationPreview
     /// Every question, archived included, in no guaranteed order.
     /// See ``activeQuestions`` for display order.
     public var questions: [Question]
@@ -119,6 +121,7 @@ public struct Survey: Identifiable, Sendable, Equatable, Hashable, Codable {
         createdAt: Date = Date(),
         isArchived: Bool = false,
         sampling: SamplingConfig = .default,
+        notificationPreview: NotificationPreview = .default,
         questions: [Question] = []
     ) {
         self.id = id
@@ -126,6 +129,7 @@ public struct Survey: Identifiable, Sendable, Equatable, Hashable, Codable {
         self.createdAt = createdAt
         self.isArchived = isArchived
         self.sampling = sampling
+        self.notificationPreview = notificationPreview
         self.questions = questions
     }
 

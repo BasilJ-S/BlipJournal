@@ -87,7 +87,10 @@ extension Store {
     }
 
     /// Deletes every row of every table, then reseeds `SurveyTemplate.makeDefault(now:)`
-    /// so the app comes back in its first-launch state. Returns the new survey.
+    /// so the app comes back in its first-launch state, paused rather than sampling.
+    /// Timing, questions and the `.private` notification preview are the template's
+    /// defaults; only `sampling.isEnabled` is overridden, in the same transaction, so the
+    /// reseeded survey is never briefly enabled. Returns the new survey.
     @discardableResult
     public func eraseEverything(now: Date = Date()) throws -> Survey {
         let survey = try dbQueue.write { db in
@@ -95,8 +98,10 @@ extension Store {
                 try db.execute(sql: "DELETE FROM \(table)")
             }
             let template = SurveyTemplate.makeDefault(now: now)
+            var pausedSampling = template.sampling
+            pausedSampling.isEnabled = false
             return try insertSurvey(
-                db, name: template.name, sampling: template.sampling,
+                db, name: template.name, sampling: pausedSampling,
                 questions: template.questions, now: now)
         }
         try checkpointAndVacuum()
@@ -143,6 +148,7 @@ extension Store {
         doomed.versionCount =
             try count(db, "surveyVersion", "surveyId", [id])
             + count(db, "surveySampling", "surveyId", [id])
+            + count(db, "surveyNotificationPreview", "surveyId", [id])
             + count(db, "questionVersion", "questionId", doomed.questionIds)
             + count(db, "optionVersion", "optionId", doomed.optionIds)
         return doomed
@@ -234,6 +240,7 @@ extension Store {
         try delete(db, from: "questionVersion", where: "questionId", in: doomed.questionIds)
         try delete(db, from: "question", where: "id", in: doomed.questionIds)
         if let surveyId = doomed.surveyId {
+            try db.execute(sql: "DELETE FROM surveyNotificationPreview WHERE surveyId = ?", arguments: [surveyId])
             try db.execute(sql: "DELETE FROM surveySampling WHERE surveyId = ?", arguments: [surveyId])
             try db.execute(sql: "DELETE FROM surveyVersion WHERE surveyId = ?", arguments: [surveyId])
             try db.execute(sql: "DELETE FROM survey WHERE id = ?", arguments: [surveyId])

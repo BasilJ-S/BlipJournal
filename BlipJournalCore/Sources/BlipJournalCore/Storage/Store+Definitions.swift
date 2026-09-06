@@ -58,6 +58,17 @@ extension Store {
         }
     }
 
+    /// Appends a notification preview row. `Survey.notificationPreview` is always the
+    /// newest one. Throws `invalidNotificationPreview` for a `.custom` preview whose
+    /// message is blank once trimmed, before writing anything.
+    public func updateNotificationPreview(surveyId: String, _ preview: NotificationPreview, now: Date = Date()) throws {
+        guard preview.isValid else { throw StoreError.invalidNotificationPreview }
+        try dbQueue.write { db in
+            guard try SurveyRow.exists(db, key: surveyId) else { throw StoreError.notFound }
+            try Self.notificationPreviewRow(surveyId: surveyId, preview, now: now).insert(db)
+        }
+    }
+
     // MARK: Questions
 
     /// Inserts a question at the end of the survey: its position is one past the
@@ -201,6 +212,7 @@ extension Store {
             id: Identifier.make(), surveyId: surveyId, name: name, isArchived: false, createdAt: now
         ).insert(db)
         try makeSamplingRow(surveyId: surveyId, sampling, now: now).insert(db)
+        try Self.notificationPreviewRow(surveyId: surveyId, .default, now: now).insert(db)
         for question in questions {
             try insertQuestion(db, question, surveyId: surveyId, now: now)
         }

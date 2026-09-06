@@ -3,9 +3,9 @@
 Implementation handoff for `BlipJournal/Survey/Editor/`. Read `AGENTS.md`, the "UI subsystem"
 section of `README.md` (editor bullet), the A4 section of `docs/PLAN.md` including its
 "Archive, then erase" rules, `Storage/DESIGN.md` (versioning and hard delete),
-`Model/SamplingConfig.swift` (validation), and `BlipJournal/App/DESIGN.md`. Requires A1 on
-`main`. Do not modify `BlipJournalCore/` or files outside `Survey/Editor/` and
-`BlipJournalTests/Editor/`.
+`Model/SamplingConfig.swift` (validation), `Model/NotificationPreview.swift`, and
+`BlipJournal/App/DESIGN.md`. Requires A0 and A1 on `main`. Do not modify `BlipJournalCore/`
+or files outside `Survey/Editor/` and `BlipJournalTests/Editor/`.
 
 ## Goal
 
@@ -28,6 +28,7 @@ Survey/Editor/SurveyEditorView.swift        name, questions (reorder, archive), 
 Survey/Editor/QuestionEditorView.swift      label, required, scale config, custom options toggle, options list
 Survey/Editor/NewQuestionSheet.swift        kind picker, label, initial config
 Survey/Editor/SamplingSettingsView.swift    form with live validation
+Survey/Editor/NotificationPreviewSettingsView.swift   mode picker, custom message field
 Survey/Editor/ArchivedView.swift            archived surveys, questions, options; Unarchive; Delete permanently
 Survey/Editor/DeletionConfirmation.swift    builds the confirmation text from DeletionImpact
 Survey/Editor/EditorModel.swift             @MainActor @Observable; all writes and reorder maths; testable
@@ -51,6 +52,10 @@ a reload of the survey after every write:
     func addOption(questionId:label:)  updateOption(_ option: ChoiceOption)
     func moveOptions(questionId:, from:, to:)
     func saveSampling(surveyId:, _ config: SamplingConfig) async throws   // validates, updateSampling, notifications.scheduledChanged
+    func saveNotificationPreview(surveyId:, _ preview: NotificationPreview) async throws
+        // store.updateNotificationPreview (throws .invalidNotificationPreview on a blank custom message,
+        // shown inline; do not pre-validate in the view beyond disabling Save), then notifications.refresh(now:) —
+        // never scheduledChanged: the schedule itself did not change, only a request's content
     func deletionImpact(for target: ArchivedTarget) throws -> DeletionImpact
     func hardDelete(_ target: ArchivedTarget) async throws               // survey: then notifications.promptsDestroyed
 }
@@ -72,7 +77,8 @@ Swipe archives (with an "Archive" label, never "Delete"). Bottom row "Archived" 
 **SurveyEditorView**: editable name (commits on submit → rename). Questions section
 lists `activeQuestions` with kind icon and required marker; `EditMode` supports move
 and a swipe-to-archive; tapping opens `QuestionEditorView`; an Add button opens
-`NewQuestionSheet`. A "Sampling" row → `SamplingSettingsView`. An "Archived in this
+`NewQuestionSheet`. A "Sampling" row → `SamplingSettingsView`. A "Notifications" row →
+`NotificationPreviewSettingsView`, subtitled with the current mode. An "Archived in this
 survey" row → `ArchivedView(scope: .survey(id))`.
 
 **NewQuestionSheet**: kind picker (five kinds with one-line descriptions), label,
@@ -89,6 +95,14 @@ displayed as "midnight"), minimum gap and expiry steppers in minutes. Live
 `validationErrors` rendered as red captions under the relevant fields. Save disabled
 while invalid; Save calls `saveSampling` which also triggers the re-plan. Show a footer
 explaining the 60-prompt cap in one sentence.
+
+**NotificationPreviewSettingsView**: a picker of the three modes (Private, Survey name,
+Custom), each with a one-line caption of what it shows; Custom reveals a text field for
+the message. Live preview of the actual title and body via
+`preview.content(surveyName: survey.name)`, so what is shown here is exactly what a
+notification will show. Save disabled while a Custom message is blank once trimmed;
+Save calls `saveNotificationPreview`. Private is the default and needs no caption beyond
+"Shows only \"Blip Journal\" — nothing about this survey."
 
 **ArchivedView**: three sections, Surveys, Questions, Options (with their survey and
 question named), filtered by scope. Each row: Unarchive button and a destructive "Delete
@@ -121,6 +135,8 @@ values:
 - `archive` then `unarchive` of a question leaves its options' flags untouched.
 - `saveSampling` with an invalid config throws before writing; a valid one writes and
   is the survey's sampling.
+- `saveNotificationPreview` with a blank Custom message throws `invalidNotificationPreview`
+  before writing; a valid preview writes and is the survey's `notificationPreview`.
 - `hardDelete` of an unarchived target throws `StoreError.notArchived` and nothing
   changes; of an archived option prunes multi answers; of an archived survey leaves a
   second survey intact.

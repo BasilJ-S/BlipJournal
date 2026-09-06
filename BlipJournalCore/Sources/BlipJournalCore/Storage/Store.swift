@@ -8,6 +8,9 @@ public enum StoreError: Error, Equatable {
     case notArchived
     /// The identifier names nothing in the database.
     case notFound
+    /// `updateNotificationPreview` was asked to save a `.custom` preview whose message
+    /// is blank once trimmed.
+    case invalidNotificationPreview
 }
 
 /// The single door to the SQLite database. Every other subsystem reads and writes
@@ -119,6 +122,31 @@ extension Store {
         else { return nil }
         return ScaleConfig(min: min, max: max, minLabel: minLabel, maxLabel: maxLabel)
     }
+
+    /// The preview a notification preview row describes. An unrecognised `mode` (there
+    /// is none on any row this module writes) resolves to `.private`, the same as a
+    /// missing row, rather than trapping on data written by a future version.
+    static func notificationPreview(of row: SurveyNotificationPreviewRow) -> NotificationPreview {
+        switch row.mode {
+        case "surveyName": .surveyName
+        case "custom": .custom(message: row.message ?? "")
+        default: .private
+        }
+    }
+
+    /// The row a notification preview writes. Only `.custom` sets `message`.
+    static func notificationPreviewRow(
+        id: String = Identifier.make(), surveyId: String, _ preview: NotificationPreview, now: Date
+    ) -> SurveyNotificationPreviewRow {
+        let mode: String
+        let message: String?
+        switch preview {
+        case .private: mode = "private"; message = nil
+        case .surveyName: mode = "surveyName"; message = nil
+        case .custom(let text): mode = "custom"; message = text
+        }
+        return SurveyNotificationPreviewRow(id: id, surveyId: surveyId, mode: mode, message: message, createdAt: now)
+    }
 }
 
 /// Every definition row of one survey, or of every survey, loaded in one pass with
@@ -130,6 +158,7 @@ struct DefinitionRows {
     var surveys: [SurveyRow]
     var surveyVersions: [String: [SurveyVersionRow]]
     var samplings: [String: [SurveySamplingRow]]
+    var notificationPreviews: [String: [SurveyNotificationPreviewRow]]
     var questions: [String: [QuestionRow]]
     var questionVersions: [String: [QuestionVersionRow]]
     var options: [String: [OptionRow]]
@@ -147,6 +176,9 @@ struct DefinitionRows {
                 by: \.surveyId),
             samplings: Dictionary(
                 grouping: try fetch(db, "surveySampling", inSurvey, surveyId) as [SurveySamplingRow],
+                by: \.surveyId),
+            notificationPreviews: Dictionary(
+                grouping: try fetch(db, "surveyNotificationPreview", inSurvey, surveyId) as [SurveyNotificationPreviewRow],
                 by: \.surveyId),
             questions: Dictionary(
                 grouping: try fetch(db, "question", inSurvey, surveyId) as [QuestionRow],
@@ -189,12 +221,14 @@ struct DefinitionRows {
                 expiryMinutes: s.expiryMinutes,
                 isEnabled: s.isEnabled)
         }
+        let notificationPreview = notificationPreviews[row.id]?.last.map(Store.notificationPreview(of:))
         return Survey(
             id: row.id,
             name: version.name,
             createdAt: row.createdAt,
             isArchived: version.isArchived,
             sampling: sampling ?? .default,
+            notificationPreview: notificationPreview ?? .default,
             questions: (questions[row.id] ?? []).compactMap(question(for:)))
     }
 

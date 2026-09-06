@@ -14,13 +14,14 @@ enum Schema {
     static let tablesChildrenFirst = [
         "answerOption", "answer", "entry", "prompt",
         "optionVersion", "option", "questionVersion", "question",
-        "surveySampling", "surveyVersion", "survey",
+        "surveyNotificationPreview", "surveySampling", "surveyVersion", "survey",
     ]
 
     /// The migrator holding every migration, in order.
     static func makeMigrator() -> DatabaseMigrator {
         var migrator = DatabaseMigrator()
         migrator.registerMigration("v1", migrate: migrateV1)
+        migrator.registerMigration("v2", migrate: migrateV2)
         return migrator
     }
 
@@ -122,5 +123,21 @@ enum Schema {
             }
         }
         try db.create(indexOn: "answerOption", columns: ["optionId"])
+    }
+
+    /// Schema version 2: `surveyNotificationPreview`, insert-only like `surveySampling`.
+    ///
+    /// A survey with no row here predates this migration; `DefinitionRows` resolves that
+    /// to `.private`, the same way an absent `surveySampling` row resolves to
+    /// `SamplingConfig.default`. No backfill is written, so this migration only creates
+    /// the table.
+    private static func migrateV2(_ db: Database) throws {
+        try db.create(table: "surveyNotificationPreview") { t in
+            t.primaryKey("id", .text)
+            t.column("surveyId", .text).notNull().indexed().references("survey")
+            t.column("mode", .text).notNull()
+            t.column("message", .text)
+            t.column("createdAt", .datetime).notNull()
+        }
     }
 }

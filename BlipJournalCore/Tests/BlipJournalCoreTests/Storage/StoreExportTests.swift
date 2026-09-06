@@ -151,10 +151,11 @@ struct StoreExportTests {
         #expect(try firstJSON == BackupExporter.json(second))
         #expect(try BackupExporter.decode(firstJSON) == first)
 
-        #expect(first.schemaVersion == 1)
+        #expect(first.schemaVersion == 2)
         #expect(first.exportedAt == t(500))
         #expect(first.rowCounts == [
-            "survey": 1, "surveyVersion": 3, "surveySampling": 1, "question": 6, "questionVersion": 6,
+            "survey": 1, "surveyVersion": 3, "surveySampling": 1, "surveyNotificationPreview": 1,
+            "question": 6, "questionVersion": 6,
             "option": 41, "optionVersion": 41, "prompt": 1, "entry": 1, "answer": 2, "answerOption": 1,
         ])
         #expect(first.surveyVersions.map(\.name) == ["Check-in", "Renamed", "Renamed again"])

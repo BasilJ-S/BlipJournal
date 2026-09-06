@@ -118,13 +118,17 @@ struct SurveyTests {
         let survey = Survey(name: "Test")
         #expect(!survey.isArchived)
         #expect(survey.sampling == .default)
+        #expect(survey.notificationPreview == .default)
+        #expect(survey.notificationPreview == .private)
         #expect(survey.questions.isEmpty)
         #expect(!survey.id.isEmpty)
     }
 
     @Test("round-trips through JSON")
     func roundTrips() throws {
-        let survey = Survey(name: "Test", questions: makeShuffledQuestions())
+        let survey = Survey(
+            name: "Test", notificationPreview: .custom(message: "Ping!"),
+            questions: makeShuffledQuestions())
         let data = try JSONEncoder().encode(survey)
         #expect(try JSONDecoder().decode(Survey.self, from: data) == survey)
     }

@@ -90,6 +90,7 @@ extension Backup {
             "survey": surveys.count,
             "surveyVersion": surveyVersions.count,
             "surveySampling": surveySamplings.count,
+            "surveyNotificationPreview": surveyNotificationPreviews.count,
             "question": questions.count,
             "questionVersion": questionVersions.count,
             "option": options.count,
@@ -101,9 +102,10 @@ extension Backup {
         ]
     }
 
-    /// Every version row across the four versioned tables.
+    /// Every version row across the five versioned tables.
     var versionRowCount: Int {
-        surveyVersions.count + surveySamplings.count + questionVersions.count + optionVersions.count
+        surveyVersions.count + surveySamplings.count + surveyNotificationPreviews.count
+            + questionVersions.count + optionVersions.count
     }
 
     /// The backup as JSON text, for "no trace of" assertions.
@@ -124,6 +126,7 @@ extension Backup {
             surveys: surveys.filter { $0.id == surveyId },
             surveyVersions: surveyVersions.filter { $0.surveyId == surveyId },
             surveySamplings: surveySamplings.filter { $0.surveyId == surveyId },
+            surveyNotificationPreviews: surveyNotificationPreviews.filter { $0.surveyId == surveyId },
             questions: questions.filter { questionIds.contains($0.id) },
             questionVersions: questionVersions.filter { questionIds.contains($0.questionId) },
             options: options.filter { optionIds.contains($0.id) },
