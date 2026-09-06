@@ -29,7 +29,11 @@ enum Schema {
     ///
     /// Every ID is `TEXT PRIMARY KEY`; every timestamp is a `DATETIME` column holding
     /// GRDB's default UTC string, which sorts lexicographically.
-    private static func migrateV1(_ db: Database) throws {
+    ///
+    /// Internal, not private: a migration test builds a genuine pre-`v2` database by
+    /// running this one migration alone, then opens it through `Store` to prove the next
+    /// migration applies cleanly against real prior state.
+    static func migrateV1(_ db: Database) throws {
         try db.create(table: "survey") { t in
             t.primaryKey("id", .text)
             t.column("createdAt", .datetime).notNull()

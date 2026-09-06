@@ -65,9 +65,13 @@ final class FakeNotificationCenterClient: NotificationCenterClient // records re
 3. For each `missedPromptIds`: `setPromptStatus(id, .missed, respondedAt: now)`.
 4. `insertPrompts(plan.newPrompts)`.
 5. Reconcile: target = pending prompts with `scheduledAt > now`. Remove every pending
-   request for a prompt in target, then add a fresh request for each: content is
-   computed new every time from the prompt's survey, so a preview changed after a
-   request was first built is never stale. Request identifier = prompt ID. Content:
+   request whose prompt is not in target (covers a survey hard-deleted or reset, a
+   prompt now missed or answered, and one superseded) — this removal must run whether or
+   not that prompt's content would also have changed, or a deleted survey's notification
+   lingers forever. Then, for every prompt in target, remove its pending request if one
+   exists and add a fresh one: content is computed new every time from the prompt's
+   survey, so a preview changed after a request was first built is never stale. Request
+   identifier = prompt ID. Content:
    `let content = survey.notificationPreview.content(surveyName: survey.name)`, `title =
    content.title`, `body = content.body`, sound default, `interruptionLevel =
    .timeSensitive`, `categoryIdentifier = "PROMPT"`, `userInfo["promptId"]`. Never build

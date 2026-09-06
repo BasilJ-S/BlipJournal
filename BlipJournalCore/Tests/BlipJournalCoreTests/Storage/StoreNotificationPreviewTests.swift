@@ -1,5 +1,6 @@
 import Foundation
 import Testing
+import GRDB
 @testable import BlipJournalCore
 
 @Suite("Store notification preview")
@@ -56,7 +57,45 @@ struct StoreNotificationPreviewTests {
         #expect(try store.survey(b.id)?.notificationPreview == .private)
     }
 
-    @Test("a survey with no preview row, as from a pre-migration database, resolves to private")
+    @Test("opening a database migrated only to v1 applies v2 and its existing survey resolves to private")
+    func migratesFromV1() throws {
+        let directory = Fixture.temporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        let path = directory.appendingPathComponent(Store.databaseFileName).path
+
+        // A real pre-v2 database: only "v1" has ever run, exactly as an installed app's
+        // database would be before this migration ships. `grdb_migrations` inside the
+        // file itself is what tells the v1+v2 migrator below that "v1" is already done.
+        do {
+            var v1Only = DatabaseMigrator()
+            v1Only.registerMigration("v1", migrate: Schema.migrateV1)
+            let v1Queue = try DatabaseQueue(path: path)
+            try v1Only.migrate(v1Queue)
+            try v1Queue.write { db in
+                try SurveyRow(id: "s1", createdAt: t(0)).insert(db)
+                try SurveyVersionRow(id: "sv1", surveyId: "s1", name: "Old", isArchived: false, createdAt: t(0)).insert(db)
+                try SurveySamplingRow(
+                    id: "ss1", surveyId: "s1", promptsPerDay: 3, windowStartMinutes: 540,
+                    windowEndMinutes: 1380, minGapMinutes: 60, expiryMinutes: 20, isEnabled: true,
+                    createdAt: t(0)
+                ).insert(db)
+            }
+        }
+
+        // Store.open runs the real v1+v2 migrator; only "v2" is still pending.
+        let store = try Store.open(at: directory)
+        let survey = try #require(try store.survey("s1"))
+        #expect(survey.name == "Old")
+        #expect(survey.notificationPreview == .private)
+        #expect(try store.backup(now: t(1)).surveyNotificationPreviews.isEmpty)
+
+        // The migrated survey behaves exactly like one created after v2 shipped.
+        try store.updateNotificationPreview(surveyId: "s1", .surveyName, now: t(2))
+        #expect(try store.survey("s1")?.notificationPreview == .surveyName)
+    }
+
+    @Test("a survey with no preview row, as from a survey created before this migration, resolves to private")
     func absentRowResolvesToPrivate() throws {
         let (store, survey) = try Fixture.seeded()
         try store.dbQueue.write { db in
