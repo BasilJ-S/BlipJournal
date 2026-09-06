@@ -39,8 +39,9 @@ final class AppModel {
         try refresh()
     }
 
-    /// The production model: the store under Application Support and, until A2 lands,
-    /// a no-op notification coordinator.
+    /// The production model: the store under Application Support and a real notification
+    /// coordinator, attached to the app-wide notification delegate so a cold launch from
+    /// a notification tap is not lost while the store opens.
     static func live() throws -> AppModel {
         let directory = FileManager.default
             .urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
@@ -53,7 +54,9 @@ final class AppModel {
         let protection = attributes?[.protectionKey].map { String(describing: $0) } ?? "not reported"
         print("BlipJournal store at \(directory.path), protection class: \(protection)")
         #endif
-        return try AppModel(store: store, notifications: NoopNotificationCoordinator())
+        let coordinator = NotificationCoordinator(store: store, client: LiveNotificationCenterClient())
+        coordinator.attach(to: .shared)
+        return try AppModel(store: store, notifications: coordinator)
     }
 
     /// Reloads surveys and entries from the store. Call after any write.
