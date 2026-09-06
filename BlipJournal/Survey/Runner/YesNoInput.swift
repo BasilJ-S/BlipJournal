@@ -1,0 +1,2 @@
+import SwiftUI
+struct YesNoInput: View { let value: Bool?; let onChange: (Bool) -> Void; var body: some View { HStack { button("Yes", true); button("No", false) } }; private func button(_ title: String, _ answer: Bool) -> some View { Button { onChange(answer) } label: { Text(title).frame(maxWidth: .infinity, minHeight: 44).background(value == answer ? Color.accentColor : Color.secondary.opacity(0.15), in: RoundedRectangle(cornerRadius: 8)).foregroundStyle(value == answer ? .white : .primary) }.accessibilityLabel(title) } }

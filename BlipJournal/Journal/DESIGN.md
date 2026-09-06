@@ -10,6 +10,8 @@ text badges for source and draft status. Badges wrap at large Dynamic Type.
   clearing state and after awaiting a read, so a cancelled revision cannot overwrite
   a newer summary. Tests explicitly complete overlapping reads in reverse order.
 - New entry opens the fixed A3 runner signature; multiple surveys offer a menu.
+- Unfinished entries offer Continue entry, resuming the same entry. Completed entries
+  are read-only.
   Sheet dismissal reloads the model, including swipe dismissal.
 - `EntryDetailView` shows answered questions only, archived included, in position
   order. Choice answers use current option labels; scales include their end labels.
