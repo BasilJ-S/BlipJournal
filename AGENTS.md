@@ -29,6 +29,7 @@ xcodebuild -scheme OpenBlip -destination 'platform=iOS Simulator,name=iPhone 17'
 
 - All logic that can live in `OpenBlipCore` must live there, with tests. UI files hold view code only.
 - Definitions (surveys, questions, options) are insert-only. Never `UPDATE` or `DELETE` a definition row. Add a version row.
+- The single exception is hard delete: a person can permanently erase an already-archived definition and every answer to it. It lives in one auditable place in `Store` and refuses anything not archived. Nowhere else deletes a definition row.
 - Answers reference IDs, never label text.
 - No network calls. No analytics. No third-party dependencies beyond GRDB without discussion.
 - Swift 6 language mode with strict concurrency. Fix warnings, do not silence them.
@@ -43,3 +44,11 @@ xcodebuild -scheme OpenBlip -destination 'platform=iOS Simulator,name=iPhone 17'
 - Every change to this repository requires approval from the maintainer (@BasilJ-S) before it is merged or pushed.
 - Work on a branch and open a pull request. Never push directly to `main`.
 - Agents must not commit, push, or merge without the maintainer's explicit go-ahead for that specific change.
+
+The loop for a task, and the roles in it:
+
+1. The **implementer** branches from `main`, does the work, and opens a **draft** pull request. Deviations from the task go in the PR description under "Deviations from the task", with the reason.
+2. The **planner** reviews the PR and posts the review as a PR comment: what to change before merge, and what is accepted as written. It does not merge.
+3. The **maintainer** merges, squashing unless asked otherwise, and deletes the branch.
+
+Nobody merges their own work. A task handoff that contradicts this is out of date; this file wins.

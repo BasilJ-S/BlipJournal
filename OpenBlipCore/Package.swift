@@ -16,7 +16,7 @@ let package = Package(
             dependencies: [.product(name: "GRDB", package: "GRDB.swift")],
             // Each component keeps a DESIGN.md next to its code (see AGENTS.md).
             // SwiftPM has no glob here, so add every new one to this list.
-            exclude: ["Model/DESIGN.md", "Export/DESIGN.md"],
+            exclude: ["Export/DESIGN.md", "Model/DESIGN.md", "Sampling/DESIGN.md"],
             swiftSettings: [.swiftLanguageMode(.v6)]
         ),
         .testTarget(
