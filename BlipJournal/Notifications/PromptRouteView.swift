@@ -31,7 +31,9 @@ struct PromptRouteView: View {
             case .resolved(.unavailable(let message)):
                 deadEndView(title: "Not available", message: message, survey: nil)
             case .resolved(.runner(let survey, let promptId)):
-                SurveyRunnerView(survey: survey, promptId: promptId, onFinish: onFinish)
+                NavigationStack {
+                    SurveyRunnerView(survey: survey, promptId: promptId, onFinish: onFinish)
+                }
             case .resolved(.detail(let entry)):
                 NavigationStack { EntryDetailView(entry: entry) }
             case .resolved(.deadEnd(let message, let survey)):
