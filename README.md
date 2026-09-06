@@ -1,11 +1,25 @@
-# OpenBlip
+# Blip Journal
 
-An open source Experience Sampling Method (ESM) journal for iOS. OpenBlip pings you
+An open source Experience Sampling Method (ESM) journal for iOS. Blip Journal pings you
 at random moments during the day and asks a short, fully customisable survey. Every
 answer stays on your phone, encrypted at rest, and can be exported to CSV at any time.
 
 Think of Apple's State of Mind logging, but with random sampling, surveys you define
 yourself, and no cloud.
+
+## Name
+
+The app is **Blip Journal**. The repository, the Swift package, the Xcode target and the
+bundle identifier are all `OpenBlip`, and they stay that way: they are plumbing, not
+branding, and renaming a shipped bundle identifier is impossible.
+
+"Open" as a prefix reads as "open weights" or "open standard" (OpenAI, OpenCV), which is
+not what this is. The App Store subtitle carries the open source signal explicitly, and
+it is searchable in a way a prefix never was. Subtitle: "Open source experience sampler"
+(30 characters, the App Store limit exactly).
+
+Any string a person reads says Blip Journal. Anything a compiler, a path, or Apple reads
+says OpenBlip.
 
 **Status:** pre-alpha. Nothing ships yet. See [docs/PLAN.md](docs/PLAN.md) for the build plan.
 

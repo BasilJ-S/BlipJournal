@@ -97,7 +97,7 @@ struct LockPolicy: Equatable {
 `LAContext.evaluatePolicy(.deviceOwnerAuthentication, localizedReason:)`, which offers
 Face ID with passcode fallback. On success `appModel.unlock()`. On failure or cancel it
 shows an "Unlock" button to retry. If `canEvaluatePolicy` is false (no passcode set), show
-"Your device has no passcode. OpenBlip cannot protect your journal until you set one." and
+"Your device has no passcode. Blip Journal cannot protect your journal until you set one." and
 an "Continue anyway" button; Data Protection is also absent in that state, so pretending
 otherwise would be dishonest. The app locks on every cold launch and whenever
 `LockPolicy.shouldLock` says so. Never bypass the lock in `DEBUG`.

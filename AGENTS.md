@@ -31,6 +31,7 @@ xcodebuild -scheme OpenBlip -destination 'platform=iOS Simulator,name=iPhone 17'
 - Definitions (surveys, questions, options) are insert-only. Never `UPDATE` or `DELETE` a definition row. Add a version row.
 - The single exception is hard delete: a person can permanently erase an already-archived definition and every answer to it. It lives in one auditable place in `Store` and refuses anything not archived. Nowhere else deletes a definition row.
 - Answers reference IDs, never label text.
+- The product name in any user-facing string is "Blip Journal". `OpenBlip` is the repo, package, target, module and bundle identifier only; never put it in text a person reads.
 - No network calls. No analytics. No third-party dependencies beyond GRDB without discussion.
 - Swift 6 language mode with strict concurrency. Fix warnings, do not silence them.
 - Light mode only. Use semantic system colors so a later dark mode is cheap.

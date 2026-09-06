@@ -37,8 +37,8 @@ against the iPhone 17 Pro simulator, zero app-target warnings.
   store directory so they inherit the `complete` protection class. Create it with the
   same attributes as `Store.open` uses. `cleanUp` deletes the directory's contents; call
   it when the share sheet dismisses and on `ExportView` disappear.
-- File names: `OpenBlip-<survey name slug>-<yyyyMMdd>-wide.csv`, `...-long.csv`,
-  `OpenBlip-backup-<yyyyMMdd>.json`. Slug: lowercase, non-alphanumerics to `-`, max 40
+- File names: `BlipJournal-<survey name slug>-<yyyyMMdd>-wide.csv`, `...-long.csv`,
+  `BlipJournal-backup-<yyyyMMdd>.json`. Slug: lowercase, non-alphanumerics to `-`, max 40
   characters.
 - CSV files are UTF-8 **with** a byte-order mark, so Excel opens them correctly. JSON has
   no BOM. Document this in `DESIGN.md`; the core exporter deliberately leaves the BOM
@@ -73,7 +73,7 @@ then `appModel.refresh()`, then pop to the Settings root and show a short banner
 
 ## AboutView
 
-App name, version and build from the bundle, one paragraph on what OpenBlip is (no
+App name, version and build from the bundle, one paragraph on what Blip Journal is (no
 medical claims), the licence (MIT, with the full text in a disclosure group), a link to
 `https://github.com/BasilJ-S/OpenBlip`, and a line stating that the app makes no network
 requests and collects no data. Opening the link hands off to Safari; that is the user's

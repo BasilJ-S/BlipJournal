@@ -107,8 +107,8 @@ Register the `PROMPT` category with no actions in v0.
 ## NotificationSettingsView
 
 Replace the stub. Shows: authorization status in words; if `.notDetermined`, an
-explanation paragraph ("OpenBlip asks how you are at a few random moments each day. It
-needs permission to send those prompts.") and an "Allow notifications" button that calls
+explanation paragraph ("Blip Journal asks how you are at a few random moments each day.
+It needs permission to send those prompts.") and an "Allow notifications" button that calls
 `requestAuthorization()` then `refresh`; if `.denied`, text plus an "Open Settings" link
 to `UIApplication.openSettingsURLString`; if authorized, a list of the next five pending
 prompts (survey name, day, time) and a "Refresh schedule" button. Mention that

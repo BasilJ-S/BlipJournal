@@ -29,11 +29,11 @@ targets:
     info:
       path: OpenBlip/Info.plist
       properties:
-        CFBundleDisplayName: OpenBlip
+        CFBundleDisplayName: Blip Journal
         UILaunchScreen: {}
         UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait]
         UIUserInterfaceStyle: Light
-        NSFaceIDUsageDescription: OpenBlip uses Face ID to keep your journal private.
+        NSFaceIDUsageDescription: Blip Journal uses Face ID to keep your journal private.
         ITSAppUsesNonExemptEncryption: false
     entitlements:
       path: OpenBlip/OpenBlip.entitlements
