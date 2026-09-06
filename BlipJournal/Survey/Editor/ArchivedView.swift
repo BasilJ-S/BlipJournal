@@ -9,7 +9,12 @@ struct ArchivedView: View {
     @State private var pendingTarget: ArchivedTarget?
     @State private var errorMessage: String?
 
-    private var allSurveys: [Survey] { (try? appModel.store.surveys(includeArchived: true)) ?? [] }
+    // Read the observable cache rather than querying SQLite directly in the view. Every
+    // editor mutation calls AppModel.refresh(), which increments revision and replaces
+    // this dictionary, so archive actions immediately disappear or reappear here.
+    private var allSurveys: [Survey] {
+        appModel.surveysById.values.sorted { ($0.createdAt, $0.id) < ($1.createdAt, $1.id) }
+    }
     private var archivedSurveys: [Survey] { allSurveys.filter { $0.isArchived && includes($0.id) } }
     private var archivedQuestions: [(Question, Survey)] {
         Self.archivedQuestions(in: allSurveys, scope: scope).filter { $0.0.isArchived }
@@ -91,7 +96,25 @@ struct ArchivedView: View {
         HStack { Text(title); Spacer(); Button("Unarchive") { unarchive(target) }.buttonStyle(.borderless); Button("Delete permanently", role: .destructive) { pendingTarget = target }.buttonStyle(.borderless) }
     }
     private func unarchive(_ target: ArchivedTarget) {
-        Task { do { let model = EditorModel(store: appModel.store, notifications: appModel.notifications); switch target { case .survey(let s): try await model.unarchive(surveyId: s.id); case .question(let q, _): var q = q; q.isArchived = false; try model.updateQuestion(q); case .option(let o, _, _): var o = o; o.isArchived = false; try model.updateOption(o) }; try appModel.refresh() } catch { errorMessage = String(describing: error) } }
+        Task {
+            do {
+                let model = EditorModel(store: appModel.store, notifications: appModel.notifications)
+                switch target {
+                case .survey(let s): try await model.unarchive(surveyId: s.id)
+                case .question(let q, _): var q = q; q.isArchived = false; try model.updateQuestion(q)
+                case .option(let o, _, _): var o = o; o.isArchived = false; try model.updateOption(o)
+                }
+                try appModel.refresh()
+            } catch { errorMessage = String(describing: error) }
+        }
     }
-    private func delete(_ target: ArchivedTarget) { Task { do { try await EditorModel(store: appModel.store, notifications: appModel.notifications).hardDelete(target); try appModel.refresh() } catch { errorMessage = String(describing: error) } } }
+    private func delete(_ target: ArchivedTarget) {
+        pendingTarget = nil
+        Task {
+            do {
+                try await EditorModel(store: appModel.store, notifications: appModel.notifications).hardDelete(target)
+                try appModel.refresh()
+            } catch { errorMessage = String(describing: error) }
+        }
+    }
 }
