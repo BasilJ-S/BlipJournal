@@ -1,5 +1,17 @@
-# Survey/Editor
+# Survey editor
 
-SurveyListView is the A4 placeholder, with a fixed zero-argument initializer.
-Settings owns the navigation link. A4 will read AppModel from the environment;
-no definition editing is implemented yet.
+The editor is a small set of SwiftUI screens backed by `EditorModel`. The model is the
+only app-layer writer: definition edits append Store versions, sampling changes validate
+before saving, and notification changes call the coordinator.
+
+Active questions and options are reordered by removing the selected rows, inserting them
+at the requested destination, and renumbering the resulting active list from zero. Only
+items whose position changed receive a version row. Archive hides a definition while
+preserving children and history; permanent erase is reachable only from Archived and is
+delegated to Store after an impact confirmation.
+
+The confirmation text uses Store's `DeletionImpact` counts and oldest answer date. It
+states what survives, mentions emptied entries, and ends with “It cannot be undone.”
+
+Known limitations: drag reorder is available only in EditMode; question kinds cannot
+change; copying duplicates current active configuration only, never response history.
