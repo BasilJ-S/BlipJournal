@@ -29,7 +29,7 @@ public final class Store: Sendable {
         try Schema.makeMigrator().migrate(dbQueue)
     }
 
-    /// Opens (creating if needed) the database at `directory/openblip.sqlite` and
+    /// Opens (creating if needed) the database at `directory/blipjournal.sqlite` and
     /// applies any pending migrations.
     ///
     /// On iOS the directory is given `FileProtectionType.complete` before the database
@@ -56,7 +56,7 @@ public final class Store: Sendable {
     }
 
     /// The name of the database file inside the directory given to `open(at:)`.
-    public static let databaseFileName = "openblip.sqlite"
+    public static let databaseFileName = "blipjournal.sqlite"
 
     /// `secure_delete` on, so freed pages are overwritten as they are freed, and
     /// `temp_store` in memory, so the full copy `VACUUM` makes of the surviving rows never

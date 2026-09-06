@@ -1,4 +1,4 @@
-import OpenBlipCore
+import BlipJournalCore
 import SwiftUI
 
 /// Every entry, newest first, sectioned by local day. Rows push `EntryDetailView`;

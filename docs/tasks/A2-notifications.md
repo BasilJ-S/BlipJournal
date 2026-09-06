@@ -1,10 +1,10 @@
 # Task A2: Notifications
 
-Implementation handoff for `OpenBlip/Notifications/`. Read `AGENTS.md`, the "Notification
+Implementation handoff for `BlipJournal/Notifications/`. Read `AGENTS.md`, the "Notification
 subsystem" section of `README.md`, the A2 section of `docs/PLAN.md`,
-`OpenBlipCore/Sources/OpenBlipCore/Sampling/DESIGN.md`, `Storage/DESIGN.md`, and
-`OpenBlip/App/DESIGN.md` (the extension points). Requires A1 on `main`. Do not modify
-`OpenBlipCore/`.
+`BlipJournalCore/Sources/BlipJournalCore/Sampling/DESIGN.md`, `Storage/DESIGN.md`, and
+`BlipJournal/App/DESIGN.md` (the extension points). Requires A1 on `main`. Do not modify
+`BlipJournalCore/`.
 
 ## Goal
 
@@ -28,7 +28,7 @@ Notifications/NotificationDelegate.swift       UNUserNotificationCenterDelegate
 Notifications/PromptRouteView.swift            what a tapped notification opens
 Notifications/NotificationSettingsView.swift   replaces stub
 Notifications/DESIGN.md
-OpenBlipTests/Notifications/                   coordinator tests on the fake client
+BlipJournalTests/Notifications/                   coordinator tests on the fake client
 ```
 
 ## NotificationCenterClient
@@ -89,7 +89,7 @@ decides when to ask. `authorizationStatus` is cached and refreshed on `refresh`.
 
 ## Delegate and routing
 
-`NotificationDelegate` is set as the centre's delegate at app launch (in `OpenBlipApp`
+`NotificationDelegate` is set as the centre's delegate at app launch (in `BlipJournalApp`
 via `UIApplicationDelegateAdaptor`, the one addition to `App/` this task may make).
 `willPresent` returns `[.banner, .sound]` so a prompt shows even when the app is open.
 `didReceive` reads `userInfo["promptId"]` and sets `coordinator.pendingRoute`.

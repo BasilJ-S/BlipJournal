@@ -1,4 +1,4 @@
-import OpenBlipCore
+import BlipJournalCore
 import SwiftUI
 
 /// Placeholder. Task A3 replaces this file wholesale; the signature is the contract.

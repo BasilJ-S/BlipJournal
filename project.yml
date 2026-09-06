@@ -1,4 +1,4 @@
-name: OpenBlip
+name: BlipJournal
 options:
   bundleIdPrefix: io.github.basilj-s
   deploymentTarget:
@@ -15,24 +15,24 @@ settings:
     MARKETING_VERSION: "0.1.0"
     CURRENT_PROJECT_VERSION: "1"
 packages:
-  OpenBlipCore:
-    path: OpenBlipCore
+  BlipJournalCore:
+    path: BlipJournalCore
 targets:
-  OpenBlip:
+  BlipJournal:
     type: application
     platform: iOS
     sources:
       # Markdown is documentation, not a bundle resource. Every component folder has a
       # DESIGN.md, and three files of that name collide in the app bundle: without this
-      # the build fails with "Multiple commands produce .../OpenBlip.app/DESIGN.md".
-      - path: OpenBlip
+      # the build fails with "Multiple commands produce .../BlipJournal.app/DESIGN.md".
+      - path: BlipJournal
         excludes:
           - "**/*.md"
     dependencies:
-      - package: OpenBlipCore
-        product: OpenBlipCore
+      - package: BlipJournalCore
+        product: BlipJournalCore
     info:
-      path: OpenBlip/Info.plist
+      path: BlipJournal/Info.plist
       properties:
         CFBundleDisplayName: Blip Journal
         UILaunchScreen: {}
@@ -41,35 +41,35 @@ targets:
         NSFaceIDUsageDescription: Blip Journal uses Face ID to keep your journal private.
         ITSAppUsesNonExemptEncryption: false
     entitlements:
-      path: OpenBlip/OpenBlip.entitlements
+      path: BlipJournal/BlipJournal.entitlements
       properties:
         com.apple.developer.usernotifications.time-sensitive: true
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: io.github.basilj-s.OpenBlip
+        PRODUCT_BUNDLE_IDENTIFIER: io.github.basilj-s.BlipJournal
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         ENABLE_USER_SCRIPT_SANDBOXING: YES
-  OpenBlipTests:
+  BlipJournalTests:
     type: bundle.unit-test
     platform: iOS
     sources:
-      - path: OpenBlipTests
+      - path: BlipJournalTests
     dependencies:
-      - target: OpenBlip
-      - package: OpenBlipCore
-        product: OpenBlipCore
+      - target: BlipJournal
+      - package: BlipJournalCore
+        product: BlipJournalCore
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: io.github.basilj-s.OpenBlipTests
+        PRODUCT_BUNDLE_IDENTIFIER: io.github.basilj-s.BlipJournalTests
         GENERATE_INFOPLIST_FILE: YES
 schemes:
-  OpenBlip:
+  BlipJournal:
     build:
       targets:
-        OpenBlip: all
+        BlipJournal: all
     run:
       config: Debug
     test:
       config: Debug
       targets:
-        - OpenBlipTests
+        - BlipJournalTests

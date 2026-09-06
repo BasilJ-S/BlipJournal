@@ -1,10 +1,10 @@
 # Task A5: Insights
 
-Implementation handoff for `OpenBlip/Insights/`. Read `AGENTS.md`, the "Insights" bullet
+Implementation handoff for `BlipJournal/Insights/`. Read `AGENTS.md`, the "Insights" bullet
 in `README.md`, the A5 section of `docs/PLAN.md`,
-`OpenBlipCore/Sources/OpenBlipCore/Analytics/DESIGN.md`, and `OpenBlip/App/DESIGN.md`.
-Requires A1 on `main`. Do not modify `OpenBlipCore/` or files outside `Insights/` and
-`OpenBlipTests/Insights/`.
+`BlipJournalCore/Sources/BlipJournalCore/Analytics/DESIGN.md`, and `BlipJournal/App/DESIGN.md`.
+Requires A1 on `main`. Do not modify `BlipJournalCore/` or files outside `Insights/` and
+`BlipJournalTests/Insights/`.
 
 ## Goal
 
@@ -27,7 +27,7 @@ Insights/HourAndWeekdayCharts.swift
 Insights/ByOptionChart.swift
 Insights/ComplianceTile.swift
 Insights/DESIGN.md
-OpenBlipTests/Insights/InsightsModelTests.swift
+BlipJournalTests/Insights/InsightsModelTests.swift
 ```
 
 ## InsightsModel

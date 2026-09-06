@@ -1,7 +1,7 @@
 import Foundation
 import LocalAuthentication
 import Testing
-@testable import OpenBlip
+@testable import BlipJournal
 
 struct DeviceAuthenticationTests {
     @Test func onlyMissingPasscodePermitsContinuingWithoutAuthentication() {

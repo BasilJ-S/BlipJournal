@@ -2,7 +2,7 @@
 
 **Status: done, merged in #2.** What follows is the brief as it was written, kept as the
 record of what was asked. Where it and the code disagree, the code and
-`OpenBlipCore/Sources/OpenBlipCore/Model/DESIGN.md` are authoritative. The differences,
+`BlipJournalCore/Sources/BlipJournalCore/Model/DESIGN.md` are authoritative. The differences,
 all agreed in review:
 
 - The ID helper is `Identifier`, not `ID`. `Identifiable` gives conforming types an `ID`
@@ -11,12 +11,12 @@ all agreed in review:
 - `Answer` carries `answeredAt`. It is what makes the options a person saw replayable.
 - `AnswerValue`'s JSON discriminator is the `QuestionKind` raw value, so `singleChoice`
   and `multiChoice` rather than `single` and `multi`.
-- The placeholder `OpenBlipCore` enum is now `CoreSchema.version`, since a type named
+- The placeholder `BlipJournalCore` enum is now `CoreSchema.version`, since a type named
   after the module shadows the module.
 
-Implementation handoff for OpenBlipCore. Read `AGENTS.md` and the "Architecture" and
+Implementation handoff for BlipJournalCore. Read `AGENTS.md` and the "Architecture" and
 "Defaults" sections of `README.md` before starting. Do not read or touch anything under
-`OpenBlip/` (the app target).
+`BlipJournal/` (the app target).
 
 ## Goal
 
@@ -33,7 +33,7 @@ start in parallel against these types.
 
 ## Files to create
 
-All under `OpenBlipCore/Sources/OpenBlipCore/Model/`:
+All under `BlipJournalCore/Sources/BlipJournalCore/Model/`:
 
 ```
 Identifiers.swift      ID generation helper
@@ -47,9 +47,9 @@ SurveyTemplate.swift   SurveyTemplate.makeDefault()
 DESIGN.md              Component design doc, see AGENTS.md "Documentation"
 ```
 
-Tests under `OpenBlipCore/Tests/OpenBlipCoreTests/Model/`. Delete the placeholder test
-in `OpenBlipCoreTests.swift` and keep the `schemaVersion` constant in
-`OpenBlipCore.swift` untouched.
+Tests under `BlipJournalCore/Tests/BlipJournalCoreTests/Model/`. Delete the placeholder test
+in `BlipJournalCoreTests.swift` and keep the `schemaVersion` constant in
+`BlipJournalCore.swift` untouched.
 
 ## Types
 
@@ -225,7 +225,7 @@ Swift Testing (`import Testing`). One file per source file. Cover at least:
 
 ## Acceptance
 
-- `cd OpenBlipCore && swift build` and `swift test` pass with zero warnings.
+- `cd BlipJournalCore && swift build` and `swift test` pass with zero warnings.
 - No file imports anything other than `Foundation` (and `Testing` in tests).
 - All public API has doc comments.
 - `Model/DESIGN.md` exists and matches the code: purpose, the type graph in a few lines,

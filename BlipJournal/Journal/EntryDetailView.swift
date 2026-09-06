@@ -1,4 +1,4 @@
-import OpenBlipCore
+import BlipJournalCore
 import SwiftUI
 
 /// One entry, read only: its provenance and every answered question in position order,

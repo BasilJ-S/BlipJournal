@@ -1,6 +1,6 @@
 import Foundation
 import Testing
-@testable import OpenBlip
+@testable import BlipJournal
 
 struct LockPolicyTests {
     let now = Date(timeIntervalSince1970: 1_800_000_000)

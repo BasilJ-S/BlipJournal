@@ -1,11 +1,11 @@
 # Task A4: Survey editor and Archived
 
-Implementation handoff for `OpenBlip/Survey/Editor/`. Read `AGENTS.md`, the "UI subsystem"
+Implementation handoff for `BlipJournal/Survey/Editor/`. Read `AGENTS.md`, the "UI subsystem"
 section of `README.md` (editor bullet), the A4 section of `docs/PLAN.md` including its
 "Archive, then erase" rules, `Storage/DESIGN.md` (versioning and hard delete),
-`Model/SamplingConfig.swift` (validation), and `OpenBlip/App/DESIGN.md`. Requires A1 on
-`main`. Do not modify `OpenBlipCore/` or files outside `Survey/Editor/` and
-`OpenBlipTests/Editor/`.
+`Model/SamplingConfig.swift` (validation), and `BlipJournal/App/DESIGN.md`. Requires A1 on
+`main`. Do not modify `BlipJournalCore/` or files outside `Survey/Editor/` and
+`BlipJournalTests/Editor/`.
 
 ## Goal
 
@@ -32,7 +32,7 @@ Survey/Editor/ArchivedView.swift            archived surveys, questions, options
 Survey/Editor/DeletionConfirmation.swift    builds the confirmation text from DeletionImpact
 Survey/Editor/EditorModel.swift             @MainActor @Observable; all writes and reorder maths; testable
 Survey/Editor/DESIGN.md
-OpenBlipTests/Editor/EditorModelTests.swift
+BlipJournalTests/Editor/EditorModelTests.swift
 ```
 
 ## EditorModel

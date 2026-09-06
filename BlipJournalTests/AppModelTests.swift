@@ -1,8 +1,8 @@
 import Foundation
-import OpenBlipCore
+import BlipJournalCore
 import Testing
 import UserNotifications
-@testable import OpenBlip
+@testable import BlipJournal
 
 @MainActor
 struct AppModelTests {

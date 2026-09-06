@@ -1,7 +1,7 @@
 # App
 
 Owns launch, the shared `AppModel`, authentication, and the three-tab root.
-`AppModel.live()` opens Application Support/OpenBlip with Store's complete iOS
+`AppModel.live()` opens Application Support/BlipJournal with Store's complete iOS
 Data Protection; this is filesystem encryption, not SQLCipher.
 
 - `AppModel` is main-actor observable state: Store, coordinator, active surveys,

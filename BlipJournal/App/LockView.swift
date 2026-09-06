@@ -1,7 +1,7 @@
 import LocalAuthentication
 import SwiftUI
 
-/// The whole app while `AppModel.isLocked`: `OpenBlipApp` shows this instead of
+/// The whole app while `AppModel.isLocked`: `BlipJournalApp` shows this instead of
 /// `RootView`, not over it. Offers device owner authentication (Face ID with passcode
 /// fallback) on appear, and a retry button when that fails.
 struct LockView: View {

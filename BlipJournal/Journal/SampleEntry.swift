@@ -1,6 +1,6 @@
 #if DEBUG
 import Foundation
-import OpenBlipCore
+import BlipJournalCore
 
 /// Debug-only: writes one completed entry with random answers so screens can be checked
 /// by eye in the simulator. Half the entries are prompted, with an answered prompt row,

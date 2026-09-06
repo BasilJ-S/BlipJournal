@@ -1,6 +1,6 @@
 import Foundation
 import Testing
-import OpenBlipCore
+import BlipJournalCore
 
 /// Shared helpers for the Storage tests: a fixed clock, a seeded store, and ways to
 /// measure what a store holds through its public API alone.
@@ -30,7 +30,7 @@ enum Fixture {
     /// A fresh directory for tests that need a database on disk.
     static func temporaryDirectory() -> URL {
         FileManager.default.temporaryDirectory
-            .appendingPathComponent("openblip-storage-tests-\(UUID().uuidString)", isDirectory: true)
+            .appendingPathComponent("blipjournal-storage-tests-\(UUID().uuidString)", isDirectory: true)
     }
 
     /// A pending prompt for `survey` at `scheduledAt`, expiring twenty minutes later.

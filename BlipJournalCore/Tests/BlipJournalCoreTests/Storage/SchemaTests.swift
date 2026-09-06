@@ -1,6 +1,6 @@
 import Foundation
 import Testing
-@testable import OpenBlipCore
+@testable import BlipJournalCore
 
 @Suite("Schema")
 struct SchemaTests {

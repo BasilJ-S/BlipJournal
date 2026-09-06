@@ -1,6 +1,6 @@
 import Foundation
 import Observation
-import OpenBlipCore
+import BlipJournalCore
 
 /// The one object the whole app shares: it owns the `Store`, the notification
 /// coordinator, the current survey list, and the lock state.
@@ -44,14 +44,14 @@ final class AppModel {
     static func live() throws -> AppModel {
         let directory = FileManager.default
             .urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
-            .appendingPathComponent("OpenBlip", isDirectory: true)
+            .appendingPathComponent("BlipJournal", isDirectory: true)
         let store = try Store.open(at: directory)
         #if DEBUG
         // The simulator has no Data Protection and reports no class; a device reports
         // NSFileProtectionComplete here.
         let attributes = try? FileManager.default.attributesOfItem(atPath: directory.path)
         let protection = attributes?[.protectionKey].map { String(describing: $0) } ?? "not reported"
-        print("OpenBlip store at \(directory.path), protection class: \(protection)")
+        print("BlipJournal store at \(directory.path), protection class: \(protection)")
         #endif
         return try AppModel(store: store, notifications: NoopNotificationCoordinator())
     }

@@ -1,6 +1,6 @@
 import Foundation
 import Testing
-import OpenBlipCore
+import BlipJournalCore
 
 /// A seeded store with four entries that between them exercise every hard-delete rule.
 ///

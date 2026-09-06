@@ -1,5 +1,5 @@
 import Foundation
-import OpenBlipCore
+import BlipJournalCore
 
 /// A hand-built snapshot that exercises every rule of the CSV exporters: two prompted
 /// entries, one manual, one partial; a scale, single, multi, yes/no and text question;

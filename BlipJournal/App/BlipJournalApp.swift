@@ -1,7 +1,7 @@
 import SwiftUI
 
 @main
-struct OpenBlipApp: App {
+struct BlipJournalApp: App {
     @Environment(\.scenePhase) private var scenePhase
     @State private var launch: Launch
 

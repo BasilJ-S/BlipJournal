@@ -1,6 +1,6 @@
 import Foundation
 import Testing
-import OpenBlipCore
+import BlipJournalCore
 
 @Suite("Store export")
 struct StoreExportTests {

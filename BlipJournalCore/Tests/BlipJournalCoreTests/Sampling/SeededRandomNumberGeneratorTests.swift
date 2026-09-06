@@ -1,5 +1,5 @@
 import Testing
-@testable import OpenBlipCore
+@testable import BlipJournalCore
 
 @Suite("SeededRandomNumberGenerator")
 struct SeededRandomNumberGeneratorTests {

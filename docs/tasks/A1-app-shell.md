@@ -1,9 +1,9 @@
 # Task A1: App shell, lock, and Journal
 
-Implementation handoff for the iOS app target `OpenBlip/`. Read `AGENTS.md`, the "UI
+Implementation handoff for the iOS app target `BlipJournal/`. Read `AGENTS.md`, the "UI
 subsystem" section of `README.md`, the A1 section of `docs/PLAN.md`, and
-`OpenBlipCore/Sources/OpenBlipCore/Storage/DESIGN.md`. The core package is complete; do
-not modify anything under `OpenBlipCore/`.
+`BlipJournalCore/Sources/BlipJournalCore/Storage/DESIGN.md`. The core package is complete; do
+not modify anything under `BlipJournalCore/`.
 
 ## Goal
 
@@ -18,38 +18,38 @@ without editing shared files.
 - Branch from `main`: `a1-app-shell`. Open a draft PR when done. See "Change control"
   in `AGENTS.md`.
 - The Xcode project is generated: edit `project.yml`, run `xcodegen generate`, never
-  commit `OpenBlip.xcodeproj`.
-- Build and test with `xcodebuild -scheme OpenBlip -destination 'platform=iOS Simulator,name=iPhone 17 Pro'`
+  commit `BlipJournal.xcodeproj`.
+- Build and test with `xcodebuild -scheme BlipJournal -destination 'platform=iOS Simulator,name=iPhone 17 Pro'`
   (`build` and `test`). Zero warnings from the app target; ignore warnings from
   `SourcePackages/checkouts`.
 
 ## Files
 
-Delete `PlaceholderView` from `OpenBlipApp.swift` and the `.gitkeep` files. Create:
+Delete `PlaceholderView` from `BlipJournalApp.swift` and the `.gitkeep` files. Create:
 
 ```
-OpenBlip/App/OpenBlipApp.swift                 @main; creates AppModel; scenePhase → lock policy
-OpenBlip/App/AppModel.swift                    @MainActor @Observable; owns Store and surveys
-OpenBlip/App/LockPolicy.swift                  pure struct, testable
-OpenBlip/App/LockView.swift                    LocalAuthentication
-OpenBlip/App/RootView.swift                    TabView: Journal, Insights, Settings
-OpenBlip/App/DESIGN.md
-OpenBlip/Journal/JournalView.swift             entries list, New entry button
-OpenBlip/Journal/EntryDetailView.swift         answers read-only, Delete
-OpenBlip/Journal/DESIGN.md
-OpenBlip/Settings/SettingsView.swift           list of rows linking to the stubs below
-OpenBlip/Settings/DESIGN.md
+BlipJournal/App/BlipJournalApp.swift                 @main; creates AppModel; scenePhase → lock policy
+BlipJournal/App/AppModel.swift                    @MainActor @Observable; owns Store and surveys
+BlipJournal/App/LockPolicy.swift                  pure struct, testable
+BlipJournal/App/LockView.swift                    LocalAuthentication
+BlipJournal/App/RootView.swift                    TabView: Journal, Insights, Settings
+BlipJournal/App/DESIGN.md
+BlipJournal/Journal/JournalView.swift             entries list, New entry button
+BlipJournal/Journal/EntryDetailView.swift         answers read-only, Delete
+BlipJournal/Journal/DESIGN.md
+BlipJournal/Settings/SettingsView.swift           list of rows linking to the stubs below
+BlipJournal/Settings/DESIGN.md
 Stubs (one screen each, see "Extension points"):
-OpenBlip/Survey/Runner/SurveyRunnerView.swift          A3
-OpenBlip/Survey/Editor/SurveyListView.swift            A4
-OpenBlip/Notifications/NotificationCoordinator.swift   A2 (protocol + no-op)
-OpenBlip/Notifications/NotificationSettingsView.swift  A2
-OpenBlip/Insights/InsightsView.swift                   A5
-OpenBlip/Settings/ExportView.swift                     A6
-OpenBlip/Settings/DeleteAllDataView.swift              A6
-OpenBlip/Settings/AboutView.swift                      A6
-OpenBlipTests/                                 new unit test target
-project.yml                                    add OpenBlipTests target and test action
+BlipJournal/Survey/Runner/SurveyRunnerView.swift          A3
+BlipJournal/Survey/Editor/SurveyListView.swift            A4
+BlipJournal/Notifications/NotificationCoordinator.swift   A2 (protocol + no-op)
+BlipJournal/Notifications/NotificationSettingsView.swift  A2
+BlipJournal/Insights/InsightsView.swift                   A5
+BlipJournal/Settings/ExportView.swift                     A6
+BlipJournal/Settings/DeleteAllDataView.swift              A6
+BlipJournal/Settings/AboutView.swift                      A6
+BlipJournalTests/                                 new unit test target
+project.yml                                    add BlipJournalTests target and test action
 ```
 
 Add `Journal/` to the layout in `README.md` "Architecture" and to `AGENTS.md`
@@ -67,7 +67,7 @@ final class AppModel {
     var lockPolicy: LockPolicy
 
     init(store: Store, notifications: any NotificationCoordinating, now: Date = Date()) throws
-    static func live() throws -> AppModel       // Store.open(at: Application Support/OpenBlip)
+    static func live() throws -> AppModel       // Store.open(at: Application Support/BlipJournal)
 
     func refresh() throws                       // reload surveys; call after any write
     func unlock()
@@ -79,7 +79,7 @@ final class AppModel {
 `init` seeds: if `store.surveys(includeArchived: true)` is empty, create the survey from
 `SurveyTemplate.makeDefault(now:)` via `store.createSurvey`. Seeding happens once, ever.
 
-`live()` opens the store in `FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]/OpenBlip`.
+`live()` opens the store in `FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]/BlipJournal`.
 Every store error at launch is fatal and shown as a full-screen message with the error
 text; there is no recovery path in v0 and hiding the error would be worse.
 
@@ -189,8 +189,8 @@ struct AboutView: View { init() }
 
 ## Test target
 
-Add `OpenBlipTests` to `project.yml`: a `bundle.unit-test` target, host application
-`OpenBlip`, sources `OpenBlipTests/`, included in the scheme's test action. Swift Testing
+Add `BlipJournalTests` to `project.yml`: a `bundle.unit-test` target, host application
+`BlipJournal`, sources `BlipJournalTests/`, included in the scheme's test action. Swift Testing
 (`import Testing`) works in Xcode 26 test bundles. Tests build an `AppModel` on
 `Store.inMemory()` with `NoopNotificationCoordinator`. Cover:
 

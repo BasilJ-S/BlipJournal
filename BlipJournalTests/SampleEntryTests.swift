@@ -1,8 +1,8 @@
 #if DEBUG
 import Foundation
-import OpenBlipCore
+import BlipJournalCore
 import Testing
-@testable import OpenBlip
+@testable import BlipJournal
 
 /// The debug "Add sample entry" button has no other coverage: it cannot be driven from
 /// a unit test through the toolbar, so its writer is tested directly. It only exists in

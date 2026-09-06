@@ -1,5 +1,5 @@
 import Foundation
-@testable import OpenBlipCore
+@testable import BlipJournalCore
 
 /// Fixed calendar and date builders shared by the sampling tests.
 enum SamplingFixtures {

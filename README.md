@@ -9,17 +9,17 @@ yourself, and no cloud.
 
 ## Name
 
-The app is **Blip Journal**. The repository, the Swift package, the Xcode target and the
-bundle identifier are all `OpenBlip`, and they stay that way: they are plumbing, not
-branding, and renaming a shipped bundle identifier is impossible.
+The app is **Blip Journal**. The repository, the Swift package, the Xcode target, the
+module and the bundle identifier are all `BlipJournal`, one word, no space: nothing has
+shipped yet, so there was no cost to lining the plumbing up with the product name.
 
 "Open" as a prefix reads as "open weights" or "open standard" (OpenAI, OpenCV), which is
 not what this is. The App Store subtitle carries the open source signal explicitly, and
 it is searchable in a way a prefix never was. Subtitle: "Open source experience sampler"
 (30 characters, the App Store limit exactly).
 
-Any string a person reads says Blip Journal. Anything a compiler, a path, or Apple reads
-says OpenBlip.
+Any string a person reads says **Blip Journal**, two words. Anything a compiler, a path,
+or Apple reads says `BlipJournal`, one word.
 
 **Status:** pre-alpha. Nothing ships yet. See [docs/PLAN.md](docs/PLAN.md) for the build plan.
 
@@ -68,12 +68,12 @@ says OpenBlip.
 Three subsystems, split across two targets.
 
 ```
-OpenBlipCore/        Swift package. No UIKit. Tested with `swift test` on macOS.
+BlipJournalCore/    Swift package. No UIKit. Tested with `swift test` on macOS.
   Model/             Domain types: Survey, Question, Option, Prompt, Entry, Answer
   Storage/           GRDB schema, migrations, insert-only versioning, queries
   Sampling/          Stratified random day sampler and multi-survey prompt planner
   Export/            CSV (wide, long) and JSON backup
-OpenBlip/            iOS app target. SwiftUI only.
+BlipJournal/        iOS app target. SwiftUI only.
   App/               Entry point, app model, biometric lock
   Journal/           Entries list and entry detail with delete
   Notifications/     UNUserNotificationCenter adapter for the prompt planner
@@ -178,13 +178,13 @@ Exported files are not encrypted. The app says so before sharing.
 ```
 brew install xcodegen
 xcodegen generate
-open OpenBlip.xcodeproj
+open BlipJournal.xcodeproj
 ```
 
 Core package only, no Xcode required:
 
 ```
-cd OpenBlipCore && swift test
+cd BlipJournalCore && swift test
 ```
 
 ## Contributing
