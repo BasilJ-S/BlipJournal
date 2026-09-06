@@ -1,5 +1,7 @@
 # Task C2: Storage
 
+**Status: done, merged in #8.** Kept as the record of what was asked. Where it and the code disagree, the code and the component's `DESIGN.md` are authoritative; the PR description lists the agreed deviations.
+
 Implementation handoff for `OpenBlipCore/Sources/OpenBlipCore/Storage/`. Read `AGENTS.md`,
 the "Storage subsystem" section of `README.md`, the C2 section of `docs/PLAN.md` (it is
 the authoritative spec for hard delete and byte erasure; this handoff does not repeat all
