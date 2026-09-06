@@ -34,7 +34,7 @@ optionVersion(id, optionId, label, position, isArchived, createdAt)
 prompt(id, surveyId, day, scheduledAt, expiresAt, status, respondedAt)
 entry(id, surveyId, promptId, startedAt, completedAt)
 answer(id, entryId, questionId, questionVersionId, answeredAt, kind,
-       numericValue, textValue, boolValue)
+       numericValue, textValue, boolValue)   UNIQUE (entryId, questionId)
 answerOption(answerId, optionId)        PRIMARY KEY (answerId, optionId)
 ```
 
@@ -71,6 +71,11 @@ delete removes is exactly what its code says. Indexes: every foreign key column 
   write a version carrying every field; the caller passes the full intended state.
   Archiving touches only its own level: archiving a question writes nothing to its
   options, so unarchiving it restores exactly the option set that was visible.
+- **One answer per question per entry.** `answer(entryId, questionId)` is unique, so
+  export and analytics never have to choose between two answers to one question. A
+  `saveEntry` call carrying two answers to one question fails and rolls back; replacing a
+  question's answer under a new identifier across two calls is fine, because dropped
+  answers are deleted before new ones are inserted.
 - **Positions of added things.** `addQuestion` and `addOption` append: one past the
   highest current position among their siblings, archived included, or 0.
 - **Store methods are synchronous.** `Store` is `final class Store: Sendable` over one

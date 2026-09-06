@@ -112,6 +112,8 @@ enum Schema {
             t.column("numericValue", .integer)
             t.column("textValue", .text)
             t.column("boolValue", .boolean)
+            // One answer per question per entry, so consumers never have to pick.
+            t.uniqueKey(["entryId", "questionId"])
         }
         try db.create(table: "answerOption") { t in
             t.primaryKey {

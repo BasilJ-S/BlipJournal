@@ -58,6 +58,29 @@ struct StoreEntriesTests {
         #expect(backup.answerOptions.first?.optionId == resting.id)
     }
 
+    @Test("saveEntry with two answers to one question in a single call throws and writes nothing")
+    func oneAnswerPerQuestion() throws {
+        let (store, survey) = try Fixture.seeded()
+        let feeling = try survey.question(labelled: "How are you feeling right now?")
+        let versionId = try #require(try store.currentQuestionVersionIds(surveyId: survey.id)[feeling.id])
+        let entry = Entry(surveyId: survey.id, startedAt: t(100))
+        let answers = [3, 4].map { value in
+            Answer(entryId: entry.id, questionId: feeling.id, questionVersionId: versionId,
+                   answeredAt: t(100), value: .scale(value))
+        }
+
+        #expect(throws: (any Error).self) { try store.saveEntry(entry, answers: answers) }
+
+        // The transaction rolled back: not even the entry row was kept.
+        #expect(try store.entries(surveyId: nil, from: nil, to: nil).isEmpty)
+        #expect(try store.backup(now: t(0)).rowCounts["answer"] == 0)
+
+        // A later save may still move the question's answer to a new identifier.
+        try store.saveEntry(entry, answers: [answers[0]])
+        try store.saveEntry(entry, answers: [answers[1]])
+        #expect(try store.answers(entryId: entry.id).map(\.id) == [answers[1].id])
+    }
+
     @Test("every answer kind round-trips, including a multi-choice answer with no selections")
     func valuesRoundTrip() throws {
         let (store, survey) = try Fixture.seeded()
