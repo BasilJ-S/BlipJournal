@@ -1,4 +1,4 @@
-# OpenBlip build plan
+# Blip Journal build plan
 
 Work is split into tasks that one agent can finish in a single session. Each task lists
 scope, the interfaces it must expose or consume, and acceptance criteria. Tasks in the
@@ -13,14 +13,14 @@ this file instead.
 
 Repo, license, README spec, AGENTS.md, empty core package, XcodeGen spec, app entry point.
 
-## Phase 1: OpenBlipCore (done)
+## Phase 1: BlipJournalCore (done)
 
 Merged in #2 (C1), #8 (C2), #7 (C3), #6 (C4), #5 (C5). Each `DESIGN.md` under
-`OpenBlipCore/Sources/OpenBlipCore/` is authoritative where it and this file disagree.
+`BlipJournalCore/Sources/BlipJournalCore/` is authoritative where it and this file disagree.
 
 ### C1. Domain model
 
-Scope: `Sources/OpenBlipCore/Model/`. Pure value types, all `Sendable`, `Equatable`,
+Scope: `Sources/BlipJournalCore/Model/`. Pure value types, all `Sendable`, `Equatable`,
 `Codable`, `Identifiable` where sensible. IDs are `String` UUIDs.
 
 ```swift
@@ -50,7 +50,7 @@ matches the six default questions in README; round-trips through `JSONEncoder`.
 
 ### C2. Storage
 
-Scope: `Sources/OpenBlipCore/Storage/`. GRDB schema with `DatabaseMigrator`, a `Store`
+Scope: `Sources/BlipJournalCore/Storage/`. GRDB schema with `DatabaseMigrator`, a `Store`
 class wrapping `DatabaseQueue`, and all queries. Depends on C1.
 
 Tables, all IDs `TEXT PRIMARY KEY`, all timestamps stored as GRDB default UTC strings:
@@ -209,7 +209,7 @@ no trace of the deleted text.
 
 ### C3. Sampling
 
-Scope: `Sources/OpenBlipCore/Sampling/`. Pure functions, generic over
+Scope: `Sources/BlipJournalCore/Sampling/`. Pure functions, generic over
 `RandomNumberGenerator`. Depends on C1 only. Runs in parallel with C2.
 
 ```swift
@@ -249,7 +249,7 @@ within the local window.
 
 ### C4. Export
 
-Scope: `Sources/OpenBlipCore/Export/`. Pure functions over an `ExportSnapshot`.
+Scope: `Sources/BlipJournalCore/Export/`. Pure functions over an `ExportSnapshot`.
 JSON backup lives in C2 (Storage), since it is a dump of table rows.
 Depends on C1. The `ExportSnapshot` loader lives in C2; agree the struct shape here
 first.
@@ -278,7 +278,7 @@ rename; unprompted entries have an empty prompt column and `prompted = no`.
 
 ### C5. Analytics queries
 
-Scope: `Sources/OpenBlipCore/Analytics/`. Pure functions that turn `[ExportEntry]` into
+Scope: `Sources/BlipJournalCore/Analytics/`. Pure functions that turn `[ExportEntry]` into
 chart-ready series. Depends on C1 and C4's snapshot shape.
 
 ```swift
@@ -297,20 +297,20 @@ enum Analytics {
 
 Acceptance: hand-computed fixtures for each function; empty input yields empty output.
 
-## Phase 2: OpenBlip app
+## Phase 2: Blip Journal app
 
 Sequencing: **A1 runs alone first.** It builds the shell and, for every later screen, a
 stub file with a fixed signature (see "Extension points" in `docs/tasks/A1-app-shell.md`).
 **A2, A3, A4, A5 and A6 then run in parallel**, each replacing only its own stubs and
 adding its own folder; none edits a shared file. A7 runs last. Handoffs: `docs/tasks/A1-app-shell.md`,
 `A2-notifications.md`, `A3-survey-runner.md`, `A4-survey-editor.md`, `A5-insights.md`,
-`A6-export-and-settings.md`. The app layout gains `OpenBlip/Journal/` (entries list and
+`A6-export-and-settings.md`. The app layout gains `BlipJournal/Journal/` (entries list and
 detail, owned by A1). Where a handoff and this file disagree, the handoff wins.
 
 ### A1. App shell and lock
 
-Scope: `OpenBlip/App/`. `AppModel` (`@Observable`, `@MainActor`) that opens the `Store`
-in `Application Support/OpenBlip/`, seeds the default survey on first launch, and
+Scope: `BlipJournal/App/`. `AppModel` (`@Observable`, `@MainActor`) that opens the `Store`
+in `Application Support/BlipJournal/`, seeds the default survey on first launch, and
 exposes it to views via the environment. `LockView` using `LAContext` with
 `.deviceOwnerAuthentication` (biometrics with passcode fallback), shown at launch and
 after the app has been in the background for more than 30 seconds. `RootView` with three
@@ -339,7 +339,7 @@ trace of a sentinel free-text answer in the database files.
 
 ### A2. Notifications
 
-Scope: `OpenBlip/Notifications/`. `NotificationManager` that on every foreground:
+Scope: `BlipJournal/Notifications/`. `NotificationManager` that on every foreground:
 runs `PromptPlanner`, persists the plan through `Store`, then reconciles
 `UNUserNotificationCenter` so pending requests match pending prompts exactly (request
 identifier = prompt id, category `PROMPT`, `interruptionLevel = .timeSensitive`,
@@ -362,7 +362,7 @@ runner for that prompt; tapped after expiry shows the expired sheet and the prom
 
 ### A3. Survey runner
 
-Scope: `OpenBlip/Survey/Runner/`. Renders any `Survey` on one scrolling screen. Scale as
+Scope: `BlipJournal/Survey/Runner/`. Renders any `Survey` on one scrolling screen. Scale as
 a labelled slider with end labels; single and multi choice as wrapping chips; an inline
 "Add" chip when `allowsCustomOptions` that calls `addOption`; yes/no as two buttons; text
 as one line. Autosaves through `saveEntry` on every change with `promptId` set when
@@ -376,7 +376,7 @@ selection state; Dynamic Type at the largest accessibility size does not clip.
 
 ### A4. Survey editor
 
-Scope: `OpenBlip/Survey/Editor/`. Survey list with add and archive. Per-survey editor:
+Scope: `BlipJournal/Survey/Editor/`. Survey list with add and archive. Per-survey editor:
 reorder, rename, archive questions; add questions of each kind; edit scale range and end
 labels; option list with add, rename, archive; sampling settings form with validation
 (`windowEnd > windowStart`, `promptsPerDay * minGap` fits in the window, expiry > 0).
@@ -410,7 +410,7 @@ message rather than as scattered labels.
 
 ### A5. Insights
 
-Scope: `OpenBlip/Insights/`. Swift Charts over C5. Survey picker, then: line chart of
+Scope: `BlipJournal/Insights/`. Swift Charts over C5. Survey picker, then: line chart of
 the first scale question with a 7-point rolling mean, prompted and manual entries
 distinguished; bar charts by hour and by weekday; bar chart of mean scale value per
 option for a user-chosen choice question; compliance tile. Respects Dynamic Type.
@@ -420,7 +420,7 @@ axis labels are readable at default text size on an iPhone SE-sized screen.
 
 ### A6. Export and settings
 
-Scope: `OpenBlip/Settings/`. Settings screen linking to surveys (A4), notifications
+Scope: `BlipJournal/Settings/`. Settings screen linking to surveys (A4), notifications
 status, and export. Export screen: pick a survey, pick wide or long CSV or JSON backup,
 show the "exported files are not encrypted" warning, then `ShareLink` to a temp file in
 the protected directory. About screen with license and repo link.

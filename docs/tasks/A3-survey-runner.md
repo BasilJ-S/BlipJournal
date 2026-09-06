@@ -1,10 +1,10 @@
 # Task A3: Survey runner
 
-Implementation handoff for `OpenBlip/Survey/Runner/`. Read `AGENTS.md`, the "UI
+Implementation handoff for `BlipJournal/Survey/Runner/`. Read `AGENTS.md`, the "UI
 subsystem" section of `README.md` (the runner bullet), the A3 section of `docs/PLAN.md`,
 `Model/DESIGN.md` ("Recoverability"), `Storage/DESIGN.md` (the `saveEntry` rules), and
-`OpenBlip/App/DESIGN.md`. Requires A1 on `main`. Do not modify `OpenBlipCore/` or any file
-outside `Survey/Runner/` and `OpenBlipTests/Runner/`.
+`BlipJournal/App/DESIGN.md`. Requires A1 on `main`. Do not modify `BlipJournalCore/` or any file
+outside `Survey/Runner/` and `BlipJournalTests/Runner/`.
 
 ## Goal
 
@@ -33,7 +33,7 @@ Survey/Runner/ChipGrid.swift             wrapping chips; single and multi; inlin
 Survey/Runner/YesNoInput.swift
 Survey/Runner/TextInput.swift
 Survey/Runner/DESIGN.md
-OpenBlipTests/Runner/EntryDraftTests.swift
+BlipJournalTests/Runner/EntryDraftTests.swift
 ```
 
 ## EntryDraft

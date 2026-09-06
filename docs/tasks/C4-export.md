@@ -2,11 +2,11 @@
 
 **Status: done, merged in #6.** Kept as the record of what was asked. Where it and the code disagree, the code and the component's `DESIGN.md` are authoritative; the PR description lists the agreed deviations.
 
-Implementation handoff for `OpenBlipCore/Sources/OpenBlipCore/Export/`. Read `AGENTS.md`,
+Implementation handoff for `BlipJournalCore/Sources/BlipJournalCore/Export/`. Read `AGENTS.md`,
 the "Export formats" section of `README.md`, the C4 section of `docs/PLAN.md`,
 `Model/DESIGN.md` ("Recoverability"), and `Export/ExportSnapshot.swift`, which already
 exists on `main` and is the input type for everything here. Do not touch anything under
-`OpenBlip/` or `Storage/`.
+`BlipJournal/` or `Storage/`.
 
 ## Goal
 
@@ -31,7 +31,7 @@ table rows.
 Export/CSV.swift              Field escaping and row joining
 Export/CSVExporter.swift      wide(_:calendar:) and long(_:calendar:)
 Export/DESIGN.md
-Tests/OpenBlipCoreTests/Export/   CSVTests, CSVExporterWideTests, CSVExporterLongTests
+Tests/BlipJournalCoreTests/Export/   CSVTests, CSVExporterWideTests, CSVExporterLongTests
 ```
 
 ## Types
@@ -51,7 +51,7 @@ public enum CSVExporter {
 }
 ```
 
-`CSV` is internal. Tests reach it through `@testable import OpenBlipCore` for that file
+`CSV` is internal. Tests reach it through `@testable import BlipJournalCore` for that file
 only; the exporter tests use the public API.
 
 ## Shared formatting rules

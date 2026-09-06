@@ -1,10 +1,10 @@
 # Task A2: Notifications
 
-Implementation handoff for `OpenBlip/Notifications/`. Read `AGENTS.md`, the "Notification
+Implementation handoff for `BlipJournal/Notifications/`. Read `AGENTS.md`, the "Notification
 subsystem" section of `README.md`, the A2 section of `docs/PLAN.md`,
-`OpenBlipCore/Sources/OpenBlipCore/Sampling/DESIGN.md`, `Storage/DESIGN.md`, and
-`OpenBlip/App/DESIGN.md` (the extension points). Requires A1 on `main`. Do not modify
-`OpenBlipCore/`.
+`BlipJournalCore/Sources/BlipJournalCore/Sampling/DESIGN.md`, `Storage/DESIGN.md`, and
+`BlipJournal/App/DESIGN.md` (the extension points). Requires A1 on `main`. Do not modify
+`BlipJournalCore/`.
 
 ## Goal
 
@@ -28,7 +28,7 @@ Notifications/NotificationDelegate.swift       UNUserNotificationCenterDelegate
 Notifications/PromptRouteView.swift            what a tapped notification opens
 Notifications/NotificationSettingsView.swift   replaces stub
 Notifications/DESIGN.md
-OpenBlipTests/Notifications/                   coordinator tests on the fake client
+BlipJournalTests/Notifications/                   coordinator tests on the fake client
 ```
 
 ## NotificationCenterClient
@@ -89,7 +89,7 @@ decides when to ask. `authorizationStatus` is cached and refreshed on `refresh`.
 
 ## Delegate and routing
 
-`NotificationDelegate` is set as the centre's delegate at app launch (in `OpenBlipApp`
+`NotificationDelegate` is set as the centre's delegate at app launch (in `BlipJournalApp`
 via `UIApplicationDelegateAdaptor`, the one addition to `App/` this task may make).
 `willPresent` returns `[.banner, .sound]` so a prompt shows even when the app is open.
 `didReceive` reads `userInfo["promptId"]` and sets `coordinator.pendingRoute`.
@@ -107,8 +107,8 @@ Register the `PROMPT` category with no actions in v0.
 ## NotificationSettingsView
 
 Replace the stub. Shows: authorization status in words; if `.notDetermined`, an
-explanation paragraph ("OpenBlip asks how you are at a few random moments each day. It
-needs permission to send those prompts.") and an "Allow notifications" button that calls
+explanation paragraph ("Blip Journal asks how you are at a few random moments each day.
+It needs permission to send those prompts.") and an "Allow notifications" button that calls
 `requestAuthorization()` then `refresh`; if `.denied`, text plus an "Open Settings" link
 to `UIApplication.openSettingsURLString`; if authorized, a list of the next five pending
 prompts (survey name, day, time) and a "Refresh schedule" button. Mention that

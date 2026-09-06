@@ -2,11 +2,11 @@
 
 **Status: done, merged in #5.** Kept as the record of what was asked. Where it and the code disagree, the code and the component's `DESIGN.md` are authoritative; the PR description lists the agreed deviations.
 
-Implementation handoff for `OpenBlipCore/Sources/OpenBlipCore/Analytics/`. Read
+Implementation handoff for `BlipJournalCore/Sources/BlipJournalCore/Analytics/`. Read
 `AGENTS.md`, the "Insights" bullet under "UI subsystem" in `README.md`, the C5 and A5
 sections of `docs/PLAN.md`, and `Export/ExportSnapshot.swift`, which already exists on
 `main` and is the input type for everything here. Do not touch anything under
-`OpenBlip/`, `Storage/` or `Export/`.
+`BlipJournal/`, `Storage/` or `Export/`.
 
 ## Goal
 
@@ -27,7 +27,7 @@ only draws what these return. No dates are formatted here, no colours chosen, no
 Analytics/AnalyticsTypes.swift    MoodPoint, BucketStat, ComplianceStats
 Analytics/Analytics.swift         the functions below
 Analytics/DESIGN.md
-Tests/OpenBlipCoreTests/Analytics/AnalyticsTests.swift
+Tests/BlipJournalCoreTests/Analytics/AnalyticsTests.swift
 ```
 
 ## Types

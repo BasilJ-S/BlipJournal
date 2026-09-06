@@ -2,11 +2,11 @@
 
 **Status: done, merged in #8.** Kept as the record of what was asked. Where it and the code disagree, the code and the component's `DESIGN.md` are authoritative; the PR description lists the agreed deviations.
 
-Implementation handoff for `OpenBlipCore/Sources/OpenBlipCore/Storage/`. Read `AGENTS.md`,
+Implementation handoff for `BlipJournalCore/Sources/BlipJournalCore/Storage/`. Read `AGENTS.md`,
 the "Storage subsystem" section of `README.md`, the C2 section of `docs/PLAN.md` (it is
 the authoritative spec for hard delete and byte erasure; this handoff does not repeat all
 of it), `Model/DESIGN.md` (especially "Recoverability"), and `Export/ExportSnapshot.swift`.
-Do not touch anything under `OpenBlip/`.
+Do not touch anything under `BlipJournal/`.
 
 ## Goal
 
@@ -36,7 +36,7 @@ Storage/Store+HardDelete.swift
 Storage/Store+Export.swift    exportSnapshot and backup
 Storage/Backup.swift          Backup, BackupExporter
 Storage/DESIGN.md
-Tests/OpenBlipCoreTests/Storage/   one test file per Store extension, plus SchemaTests
+Tests/BlipJournalCoreTests/Storage/   one test file per Store extension, plus SchemaTests
 ```
 
 ## Schema
@@ -71,7 +71,7 @@ beats correlated subqueries in five.
 1. Create `directory` if missing. On iOS (`#if os(iOS)`) set
    `[.protectionKey: FileProtectionType.complete]` on the directory before the database
    file exists, so the database and any journal inherit it.
-2. Open `DatabaseQueue` at `directory/openblip.sqlite` with a `Configuration` whose
+2. Open `DatabaseQueue` at `directory/blipjournal.sqlite` with a `Configuration` whose
    `prepareDatabase` runs `PRAGMA secure_delete = ON`. Keep the default rollback journal
    mode; do not switch to WAL.
 3. Run the migrator.

@@ -5,38 +5,39 @@ Guidance for AI coding agents and humans working in this repo. Keep this file sh
 ## Commands
 
 ```
-cd OpenBlipCore && swift build          # build core package (no Xcode needed)
-cd OpenBlipCore && swift test           # run core tests
-xcodegen generate                       # regenerate OpenBlip.xcodeproj from project.yml
-xcodebuild -scheme OpenBlip -destination 'platform=iOS Simulator,name=iPhone 17' build
+cd BlipJournalCore && swift build       # build core package (no Xcode needed)
+cd BlipJournalCore && swift test        # run core tests
+xcodegen generate                       # regenerate BlipJournal.xcodeproj from project.yml
+xcodebuild -scheme BlipJournal -destination 'platform=iOS Simulator,name=iPhone 17' build
 ```
 
 ## Layout
 
-- `OpenBlipCore/` Swift package: model, storage (GRDB), sampling, export. No UIKit or SwiftUI.
-- `OpenBlip/` iOS app: SwiftUI only. Depends on OpenBlipCore.
+- `BlipJournalCore/` Swift package: model, storage (GRDB), sampling, export. No UIKit or SwiftUI.
+- `BlipJournal/` iOS app: SwiftUI only. Depends on BlipJournalCore.
 - `project.yml` XcodeGen spec. The `.xcodeproj` is generated and gitignored. Never edit it by hand.
 - `docs/PLAN.md` work breakdown. Each task lists scope, interfaces, and acceptance criteria.
 
 ## Documentation
 
-- Every component directory (each folder under `OpenBlipCore/Sources/OpenBlipCore/` and each feature folder under `OpenBlip/`) has a `DESIGN.md` next to the code.
+- Every component directory (each folder under `BlipJournalCore/Sources/BlipJournalCore/` and each feature folder under `BlipJournal/`) has a `DESIGN.md` next to the code.
 - `DESIGN.md` is terse and human readable, one screen at most: purpose, key types, invariants, decisions and why, known limitations. It exists so someone can pick the component up cold.
 - A PR that changes a component's behaviour, interface, or invariants must update that component's `DESIGN.md` in the same PR. Reviewers reject PRs where docs and code disagree.
 - `README.md` holds the product spec. `docs/PLAN.md` holds the task breakdown. `docs/tasks/` holds per-task handoffs.
 
 ## Rules
 
-- All logic that can live in `OpenBlipCore` must live there, with tests. UI files hold view code only.
+- All logic that can live in `BlipJournalCore` must live there, with tests. UI files hold view code only.
 - Definitions (surveys, questions, options) are insert-only. Never `UPDATE` or `DELETE` a definition row. Add a version row.
 - The single exception is hard delete: a person can permanently erase an already-archived definition and every answer to it. It lives in one auditable place in `Store` and refuses anything not archived. Nowhere else deletes a definition row.
 - Answers reference IDs, never label text.
+- The product name in any user-facing string is "Blip Journal". `BlipJournal` is the repo, package, target, module and bundle identifier only; never put it in text a person reads.
 - No network calls. No analytics. No third-party dependencies beyond GRDB without discussion.
 - Swift 6 language mode with strict concurrency. Fix warnings, do not silence them.
 - Light mode only. Use semantic system colors so a later dark mode is cheap.
 - Every control needs an accessibility label. Support Dynamic Type.
 - Do not add medical, diagnostic, or therapy language to UI strings.
-- Tests: Swift Testing (`import Testing`, `@Test`, `#expect`) in `OpenBlipCore/Tests`. XCTest is not available without Xcode. Sampling and export are pure functions; test them with seeded RNGs and fixed dates.
+- Tests: Swift Testing (`import Testing`, `@Test`, `#expect`) in `BlipJournalCore/Tests`. XCTest is not available without Xcode. Sampling and export are pure functions; test them with seeded RNGs and fixed dates.
 - Commit messages: imperative mood, one line summary, body explains why.
 
 ## Change control

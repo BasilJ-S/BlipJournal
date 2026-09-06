@@ -1,11 +1,11 @@
 # Task A6: Export, Delete all data, About
 
-Implementation handoff for `OpenBlip/Settings/` (three stub files). Read `AGENTS.md`, the
+Implementation handoff for `BlipJournal/Settings/` (three stub files). Read `AGENTS.md`, the
 "Export formats" section of `README.md`, the A6 section of `docs/PLAN.md`,
-`OpenBlipCore/Sources/OpenBlipCore/Export/DESIGN.md`, `Storage/DESIGN.md` (backup and
-`eraseEverything`), and `OpenBlip/App/DESIGN.md`. Requires A1 on `main`. Do not modify
-`OpenBlipCore/`, `SettingsView.swift`, or files outside the three stubs, a new
-`Settings/ExportModel.swift`, `Settings/DESIGN.md`, and `OpenBlipTests/Settings/`.
+`BlipJournalCore/Sources/BlipJournalCore/Export/DESIGN.md`, `Storage/DESIGN.md` (backup and
+`eraseEverything`), and `BlipJournal/App/DESIGN.md`. Requires A1 on `main`. Do not modify
+`BlipJournalCore/`, `SettingsView.swift`, or files outside the three stubs, a new
+`Settings/ExportModel.swift`, `Settings/DESIGN.md`, and `BlipJournalTests/Settings/`.
 
 ## Goal
 
@@ -33,12 +33,12 @@ against the iPhone 17 Pro simulator, zero app-target warnings.
 }
 ```
 
-- Files go in `Application Support/OpenBlip/exports/`, a subdirectory of the protected
+- Files go in `Application Support/BlipJournal/exports/`, a subdirectory of the protected
   store directory so they inherit the `complete` protection class. Create it with the
   same attributes as `Store.open` uses. `cleanUp` deletes the directory's contents; call
   it when the share sheet dismisses and on `ExportView` disappear.
-- File names: `OpenBlip-<survey name slug>-<yyyyMMdd>-wide.csv`, `...-long.csv`,
-  `OpenBlip-backup-<yyyyMMdd>.json`. Slug: lowercase, non-alphanumerics to `-`, max 40
+- File names: `BlipJournal-<survey name slug>-<yyyyMMdd>-wide.csv`, `...-long.csv`,
+  `BlipJournal-backup-<yyyyMMdd>.json`. Slug: lowercase, non-alphanumerics to `-`, max 40
   characters.
 - CSV files are UTF-8 **with** a byte-order mark, so Excel opens them correctly. JSON has
   no BOM. Document this in `DESIGN.md`; the core exporter deliberately leaves the BOM
@@ -73,15 +73,15 @@ then `appModel.refresh()`, then pop to the Settings root and show a short banner
 
 ## AboutView
 
-App name, version and build from the bundle, one paragraph on what OpenBlip is (no
+App name, version and build from the bundle, one paragraph on what Blip Journal is (no
 medical claims), the licence (MIT, with the full text in a disclosure group), a link to
-`https://github.com/BasilJ-S/OpenBlip`, and a line stating that the app makes no network
+`https://github.com/BasilJ-S/BlipJournal`, and a line stating that the app makes no network
 requests and collects no data. Opening the link hands off to Safari; that is the user's
 action, not a network call by the app.
 
 ## Tests
 
-`OpenBlipTests/Settings/ExportModelTests.swift` on `Store.inMemory()` with a temporary
+`BlipJournalTests/Settings/ExportModelTests.swift` on `Store.inMemory()` with a temporary
 directory injected in place of Application Support (make the base directory an `init`
 parameter with the real one as default):
 
