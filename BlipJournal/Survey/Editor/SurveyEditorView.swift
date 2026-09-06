@@ -37,11 +37,18 @@ struct SurveyEditorView: View {
                 }
                 .environment(\.editMode, $editMode)
                 .navigationTitle(survey.name)
-                .toolbar { EditButton() }
+                .toolbar {
+                    ToolbarItem(placement: .topBarTrailing) {
+                        Button(editMode == .active ? "Done" : "Reorder") {
+                            editMode = editMode == .active ? .inactive : .active
+                        }
+                        .accessibilityLabel(editMode == .active ? "Finish reordering questions" : "Reorder questions")
+                    }
+                }
                 .sheet(isPresented: $showingNewQuestion) { NewQuestionSheet(surveyId: survey.id) }
             } else { ContentUnavailableView("Survey unavailable", systemImage: "questionmark") }
         }
-        .onAppear { name = survey?.name ?? "" }
+        .task(id: appModel.revision) { name = survey?.name ?? "" }
         .alert("Could not save survey", isPresented: Binding(
             get: { errorMessage != nil }, set: { if !$0 { errorMessage = nil } })) {
             Button("OK", role: .cancel) {}

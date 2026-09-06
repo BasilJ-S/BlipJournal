@@ -11,6 +11,7 @@ struct QuestionEditorView: View {
     @State private var customOptions = false
     @State private var editMode = EditMode.inactive
     @State private var errorMessage: String?
+    @State private var savedMessage = false
     private var question: Question? { (try? appModel.store.survey(surveyId))?.flatMap { s in s.questions.first { $0.id == questionId } } }
 
     var body: some View {
@@ -21,6 +22,7 @@ struct QuestionEditorView: View {
                 if let question {
                     Text("Kind: \(question.kind.rawValue)").foregroundStyle(.secondary)
                     Text("The kind cannot change because answers depend on it.").font(.footnote).foregroundStyle(.secondary)
+                    Text("Question fields save when you tap Save question. Option changes are saved immediately.").font(.footnote).foregroundStyle(.secondary)
                     if question.kind == .scale { ScaleFields(scale: $scale) }
                     if question.kind.usesOptions {
                         Toggle("Allow adding options while answering", isOn: $customOptions)
@@ -43,15 +45,43 @@ struct QuestionEditorView: View {
         }
         .environment(\.editMode, $editMode)
         .navigationTitle("Edit question")
-        .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Save") { save() } }; ToolbarItem(placement: .topBarLeading) { EditButton() } }
-        .onAppear { load() }
+        .toolbar {
+            ToolbarItem(placement: .confirmationAction) {
+                Button("Save question") { save() }
+                    .accessibilityLabel("Save question")
+            }
+            ToolbarItem(placement: .topBarLeading) {
+                Button(editMode == .active ? "Done" : "Reorder") {
+                    editMode = editMode == .active ? .inactive : .active
+                }
+                .accessibilityLabel(editMode == .active ? "Finish reordering options" : "Reorder options")
+            }
+        }
+        .task(id: appModel.revision) { load() }
+        .overlay(alignment: .bottom) {
+            if savedMessage {
+                Text("Question saved")
+                    .font(.footnote.weight(.semibold))
+                    .foregroundStyle(Color(red: 0.122, green: 0.102, blue: 0.090))
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 10)
+                    .background(Color(red: 0.965, green: 0.937, blue: 0.898), in: Capsule())
+                    .shadow(radius: 4, y: 2)
+                    .padding(.bottom, 12)
+                    .accessibilityAddTraits(.isHeader)
+            }
+        }
         .alert("Could not save question", isPresented: Binding(get: { errorMessage != nil }, set: { if !$0 { errorMessage = nil } })) { Button("OK", role: .cancel) {} } message: { Text(errorMessage ?? "") }
     }
 
     private func load() { guard let q = question else { return }; label = q.label; required = q.isRequired; scale = q.scale ?? ScaleConfig(); customOptions = q.allowsCustomOptions }
     private func save() {
         guard var q = question else { return }; q.label = label; q.isRequired = required; q.scale = q.kind == .scale ? scale : nil; q.allowsCustomOptions = q.kind.usesOptions && customOptions
-        do { try EditorModel(store: appModel.store, notifications: appModel.notifications).updateQuestion(q); try appModel.refresh() } catch { errorMessage = String(describing: error) }
+        do {
+            try EditorModel(store: appModel.store, notifications: appModel.notifications).updateQuestion(q)
+            try appModel.refresh()
+            savedMessage = true
+        } catch { errorMessage = String(describing: error) }
     }
     private func addOption() { do { _ = try EditorModel(store: appModel.store, notifications: appModel.notifications).addOption(questionId: questionId, label: "New option"); try appModel.refresh() } catch { errorMessage = String(describing: error) } }
     private func rename(_ option: ChoiceOption, value: String) { var updated = option; updated.label = value; do { try EditorModel(store: appModel.store, notifications: appModel.notifications).updateOption(updated); try appModel.refresh() } catch { errorMessage = String(describing: error) } }
