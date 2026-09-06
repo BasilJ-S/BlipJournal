@@ -1,0 +1,2 @@
+import SwiftUI
+struct TextInput: View { let value: String; let onChange: (String) -> Void; let onCommit: () -> Void; var body: some View { VStack(alignment: .trailing) { TextField("Quick note", text: Binding(get: { value }, set: onChange), axis: .vertical).lineLimit(2...6).textFieldStyle(.roundedBorder).onSubmit(onCommit).accessibilityLabel("Quick note"); Text("\(value.count) / 500").font(.caption).accessibilityLabel("\(value.count) of 500 characters") } } }

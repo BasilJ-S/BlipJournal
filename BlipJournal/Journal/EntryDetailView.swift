@@ -14,6 +14,7 @@ struct EntryDetailView: View {
     @State private var isDeleting = false
     @State private var hasLoadedAnswers = false
     @State private var errorMessage: String?
+    @State private var runnerEntry: Entry?
 
     private var survey: Survey? { appModel.surveysById[entry.surveyId] }
 
@@ -62,6 +63,11 @@ struct EntryDetailView: View {
             }
 
             Section {
+                if entry.completedAt == nil {
+                    Button("Continue entry") { runnerEntry = entry }
+                        .frame(maxWidth: .infinity, minHeight: 44)
+                        .accessibilityLabel("Continue entry")
+                }
                 Button("Delete entry", role: .destructive) {
                     confirmingDelete = true
                 }
@@ -76,6 +82,9 @@ struct EntryDetailView: View {
         .navigationTitle("Entry")
         .navigationBarTitleDisplayMode(.inline)
         .task(id: appModel.revision) { await load() }
+        .sheet(item: $runnerEntry, onDismiss: { try? appModel.refresh() }) { entry in
+            NavigationStack { SurveyRunnerView(entry: entry) { runnerEntry = nil } }
+        }
         .confirmationDialog(
             deleteMessage, isPresented: $confirmingDelete, titleVisibility: .visible
         ) {

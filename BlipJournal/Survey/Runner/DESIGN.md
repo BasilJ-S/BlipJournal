@@ -1,5 +1,9 @@
 # Survey/Runner
 
-SurveyRunnerView is the A3 placeholder. Its initializer takes survey, optional
-prompt ID, and onFinish. Done calls onFinish; A1 reloads on sheet dismissal.
-It writes no answers yet; A3 must autosave because relocking destroys the sheet.
+The runner presents active questions in one scrollable screen. `EntryDraft` creates or
+resumes the entry immediately, preserves answer IDs and first timestamps, and writes
+through one ordered queue. Text edits debounce for 300ms and flush on close, completion,
+and backgrounding. Custom options are inserted before reloading the survey so their
+creation order remains recoverable. Known limitations: no conditional questions, no
+undo, no completed-entry editing, and a brief text-loss window before debounce or forced
+termination; quick notes are limited to 500 Swift characters.
