@@ -2,10 +2,12 @@ import BlipJournalCore
 import SwiftUI
 
 struct SurveyRunnerView: View {
+    private enum ScrollTarget: Hashable { case text(String) }
     @Environment(AppModel.self) private var appModel
     @Environment(\.scenePhase) private var scenePhase
     private let survey: Survey?; private let entry: Entry?; private let promptId: String?; private let onFinish: () -> Void
     @State private var draft: EntryDraft?; @State private var errorMessage: String?; @State private var addQuestion: Question?; @State private var option = ""; @State private var leaving = false
+    @State private var focusedTextQuestionID: String?
     init(survey: Survey, promptId: String?, onFinish: @escaping () -> Void) { self.survey = survey; entry = nil; self.promptId = promptId; self.onFinish = onFinish }
     init(entry: Entry, onFinish: @escaping () -> Void) { survey = nil; self.entry = entry; promptId = nil; self.onFinish = onFinish }
     var body: some View {
@@ -19,7 +21,26 @@ struct SurveyRunnerView: View {
     }
     @ViewBuilder private func content(_ draft: EntryDraft) -> some View {
         VStack(spacing: 0) {
-            ScrollView { LazyVStack(alignment: .leading, spacing: 16) { ForEach(draft.survey.activeQuestions) { q in card(q, draft) } }.padding() }
+            ScrollViewReader { proxy in
+                ScrollView {
+                    // Keep measured card heights and editor identity stable while typing.
+                    VStack(alignment: .leading, spacing: 16) {
+                        ForEach(draft.survey.activeQuestions) { q in card(q, draft) }
+                    }.padding()
+                }
+                .scrollDismissesKeyboard(.interactively)
+                .onChange(of: focusedTextQuestionID) { _, questionID in
+                    if let questionID { proxy.scrollTo(ScrollTarget.text(questionID), anchor: .center) }
+                }
+                .onGeometryChange(for: CGFloat.self) { geometry in
+                    geometry.size.height
+                } action: { oldHeight, newHeight in
+                    // Focus arrives before the keyboard finishes reducing the viewport.
+                    if newHeight < oldHeight, let questionID = focusedTextQuestionID {
+                        proxy.scrollTo(ScrollTarget.text(questionID), anchor: .center)
+                    }
+                }
+            }
             Divider(); VStack(alignment: .leading) { if !draft.canComplete { Text("Still needed: \(draft.missingRequired.map(\.label).joined(separator: ", "))").font(.caption).foregroundStyle(.secondary) }; Button("Done") { Task { await finish(draft, complete: true) } }.buttonStyle(.borderedProminent).frame(maxWidth: .infinity, minHeight: 44).disabled(!draft.canComplete || leaving) }.padding()
         }.toolbar { ToolbarItem(placement: .cancellationAction) { Button("Close") { Task { await finish(draft, complete: false) } }.disabled(leaving) } }
     }
@@ -29,7 +50,10 @@ struct SurveyRunnerView: View {
         case .spectrum: if let spectrum = q.spectrum { SpectrumInput(spectrum: spectrum, value: draft.values[q.id].flatMap { if case .spectrum(let n) = $0 { n } else { nil } }, onChange: { value in Task { do { try await draft.set(.spectrum(value), for: q.id) } catch { errorMessage = String(describing: error) } } }) }
         case .singleChoice, .multiChoice: ChipGrid(question: q, value: draft.values[q.id], onChange: { value in Task { do { try await draft.set(value, for: q.id) } catch { errorMessage = String(describing: error) } } }, onAdd: { addQuestion = q })
         case .yesNo: YesNoInput(value: draft.values[q.id].flatMap { if case .yesNo(let b) = $0 { b } else { nil } }, onChange: { answer in Task { do { try await draft.set(.yesNo(answer), for: q.id) } catch { errorMessage = String(describing: error) } } })
-        case .text: TextInput(value: draft.values[q.id].flatMap { if case .text(let s) = $0 { s } else { nil } } ?? "", onChange: { draft.setText($0, for: q.id) }, onCommit: { Task { try? await draft.flush() } }) }
+        case .text: TextInput(value: draft.values[q.id].flatMap { if case .text(let s) = $0 { s } else { nil } } ?? "", onChange: { draft.setText($0, for: q.id) }, onCommit: { Task { try? await draft.flush() } }, onFocusChange: { isFocused in
+            if isFocused { focusedTextQuestionID = q.id }
+            else if focusedTextQuestionID == q.id { focusedTextQuestionID = nil }
+        }).id(ScrollTarget.text(q.id)) }
         if draft.hasAnswer(for: q.id) { Button("Clear answer") { Task { do { try await draft.set(nil, for: q.id) } catch { errorMessage = String(describing: error) } } }.frame(minHeight: 44).accessibilityLabel("Clear answer for \(q.label)") }
         }.padding().frame(maxWidth: .infinity, alignment: .leading).background(BlipBrand.sand, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
     }
