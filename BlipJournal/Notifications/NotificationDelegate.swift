@@ -22,32 +22,53 @@ final class NotificationDelegate: NSObject, UNUserNotificationCenterDelegate {
         return pendingPromptIdBeforeAttach
     }
 
+    // MARK: UNUserNotificationCenterDelegate
+    //
+    // Both callbacks take the completion-handler form rather than the shorter `async`
+    // one, and both resume on the main actor before calling it. UIKit runs
+    // main-thread-only work (`-[UIApplication _updateSnapshotAndStateRestorationWithAction:
+    // windowScene:]`, which asserts inside `_performBlockAfterCATransactionCommitSynchronizes:`)
+    // synchronously inside these completion handlers. A `nonisolated async` delegate
+    // method runs on the cooperative pool, and the compiler-synthesized `@objc` thunk
+    // calls the completion handler from that same background thread, so UIKit's
+    // assertion fires as an uncaught Objective-C exception and the app is killed with
+    // SIGABRT — which looked like a tapped notification bouncing straight back to the
+    // Home Screen. Never reintroduce the `async` form.
+
     /// Shows the notification even while the app is in the foreground.
     ///
     /// `nonisolated` because `UNUserNotificationCenter` and `UNNotification` are not
-    /// `Sendable`; the system calls this off the main actor, so it does not touch any
-    /// main-actor state.
+    /// `Sendable`; nothing here touches main-actor state before the hop.
     nonisolated func userNotificationCenter(
-        _ center: UNUserNotificationCenter, willPresent notification: UNNotification
-    ) async -> UNNotificationPresentationOptions {
-        [.banner, .sound]
+        _ center: UNUserNotificationCenter,
+        willPresent notification: UNNotification,
+        withCompletionHandler completionHandler: @escaping @Sendable (UNNotificationPresentationOptions) -> Void
+    ) {
+        Task { @MainActor in
+            completionHandler([.banner, .sound])
+        }
     }
 
     /// Routes the tap: to the live coordinator if one has attached, otherwise stashed
     /// for the coordinator constructed during this cold launch to claim.
     ///
-    /// `nonisolated` for the same reason as `willPresent`; the identifier it extracts is
-    /// `Sendable`, so hopping to the main actor to store it is safe.
+    /// `nonisolated` for the same reason as `willPresent`; the identifier it reads out of
+    /// the non-`Sendable` response is a `String`, so carrying it to the main actor is safe.
     nonisolated func userNotificationCenter(
-        _ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse
-    ) async {
-        guard let promptId = response.notification.request.content.userInfo["promptId"] as? String else { return }
-        await MainActor.run {
-            if let coordinator {
-                coordinator.pendingRoute = promptId
-            } else {
-                pendingPromptIdBeforeAttach = promptId
+        _ center: UNUserNotificationCenter,
+        didReceive response: UNNotificationResponse,
+        withCompletionHandler completionHandler: @escaping @Sendable () -> Void
+    ) {
+        let promptId = response.notification.request.content.userInfo["promptId"] as? String
+        Task { @MainActor in
+            if let promptId {
+                if let coordinator = self.coordinator {
+                    coordinator.pendingRoute = promptId
+                } else {
+                    self.pendingPromptIdBeforeAttach = promptId
+                }
             }
+            completionHandler()
         }
     }
 }
