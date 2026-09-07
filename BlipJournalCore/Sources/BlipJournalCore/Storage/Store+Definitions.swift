@@ -16,10 +16,13 @@ extension Store {
     /// timestamp of every row written.
     @discardableResult
     public func createSurvey(
-        name: String, sampling: SamplingConfig, questions: [Question], now: Date = Date()
+        name: String, sampling: SamplingConfig, questions: [Question],
+        journalSummaryQuestionIds: [String]? = nil, now: Date = Date()
     ) throws -> Survey {
         try dbQueue.write { db in
-            try insertSurvey(db, name: name, sampling: sampling, questions: questions, now: now)
+            try insertSurvey(
+                db, name: name, sampling: sampling, questions: questions,
+                journalSummaryQuestionIds: journalSummaryQuestionIds, now: now)
         }
     }
 
@@ -31,7 +34,11 @@ extension Store {
             }
             try SurveyVersionRow(
                 id: Identifier.make(), surveyId: id, name: name,
-                isArchived: current.isArchived, createdAt: now
+                isArchived: current.isArchived,
+                journalSummaryIsConfigured: current.journalSummaryIsConfigured,
+                primarySummaryQuestionId: current.primarySummaryQuestionId,
+                secondarySummaryQuestionId: current.secondarySummaryQuestionId,
+                createdAt: now
             ).insert(db)
         }
     }
@@ -45,7 +52,11 @@ extension Store {
             }
             try SurveyVersionRow(
                 id: Identifier.make(), surveyId: id, name: current.name,
-                isArchived: true, createdAt: now
+                isArchived: true,
+                journalSummaryIsConfigured: current.journalSummaryIsConfigured,
+                primarySummaryQuestionId: current.primarySummaryQuestionId,
+                secondarySummaryQuestionId: current.secondarySummaryQuestionId,
+                createdAt: now
             ).insert(db)
         }
     }
@@ -58,7 +69,11 @@ extension Store {
             }
             try SurveyVersionRow(
                 id: Identifier.make(), surveyId: id, name: current.name,
-                isArchived: false, createdAt: now
+                isArchived: false,
+                journalSummaryIsConfigured: current.journalSummaryIsConfigured,
+                primarySummaryQuestionId: current.primarySummaryQuestionId,
+                secondarySummaryQuestionId: current.secondarySummaryQuestionId,
+                createdAt: now
             ).insert(db)
         }
     }
@@ -68,6 +83,34 @@ extension Store {
         try dbQueue.write { db in
             guard try SurveyRow.exists(db, key: surveyId) else { throw StoreError.notFound }
             try makeSamplingRow(surveyId: surveyId, config, now: now).insert(db)
+        }
+    }
+
+    /// Chooses up to two active questions to summarize each entry in the Journal.
+    /// The first identifier is the primary response and appears first.
+    public func updateJournalSummaryQuestions(
+        surveyId: String, questionIds: [String], now: Date = Date()
+    ) throws {
+        guard questionIds.count <= 2, Set(questionIds).count == questionIds.count else {
+            throw StoreError.invalidJournalSummary
+        }
+        try dbQueue.write { db in
+            guard let current = try currentSurveyVersion(db, surveyId: surveyId) else {
+                throw StoreError.notFound
+            }
+            let rows = try DefinitionRows.load(db, surveyId: surveyId)
+            let activeIds = Set(rows.questions[surveyId, default: []]
+                .compactMap(rows.question(for:)).filter { !$0.isArchived }.map(\.id))
+            guard questionIds.allSatisfy(activeIds.contains) else {
+                throw StoreError.invalidJournalSummary
+            }
+            try SurveyVersionRow(
+                id: Identifier.make(), surveyId: surveyId, name: current.name,
+                isArchived: current.isArchived, journalSummaryIsConfigured: true,
+                primarySummaryQuestionId: questionIds.first,
+                secondarySummaryQuestionId: questionIds.dropFirst().first,
+                createdAt: now
+            ).insert(db)
         }
     }
 
@@ -217,12 +260,24 @@ extension Store {
 
     /// The body of `createSurvey`, inside an open transaction.
     func insertSurvey(
-        _ db: Database, name: String, sampling: SamplingConfig, questions: [Question], now: Date
+        _ db: Database, name: String, sampling: SamplingConfig, questions: [Question],
+        journalSummaryQuestionIds: [String]? = nil, now: Date
     ) throws -> Survey {
         let surveyId = Identifier.make()
+        let summaryIds = journalSummaryQuestionIds ?? questions
+            .filter { !$0.isArchived && $0.kind == .scale }
+            .sorted { ($0.position, $0.id) < ($1.position, $1.id) }
+            .prefix(1).map(\.id)
+        guard summaryIds.count <= 2, Set(summaryIds).count == summaryIds.count,
+              summaryIds.allSatisfy({ id in questions.contains { $0.id == id && !$0.isArchived } })
+        else { throw StoreError.invalidJournalSummary }
         try SurveyRow(id: surveyId, createdAt: now).insert(db)
         try SurveyVersionRow(
-            id: Identifier.make(), surveyId: surveyId, name: name, isArchived: false, createdAt: now
+            id: Identifier.make(), surveyId: surveyId, name: name, isArchived: false,
+            journalSummaryIsConfigured: true,
+            primarySummaryQuestionId: summaryIds.first,
+            secondarySummaryQuestionId: summaryIds.dropFirst().first,
+            createdAt: now
         ).insert(db)
         try makeSamplingRow(surveyId: surveyId, sampling, now: now).insert(db)
         try Self.notificationPreviewRow(surveyId: surveyId, .default, now: now).insert(db)

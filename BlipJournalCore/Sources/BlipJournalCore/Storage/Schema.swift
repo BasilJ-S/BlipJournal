@@ -22,6 +22,7 @@ enum Schema {
         var migrator = DatabaseMigrator()
         migrator.registerMigration("v1", migrate: migrateV1)
         migrator.registerMigration("v2", migrate: migrateV2)
+        migrator.registerMigration("v3", migrate: migrateV3)
         return migrator
     }
 
@@ -142,6 +143,15 @@ enum Schema {
             t.column("mode", .text).notNull()
             t.column("message", .text)
             t.column("createdAt", .datetime).notNull()
+        }
+    }
+
+    /// Schema version 3: Journal summary choices travel with each survey version.
+    private static func migrateV3(_ db: Database) throws {
+        try db.alter(table: "surveyVersion") { t in
+            t.add(column: "journalSummaryIsConfigured", .boolean).notNull().defaults(to: false)
+            t.add(column: "primarySummaryQuestionId", .text)
+            t.add(column: "secondarySummaryQuestionId", .text)
         }
     }
 }

@@ -56,6 +56,8 @@ or Apple reads says `BlipJournal`, one word.
   data in the database rather than merely unlinking it.
 - **Built-in charts.** Mood over time, by hour, by weekday, by activity or impact, and
   compliance rate.
+- **Glanceable Journal.** Pick up to two questions per survey whose answers appear on
+  each Journal row, such as mood and current activity.
 - **App Store compliant.** Privacy manifest, "Data Not Collected" privacy label, no
   medical claims, Apple-provided encryption only.
 
@@ -144,7 +146,7 @@ BlipJournal/        iOS app target. SwiftUI only.
   "add option" chip, yes/no as two buttons, text as a single-line field. Saves on every
   change; "Done" is always visible.
 - **Editor.** Add, rename, reorder, and archive questions and options. Per-survey
-  sampling settings. All edits go through the versioning API.
+  sampling settings and Journal summary choices. All edits go through the versioning API.
 - **Lock.** Face ID with passcode fallback on launch and after returning from background.
 - **Insights.** Swift Charts over the store's query layer.
 

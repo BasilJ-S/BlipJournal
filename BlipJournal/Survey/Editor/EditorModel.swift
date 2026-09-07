@@ -39,8 +39,9 @@ final class EditorModel {
     @discardableResult
     func copySurvey(sourceId: String, name: String, now: Date = Date()) throws -> Survey {
         let source = try survey(sourceId)
+        var copiedIdsBySourceId: [String: String] = [:]
         let questions = source.activeQuestions.enumerated().map { index, question in
-            Question(
+            let copied = Question(
                 kind: question.kind,
                 label: question.label,
                 position: index,
@@ -50,10 +51,15 @@ final class EditorModel {
                 options: question.activeOptions.enumerated().map { optionIndex, option in
                     ChoiceOption(label: option.label, position: optionIndex)
                 })
+            copiedIdsBySourceId[question.id] = copied.id
+            return copied
         }
         var sampling = source.sampling
         sampling.isEnabled = false
-        let copy = try store.createSurvey(name: name, sampling: sampling, questions: questions, now: now)
+        let summaryIds = source.journalSummaryQuestionIds.compactMap { copiedIdsBySourceId[$0] }
+        let copy = try store.createSurvey(
+            name: name, sampling: sampling, questions: questions,
+            journalSummaryQuestionIds: summaryIds, now: now)
         // New surveys always start privately, even when the source used another preview.
         if source.notificationPreview != .default {
             try store.updateNotificationPreview(surveyId: copy.id, .default, now: now)
@@ -64,6 +70,13 @@ final class EditorModel {
     func rename(surveyId: String, to name: String, now: Date = Date()) throws {
         try store.renameSurvey(surveyId, to: name, now: now)
         Task { await notifications.refresh(now: now) }
+    }
+
+    func saveJournalSummary(
+        surveyId: String, questionIds: [String], now: Date = Date()
+    ) throws {
+        try store.updateJournalSummaryQuestions(
+            surveyId: surveyId, questionIds: questionIds, now: now)
     }
 
     func archive(surveyId: String, now: Date = Date()) async throws {

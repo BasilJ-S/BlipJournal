@@ -7,5 +7,5 @@
 /// See docs/PLAN.md at the repo root for the work breakdown.
 public enum CoreSchema {
     /// Bumped by a Storage migration whenever the on-disk schema changes.
-    public static let version = 2
+    public static let version = 3
 }

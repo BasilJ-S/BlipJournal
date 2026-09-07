@@ -199,7 +199,7 @@ struct JournalView: View {
     #endif
 }
 
-/// One Journal row: time, survey name, prompted or manual, first scale value, draft.
+/// One Journal row: time, chosen answer summaries, survey name, provenance, and draft.
 ///
 /// Answers are loaded when the row appears; the list is lazy, so only visible rows pay.
 private struct EntryRow: View {
@@ -213,8 +213,8 @@ private struct EntryRow: View {
             HStack(alignment: .firstTextBaseline) {
                 Text(entry.startedAt, style: .time)
                     .font(BlipFont.qualifier(17))
-                if let scaleSummary = summary.value {
-                    Text(scaleSummary)
+                if let answerSummary = summary.value {
+                    Text(answerSummary)
                         .font(BlipFont.qualifier(17))
                         .foregroundStyle(BlipBrand.muted)
                 }
@@ -246,26 +246,16 @@ private struct EntryRow: View {
     private func loadSummary() async {
         await summary.load {
             guard let survey else { return nil }
-            return await Self.scaleSummary(store: appModel.store, entryId: entry.id, survey: survey)
+            return await Self.answerSummary(store: appModel.store, entryId: entry.id, survey: survey)
         }
     }
 
-    /// The first scale question, in position order, that this entry answered.
-    private nonisolated static func scaleSummary(
+    /// The answered Journal-summary questions, kept in the person's chosen order.
+    private nonisolated static func answerSummary(
         store: Store, entryId: String, survey: Survey
     ) async -> String? {
         guard let answers = try? store.answers(entryId: entryId) else { return nil }
-        let scaleQuestions = survey.questions
-            .filter { $0.kind == .scale }
-            .sorted { ($0.position, $0.id) < ($1.position, $1.id) }
-        for question in scaleQuestions {
-            if let answer = answers.first(where: { $0.questionId == question.id }),
-               case .scale(let value) = answer.value {
-                guard let scale = question.scale else { return "\(value)" }
-                return "\(value) of \(scale.max)"
-            }
-        }
-        return nil
+        return JournalRowSummary.text(answers: answers, survey: survey)
     }
 }
 

@@ -13,7 +13,8 @@ no persistence.
 Survey ──< Question ──< ChoiceOption          definitions, insert-only upstream
   │          └─ ScaleConfig?                  scale questions only
   ├─ SamplingConfig                           this survey's own schedule
-  └─ NotificationPreview                      what a prompt notification shows
+  ├─ NotificationPreview                      what a prompt notification shows
+  └─ journalSummaryQuestionIds                up to two Journal-row answers, in order
 
 Prompt      one scheduled ping: surveyId, day, scheduledAt, expiresAt, status
 Entry ──< Answer ─ AnswerValue                one response and its answers

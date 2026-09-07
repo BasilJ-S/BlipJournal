@@ -21,6 +21,9 @@ struct SurveyEditorView: View {
                             .onSubmit { rename() }.accessibilityLabel("Survey name")
                         if !survey.sampling.isEnabled { Label("Notifications paused", systemImage: "bell.slash") }
                         NavigationLink("Sampling") { SamplingSettingsView(surveyId: survey.id) }
+                        NavigationLink("Journal summary") {
+                            JournalSummarySettingsView(surveyId: survey.id)
+                        }
                         NavigationLink("Archived in this survey") { ArchivedView(scope: .survey(survey.id)) }
                     }
                     Section("Questions") {
