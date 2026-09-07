@@ -31,7 +31,7 @@ struct RootView: View {
             set: { isPresented in
                 if !isPresented { appModel.notifications.pendingRoute = nil }
             }
-        )) {
+        ), onDismiss: { try? appModel.refresh() }) {
             if let promptId = appModel.notifications.pendingRoute {
                 PromptRouteView(promptId: promptId) {
                     appModel.notifications.pendingRoute = nil
