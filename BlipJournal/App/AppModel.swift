@@ -18,6 +18,9 @@ final class AppModel {
     private(set) var surveysById: [String: Survey] = [:]
     /// Every entry of every survey, newest first.
     private(set) var entries: [Entry] = []
+    /// Every prompt still pending, ordered by `scheduledAt`. Used to tell whether a
+    /// prompt's window is currently open, for the Journal's "survey open" banner.
+    private(set) var pendingPrompts: [Prompt] = []
     /// Invalidates answer-derived UI after writes that leave the entry itself unchanged.
     private(set) var revision: UInt64 = 0
     /// True from init until `unlock()`, and again whenever the lock policy says so.
@@ -65,6 +68,7 @@ final class AppModel {
         surveysById = Dictionary(all.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
         surveys = all.filter { !$0.isArchived }
         entries = try store.entries(surveyId: nil, from: nil, to: nil).reversed()
+        pendingPrompts = try store.prompts(status: .pending)
         revision &+= 1
     }
 
@@ -76,13 +80,20 @@ final class AppModel {
         backgroundedAt = now
     }
 
-    /// Applies the lock policy against the last background time, then asks the
-    /// notification coordinator to replan.
+    /// The earliest pending prompt whose window is currently open, if any.
+    func openPrompt(at now: Date) -> Prompt? {
+        pendingPrompts.first { $0.scheduledAt <= now && !$0.isExpired(at: now) }
+    }
+
+    /// Applies the lock policy against the last background time, reloads state so a
+    /// prompt whose window opened while backgrounded is reflected immediately, then asks
+    /// the notification coordinator to replan.
     func willEnterForeground(at now: Date) {
         if lockPolicy.shouldLock(backgroundedAt: backgroundedAt, now: now) {
             isLocked = true
         }
         backgroundedAt = nil
+        try? refresh()
         let notifications = notifications
         Task { await notifications.refresh(now: now) }
     }
