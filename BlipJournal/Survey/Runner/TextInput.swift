@@ -40,6 +40,18 @@ struct TextInput: View {
                 .focused($isFocused)
                 .accessibilityLabel("Quick note")
             }
+            // TextEditor sits inside the runner's scrolling LazyVStack. On the
+            // simulator, its first tap can be consumed by the surrounding scroll
+            // hierarchy without making the underlying text view first responder.
+            // Recognize that same tap alongside the editor and request focus
+            // explicitly. Once focused, leave subsequent taps to TextEditor so
+            // cursor placement and selection keep their native behaviour.
+            .contentShape(Rectangle())
+            .simultaneousGesture(
+                TapGesture().onEnded {
+                    if !isFocused { isFocused = true }
+                }
+            )
             .padding(4)
             .background(BlipBrand.paper, in: RoundedRectangle(cornerRadius: 8))
             .overlay {
