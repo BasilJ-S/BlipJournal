@@ -8,6 +8,9 @@ struct ByOptionChart: View {
     @State private var selectedOption: AnswerDistribution?
 
     var body: some View {
+        // Read once: every access recomputes the bounded snapshot and the whole
+        // distribution pass, and this body runs on every selection change.
+        let distributions = model.optionDistributions
         VStack(alignment: .leading, spacing: 16) {
             Text(model.moodQuestion?.label ?? "Answer distribution")
                 .font(.headline)
@@ -22,19 +25,23 @@ struct ByOptionChart: View {
             } else if let question = model.choiceQuestion {
                 Text(question.label).font(.subheadline)
             }
-            Text("The spread of your answers in entries where each option was selected. Tap an option to compare and explore entries.")
-                .font(.subheadline).foregroundStyle(.secondary)
-            if model.choiceQuestion?.kind == .multiChoice {
-                Text("An entry can appear under more than one option.")
-                    .font(.caption).foregroundStyle(.secondary)
-            }
+            // The instructions describe the rows, so they follow the checks that
+            // decide whether there are any.
             if model.choiceQuestions.isEmpty {
                 Text("No choice question in this survey").foregroundStyle(.secondary)
-            } else if model.optionDistributions.allSatisfy({ $0.count == 0 }) {
-                Text("No entries answering both questions in this range").foregroundStyle(.secondary)
+            } else if distributions.isEmpty {
+                Text("This question has no options to compare").foregroundStyle(.secondary)
+            } else if distributions.allSatisfy({ $0.count == 0 }) {
+                Text("No entry in this range selected an option").foregroundStyle(.secondary)
             } else if let axis = model.moodAxis {
+                Text("The spread of your answers in entries where each option was selected. Tap an option to compare and explore entries.")
+                    .font(.subheadline).foregroundStyle(.secondary)
+                if model.choiceQuestion?.kind == .multiChoice {
+                    Text("An entry can appear under more than one option.")
+                        .font(.caption).foregroundStyle(.secondary)
+                }
                 DistributionKey()
-                ForEach(model.optionDistributions) { distribution in
+                ForEach(distributions) { distribution in
                     Button {
                         selectedOption = distribution
                     } label: {
@@ -200,8 +207,7 @@ private struct OptionComparisonView: View {
                 }
             }
         }
-        .navigationTitle("Compare answers")
-        .navigationBarTitleDisplayMode(.inline)
+        .blipScreen("Compare answers", titleStyle: .inline)
         .toolbar {
             ToolbarItem(placement: .confirmationAction) {
                 Button("Done") { dismiss() }.accessibilityLabel("Close comparison")

@@ -220,7 +220,6 @@ public enum Analytics {
     }
 }
 
-
 extension Analytics {
     /// Distributions use the same completed-entry and duplicate-answer rules as the
     /// series. Multi-choice entries contribute once to each selected, defined option.

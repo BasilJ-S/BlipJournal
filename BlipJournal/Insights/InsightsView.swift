@@ -75,12 +75,16 @@ private struct InsightsBody: View {
 
             chartSection(title: sectionTitle("Over time"), emptyReason: moodEmptyReason) {
                 if let axis = model.moodAxis {
-                    Text("Line: average of your last 7 entries")
-                        .font(.caption).foregroundStyle(.secondary)
-                    MoodOverTimeChart(
-                        points: model.series, rolling: model.rolling, domain: axis.domain,
-                        minLabel: axis.minLabel, maxLabel: axis.maxLabel,
-                        accessibilitySummary: model.seriesAccessibilitySummary)
+                    // One row, so `blipCardRow` draws the caption and the chart as a
+                    // single card like every other chart section.
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Line: rolling average of up to 7 entries")
+                            .font(.caption).foregroundStyle(.secondary)
+                        MoodOverTimeChart(
+                            points: model.series, rolling: model.rolling, domain: axis.domain,
+                            minLabel: axis.minLabel, maxLabel: axis.maxLabel,
+                            accessibilitySummary: model.seriesAccessibilitySummary)
+                    }
                 }
             }
 
