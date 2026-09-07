@@ -9,6 +9,8 @@ struct NotificationSettingsView: View {
 
     @State private var isRequesting = false
     @State private var isRefreshing = false
+    @State private var isRescheduling = false
+    @State private var rescheduleMessage: String?
     @State private var upcoming: [UpcomingPrompt] = []
 
     private struct UpcomingPrompt: Identifiable {
@@ -98,8 +100,36 @@ struct NotificationSettingsView: View {
                     Text("Refresh schedule")
                 }
             }
-            .disabled(isRefreshing)
+            .disabled(isRefreshing || isRescheduling)
             .accessibilityLabel("Refresh schedule")
+
+            Text("Refresh keeps existing prompt times, fills missing days, and restores scheduled notifications. "
+                + "If today has no prompts left, it can add more within your daily limit and time window.")
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+
+            Button {
+                Task { await reschedule() }
+            } label: {
+                if isRescheduling {
+                    ProgressView()
+                } else {
+                    Text("Reschedule")
+                }
+            }
+            .disabled(isRefreshing || isRescheduling)
+            .accessibilityLabel("Reschedule all future prompts")
+
+            Text("Choose new random times for all future prompts. Past prompts and answers stay saved. "
+                + "Daily limits, time windows, and minimum gaps still apply.")
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+
+            if let rescheduleMessage {
+                Text(rescheduleMessage)
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+            }
         }
     }
 
@@ -113,11 +143,24 @@ struct NotificationSettingsView: View {
     }
 
     private func refreshSchedule() async {
-        guard !isRefreshing else { return }
+        guard !isRefreshing, !isRescheduling else { return }
         isRefreshing = true
+        rescheduleMessage = nil
         defer { isRefreshing = false }
         await appModel.notifications.refresh(now: Date())
         await loadUpcoming()
+    }
+
+    private func reschedule() async {
+        guard !isRefreshing, !isRescheduling else { return }
+        isRescheduling = true
+        rescheduleMessage = nil
+        defer { isRescheduling = false }
+        let succeeded = await appModel.notifications.reschedule(now: Date())
+        await loadUpcoming()
+        rescheduleMessage = succeeded
+            ? "Schedule reset. New times follow your survey settings."
+            : "Couldn’t finish rescheduling. Check notification permission and try Refresh schedule."
     }
 
     private func loadUpcoming() async {

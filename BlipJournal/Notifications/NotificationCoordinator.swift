@@ -12,6 +12,8 @@ protocol NotificationCoordinating: AnyObject {
     func requestAuthorization() async -> Bool
     /// Plan upcoming prompts, persist them, and reconcile the notification centre.
     func refresh(now: Date) async
+    /// Replace future pending prompts for every survey with a fresh random schedule.
+    func reschedule(now: Date) async -> Bool
     /// A survey's schedule changed; replan its prompts.
     func scheduleChanged(surveyId: String, now: Date) async
     /// Prompts were destroyed by a survey hard delete or `eraseEverything`; drop their requests.
@@ -30,6 +32,7 @@ final class NoopNotificationCoordinator: NotificationCoordinating {
 
     func requestAuthorization() async -> Bool { false }
     func refresh(now: Date) async {}
+    func reschedule(now: Date) async -> Bool { false }
     func scheduleChanged(surveyId: String, now: Date) async {}
     func promptsDestroyed(now: Date) async {}
 }
@@ -90,6 +93,14 @@ final class NotificationCoordinator: NotificationCoordinating {
     }
 
     func refresh(now: Date) async {
+        _ = await refresh(now: now, replacingFuture: false)
+    }
+
+    func reschedule(now: Date) async -> Bool {
+        await refresh(now: now, replacingFuture: true)
+    }
+
+    private func refresh(now: Date, replacingFuture: Bool) async -> Bool {
         await waitForRefreshTurn()
         defer { finishRefreshTurn() }
 
@@ -99,18 +110,24 @@ final class NotificationCoordinator: NotificationCoordinating {
         authorizationStatus = await client.authorizationStatus()
 
         do {
+            if replacingFuture {
+                for survey in try store.surveys(includeArchived: true) {
+                    try store.deleteFuturePendingPrompts(surveyId: survey.id, after: now)
+                }
+            }
             try planAndPersist(now: now)
         } catch {
-            return
+            return false
         }
-        guard myGeneration == generation else { return }
-        guard authorizationStatus == .authorized || authorizationStatus == .provisional else { return }
+        guard myGeneration == generation else { return false }
+        guard authorizationStatus == .authorized || authorizationStatus == .provisional else { return false }
 
         do {
             try await reconcile(now: now, generation: myGeneration)
+            return true
         } catch {
-            // A store read/write failure here leaves the notification centre as it was;
-            // the next refresh retries from scratch.
+            // The next refresh retries from the persisted schedule.
+            return false
         }
     }
 
@@ -207,7 +224,7 @@ final class NotificationCoordinator: NotificationCoordinating {
             let content = survey.notificationPreview.content(surveyName: survey.name)
             if currentIds.contains(prompt.id), currentContent[prompt.id] == content { continue }
             let spec = Self.makeSpec(prompt: prompt, content: content, calendar: calendar)
-            try? await client.add(spec)
+            try await client.add(spec)
         }
         guard myGeneration == generation else { return }
 

@@ -37,6 +37,52 @@ struct NotificationCoordinatorTests {
 
     // MARK: Refresh
 
+    @Test func rescheduleReplacesFutureRequestsForAllSurveysAndKeepsHistory() async throws {
+        let store = try Store.inMemory()
+        let a = try makeSurvey(store: store, name: "A", now: now)
+        let b = try makeSurvey(store: store, name: "B", now: now)
+        let first = Prompt(
+            surveyId: a.id, day: DayKey.string(for: now, calendar: toronto),
+            scheduledAt: now.addingTimeInterval(-3600), expiresAt: now.addingTimeInterval(-1800),
+            status: .answered)
+        try store.insertPrompts([first])
+        let client = FakeNotificationCenterClient()
+        client.authorizationStatusToReturn = .authorized
+        let coordinator = makeCoordinator(store: store, client: client)
+        await coordinator.refresh(now: now)
+        let oldIds = await client.pendingRequestIdentifiers()
+        #expect(!oldIds.isEmpty)
+
+        #expect(await coordinator.reschedule(now: now))
+
+        let all = try store.prompts(status: nil)
+        #expect(all.first { $0.id == first.id } == first)
+        let future = all.filter { $0.status == .pending && $0.scheduledAt > now }
+        #expect(Set(future.map(\.surveyId)) == [a.id, b.id])
+        let newIds = Set(future.map(\.id))
+        #expect(newIds.isDisjoint(with: oldIds))
+        #expect(await client.pendingRequestIdentifiers() == newIds)
+        let todayA = all.filter { $0.surveyId == a.id && $0.day == first.day }
+        #expect(todayA.count > 1)
+        #expect(todayA.count <= a.sampling.promptsPerDay)
+        #expect(client.requestAuthorizationCallCount == 0)
+
+        // An ordinary refresh preserves the newly drawn schedule.
+        await coordinator.refresh(now: now)
+        #expect(await client.pendingRequestIdentifiers() == newIds)
+    }
+
+    @Test func rescheduleReportsMissingPermission() async throws {
+        let store = try Store.inMemory()
+        try makeSurvey(store: store, now: now)
+        let client = FakeNotificationCenterClient()
+        client.authorizationStatusToReturn = .denied
+        let coordinator = makeCoordinator(store: store, client: client)
+        #expect(await coordinator.reschedule(now: now) == false)
+        #expect(await client.pendingRequestIdentifiers().isEmpty)
+        #expect(client.requestAuthorizationCallCount == 0)
+    }
+
     @Test func refreshSchedulesOnlyPendingFutureActiveEnabledSurveys() async throws {
         let store = try Store.inMemory()
         let survey = try makeSurvey(store: store, now: now)
