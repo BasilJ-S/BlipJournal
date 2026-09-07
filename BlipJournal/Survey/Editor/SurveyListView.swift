@@ -26,7 +26,7 @@ struct SurveyListView: View {
             }
             NavigationLink("Archived") { ArchivedView(scope: .all) }
         }
-        .navigationTitle("Surveys")
+        .blipScreen("Surveys")
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 Menu {
@@ -48,7 +48,8 @@ struct SurveyListView: View {
                     Button(survey.name) {
                         copySource = survey; showingCopySurvey = false; name = ""; showingNewSurvey = true
                     }
-                }.navigationTitle("Copy survey")
+                }
+                .blipScreen("Copy survey")
             }
         }
         .alert("Could not save survey", isPresented: Binding(

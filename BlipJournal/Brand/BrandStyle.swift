@@ -69,6 +69,21 @@ extension View {
         modifier(BlipMonoLabelStyle(size: size, color: color))
     }
 
+    /// The shared treatment for every navigated screen. Lists and Forms bring their
+    /// own opaque system canvas, so hiding it belongs here alongside the title and
+    /// page surface rather than being reimplemented by each feature.
+    func blipScreen(
+        _ title: String,
+        titleDisplayMode: NavigationBarItem.TitleDisplayMode = .automatic
+    ) -> some View {
+        self
+            .navigationTitle(title)
+            .navigationBarTitleDisplayMode(titleDisplayMode)
+            .fontDesign(.rounded)
+            .scrollContentBackground(.hidden)
+            .blipScreenBackground()
+    }
+
     /// A row that reads as a paper card sitting on the sand ground, rather than a
     /// system grouped-list row. No shadow: the spec calls depth-via-shadow a misuse.
     func blipCardRow() -> some View {
@@ -84,20 +99,19 @@ extension View {
     }
 }
 
-/// One-time global chrome: navigation titles in Nunito 800 and tab labels in JetBrains
-/// Mono 500, so the brand's two faces carry into every screen without touching each
-/// view. Call once at launch.
+/// One-time global chrome: reliable rounded navigation titles and tab labels in
+/// JetBrains Mono 500. Call once at launch.
 enum BlipAppearance {
     static func configure() {
         let navigation = UINavigationBarAppearance()
-        navigation.configureWithTransparentBackground()
+        navigation.configureWithOpaqueBackground()
         navigation.backgroundColor = UIColor(BlipBrand.paper)
         navigation.titleTextAttributes = [
-            .font: BlipFont.variableUIFont(BlipFont.nunitoPostScriptName, weight: 800, size: 17),
+            .font: navigationFont(size: 17),
             .foregroundColor: UIColor(BlipBrand.ink)
         ]
         navigation.largeTitleTextAttributes = [
-            .font: BlipFont.variableUIFont(BlipFont.nunitoPostScriptName, weight: 800, size: 34),
+            .font: navigationFont(size: 34),
             .foregroundColor: UIColor(BlipBrand.ink)
         ]
         UINavigationBar.appearance().standardAppearance = navigation
@@ -114,6 +128,15 @@ enum BlipAppearance {
         tabBar.stackedLayoutAppearance = tabItem
         UITabBar.appearance().standardAppearance = tabBar
         UITabBar.appearance().scrollEdgeAppearance = tabBar
+    }
+
+    /// UIKit's large-title renderer does not reliably draw a variable-font descriptor
+    /// at the scroll edge. The rounded system face is the safe native-chrome fallback;
+    /// content headings continue to use Nunito through `BlipFont`.
+    private static func navigationFont(size: CGFloat) -> UIFont {
+        let base = UIFont.systemFont(ofSize: size, weight: .heavy)
+        guard let descriptor = base.fontDescriptor.withDesign(.rounded) else { return base }
+        return UIFont(descriptor: descriptor, size: size)
     }
 }
 

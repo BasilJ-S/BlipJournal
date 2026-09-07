@@ -33,7 +33,7 @@ struct SamplingSettingsView: View {
             }
             Section { Text("A maximum of 60 prompts can be scheduled at once.").font(.footnote).foregroundStyle(.secondary) }
         }
-        .navigationTitle("Sampling")
+        .blipScreen("Sampling")
         .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Save") { save() }.disabled(!errors.isEmpty || (config.isEnabled && ((try? appModel.store.survey(surveyId))?.map { $0.activeQuestions.isEmpty } ?? false)) || !effectivePreview.isValid) } }
         .onAppear { load() }
         .alert("Could not save sampling", isPresented: Binding(get: { errorMessage != nil }, set: { if !$0 { errorMessage = nil } })) { Button("OK", role: .cancel) {} } message: { Text(errorMessage ?? "") }

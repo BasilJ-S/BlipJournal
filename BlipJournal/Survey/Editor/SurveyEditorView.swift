@@ -36,7 +36,7 @@ struct SurveyEditorView: View {
                     }
                 }
                 .environment(\.editMode, $editMode)
-                .navigationTitle(survey.name)
+                .blipScreen(survey.name)
                 .toolbar {
                     ToolbarItem(placement: .topBarTrailing) {
                         Button(editMode == .active ? "Done" : "Reorder") {

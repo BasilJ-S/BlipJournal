@@ -16,10 +16,7 @@ struct InsightsView: View {
                 ProgressView()
             }
         }
-        .navigationTitle("Insights")
-        .fontDesign(.rounded)
-        .scrollContentBackground(.hidden)
-        .blipScreenBackground()
+        .blipScreen("Insights", titleDisplayMode: .large)
         // Keyed by the app's write revision, not just first appearance, so entries
         // and survey changes made elsewhere (Journal, Settings) do not leave a stale
         // snapshot on screen. The existing model is reused, not recreated, so this

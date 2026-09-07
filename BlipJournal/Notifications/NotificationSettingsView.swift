@@ -36,7 +36,7 @@ struct NotificationSettingsView: View {
                 explanationSection
             }
         }
-        .navigationTitle("Notifications")
+        .blipScreen("Notifications")
         .task { await loadUpcoming() }
     }
 

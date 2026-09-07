@@ -79,8 +79,7 @@ struct EntryDetailView: View {
                 }
             }
         }
-        .navigationTitle("Entry")
-        .navigationBarTitleDisplayMode(.inline)
+        .blipScreen("Entry", titleDisplayMode: .inline)
         .task(id: appModel.revision) { await load() }
         .sheet(item: $runnerEntry, onDismiss: { try? appModel.refresh() }) { entry in
             NavigationStack { SurveyRunnerView(entry: entry) { runnerEntry = nil } }

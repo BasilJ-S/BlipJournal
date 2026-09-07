@@ -6,14 +6,11 @@ struct SurveyRunnerView: View {
     @Environment(\.scenePhase) private var scenePhase
     private let survey: Survey?; private let entry: Entry?; private let promptId: String?; private let onFinish: () -> Void
     @State private var draft: EntryDraft?; @State private var errorMessage: String?; @State private var addQuestion: Question?; @State private var option = ""; @State private var leaving = false
-    @FocusState private var focusedField: String?
     init(survey: Survey, promptId: String?, onFinish: @escaping () -> Void) { self.survey = survey; entry = nil; self.promptId = promptId; self.onFinish = onFinish }
     init(entry: Entry, onFinish: @escaping () -> Void) { survey = nil; self.entry = entry; promptId = nil; self.onFinish = onFinish }
     var body: some View {
         Group { if let draft { content(draft) } else { ProgressView("Loading entry") } }
-            .navigationTitle(draft?.survey.name ?? survey?.name ?? "Entry").navigationBarTitleDisplayMode(.inline)
-            .fontDesign(.rounded)
-            .blipScreenBackground()
+            .blipScreen(draft?.survey.name ?? survey?.name ?? "Entry", titleDisplayMode: .inline)
             .interactiveDismissDisabled(draft != nil).task { load() }
             .onChange(of: draft?.lastError) { _, value in if let value { errorMessage = value } }
             .onChange(of: scenePhase) { _, phase in if phase == .background, let draft { Task { try? await draft.flush() } } }
@@ -31,7 +28,7 @@ struct SurveyRunnerView: View {
         case .scale: if let scale = q.scale { ScaleInput(scale: scale, value: draft.values[q.id].flatMap { if case .scale(let n) = $0 { n } else { nil } }, onChange: { number in Task { do { try await draft.set(.scale(number), for: q.id) } catch { errorMessage = String(describing: error) } } }) }
         case .singleChoice, .multiChoice: ChipGrid(question: q, value: draft.values[q.id], onChange: { value in Task { do { try await draft.set(value, for: q.id) } catch { errorMessage = String(describing: error) } } }, onAdd: { addQuestion = q })
         case .yesNo: YesNoInput(value: draft.values[q.id].flatMap { if case .yesNo(let b) = $0 { b } else { nil } }, onChange: { answer in Task { do { try await draft.set(.yesNo(answer), for: q.id) } catch { errorMessage = String(describing: error) } } })
-        case .text: TextInput(value: draft.values[q.id].flatMap { if case .text(let s) = $0 { s } else { nil } } ?? "", onChange: { draft.setText($0, for: q.id) }, onCommit: { Task { try? await draft.flush() } }, fieldId: q.id, focus: $focusedField) }
+        case .text: TextInput(value: draft.values[q.id].flatMap { if case .text(let s) = $0 { s } else { nil } } ?? "", onChange: { draft.setText($0, for: q.id) }, onCommit: { Task { try? await draft.flush() } }) }
         if draft.hasAnswer(for: q.id) { Button("Clear answer") { Task { do { try await draft.set(nil, for: q.id) } catch { errorMessage = String(describing: error) } } }.frame(minHeight: 44).accessibilityLabel("Clear answer for \(q.label)") }
         }.padding().frame(maxWidth: .infinity, alignment: .leading).background(BlipBrand.sand, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
     }

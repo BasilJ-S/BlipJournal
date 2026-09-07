@@ -25,7 +25,8 @@ struct NewQuestionSheet: View {
                     Toggle("Allow adding options while answering", isOn: $customOptions)
                     TextField("Initial options, one per line", text: $options, axis: .vertical)
                 }
-            }.navigationTitle("New question")
+            }
+            .blipScreen("New question")
             .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }; ToolbarItem(placement: .confirmationAction) { Button("Add") { add() }.disabled(label.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || (kind == .scale && !scale.isValid)) } }
             .alert("Could not add question", isPresented: Binding(get: { errorMessage != nil }, set: { if !$0 { errorMessage = nil } })) { Button("OK", role: .cancel) {} } message: { Text(errorMessage ?? "") }
         }

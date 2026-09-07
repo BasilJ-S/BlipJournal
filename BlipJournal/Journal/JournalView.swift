@@ -25,10 +25,7 @@ struct JournalView: View {
         .navigationDestination(for: Entry.self) { entry in
             EntryDetailView(entry: entry)
         }
-        .navigationTitle("Journal")
-        .fontDesign(.rounded)
-        .scrollContentBackground(.hidden)
-        .blipScreenBackground()
+        .blipScreen("Journal", titleDisplayMode: .large)
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
                 newEntryControl

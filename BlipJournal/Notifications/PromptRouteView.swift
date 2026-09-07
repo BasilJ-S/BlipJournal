@@ -40,6 +40,8 @@ struct PromptRouteView: View {
                 deadEndView(title: survey.name, message: message, survey: survey)
             }
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .blipScreenBackground()
     }
 
     @ViewBuilder
