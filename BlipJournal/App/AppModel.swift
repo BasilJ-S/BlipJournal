@@ -72,8 +72,11 @@ final class AppModel {
         revision &+= 1
     }
 
+    /// Reloads state, since a prompt whose window opened while backgrounded (or while
+    /// locked, however long that lasted) needs to be reflected immediately.
     func unlock() {
         isLocked = false
+        try? refresh()
     }
 
     func didEnterBackground(at now: Date) {
@@ -85,15 +88,21 @@ final class AppModel {
         pendingPrompts.first { $0.scheduledAt <= now && !$0.isExpired(at: now) }
     }
 
-    /// Applies the lock policy against the last background time, reloads state so a
-    /// prompt whose window opened while backgrounded is reflected immediately, then asks
-    /// the notification coordinator to replan.
+    /// Applies the lock policy against the last background time, then asks the
+    /// notification coordinator to replan.
+    ///
+    /// Skips the store read when the app is about to lock: `RootView` is torn down for
+    /// `LockView` regardless, so refreshing here would be a synchronous SQLite read on
+    /// every foreground transition — including ones as brief as Control Centre — that
+    /// nothing on screen would use before `unlock()` reloads anyway.
     func willEnterForeground(at now: Date) {
-        if lockPolicy.shouldLock(backgroundedAt: backgroundedAt, now: now) {
-            isLocked = true
-        }
+        let shouldLock = lockPolicy.shouldLock(backgroundedAt: backgroundedAt, now: now)
         backgroundedAt = nil
-        try? refresh()
+        if shouldLock {
+            isLocked = true
+        } else {
+            try? refresh()
+        }
         let notifications = notifications
         Task { await notifications.refresh(now: now) }
     }

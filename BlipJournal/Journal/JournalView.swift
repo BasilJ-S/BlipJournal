@@ -6,7 +6,6 @@ import SwiftUI
 struct JournalView: View {
     @Environment(AppModel.self) private var appModel
     @State private var runnerSurvey: Survey?
-    @State private var routedPromptId: String?
     @State private var errorMessage: String?
 
     var body: some View {
@@ -49,19 +48,6 @@ struct JournalView: View {
             NavigationStack {
                 SurveyRunnerView(survey: survey, promptId: nil) {
                     runnerSurvey = nil
-                }
-            }
-        }
-        // Same presentation pattern `RootView` uses for a tapped notification's
-        // `pendingRoute`: `PromptRouteView` already resolves fresh-runner vs. resume-draft
-        // vs. dead-end, so the banner reuses it instead of re-deriving that decision.
-        .sheet(isPresented: Binding(
-            get: { routedPromptId != nil },
-            set: { isPresented in if !isPresented { routedPromptId = nil } }
-        ), onDismiss: reload) {
-            if let routedPromptId {
-                PromptRouteView(promptId: routedPromptId) {
-                    self.routedPromptId = nil
                 }
             }
         }
@@ -134,12 +120,17 @@ struct JournalView: View {
     /// Re-evaluated every 30s against the already-loaded `pendingPrompts`, so a window
     /// opening or closing while the app sits in the foreground updates the banner without
     /// any extra store reads.
+    ///
+    /// Routes through `appModel.notifications.pendingRoute` — the same field a tapped
+    /// notification sets — rather than a local sheet, so there is exactly one presenter
+    /// (`RootView`) for prompt routing. Two independent `.sheet`s racing to present would
+    /// silently drop whichever loses.
     @ViewBuilder
     private var openSurveyBanner: some View {
         TimelineView(.periodic(from: .now, by: 30)) { context in
             if let prompt = appModel.openPrompt(at: context.date) {
                 OpenSurveyBanner(surveyName: appModel.surveysById[prompt.surveyId]?.name ?? "Survey") {
-                    routedPromptId = prompt.id
+                    appModel.notifications.pendingRoute = prompt.id
                 }
                 .padding([.horizontal, .top])
             }
