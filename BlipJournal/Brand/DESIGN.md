@@ -12,3 +12,5 @@ canvases. Pushed and sheet screens retain native contextual or inline titles. Ro
 use a shared SwiftUI large heading below an inline navigation bar, bypassing the native
 large-title host because it produces a zero-height render surface on the current target.
 Content headings use Nunito.
+
+`BlipAppearance` is main-actor isolated because it configures UIKit tab appearance.

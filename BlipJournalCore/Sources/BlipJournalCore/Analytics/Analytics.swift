@@ -219,3 +219,61 @@ public enum Analytics {
         }
     }
 }
+
+
+extension Analytics {
+    /// Distributions use the same completed-entry and duplicate-answer rules as the
+    /// series. Multi-choice entries contribute once to each selected, defined option.
+    public static func optionDistributions(
+        moodQuestionId: String, choiceQuestionId: String, snapshot: ExportSnapshot
+    ) -> [AnswerDistribution] {
+        guard let question = snapshot.survey.questions.first(where: { $0.id == choiceQuestionId }),
+              question.kind == .singleChoice || question.kind == .multiChoice else { return [] }
+        let pairs = choicePoints(moodQuestionId: moodQuestionId, choiceQuestionId: choiceQuestionId, snapshot: snapshot)
+        var seen = Set<String>()
+        return question.options.sorted { ($0.position, $0.id) < ($1.position, $1.id) }.compactMap { option in
+            guard seen.insert(option.id).inserted else { return nil }
+            let points = pairs.filter { $0.options.contains(option.id) }.map(\.point)
+            guard !option.isArchived || !points.isEmpty else { return nil }
+            return AnswerDistribution(id: option.id, label: option.label, points: points)
+        }
+    }
+
+    /// Only explicit choice answers enter either group. Empty multi-choice is an
+    /// explicit "none selected"; missing, malformed and unknown-option answers are excluded.
+    public static func optionComparison(
+        moodQuestionId: String, choiceQuestionId: String, optionId: String, snapshot: ExportSnapshot
+    ) -> [AnswerDistribution] {
+        guard let question = snapshot.survey.questions.first(where: { $0.id == choiceQuestionId }),
+              let option = question.options.first(where: { $0.id == optionId }) else { return [] }
+        let pairs = choicePoints(moodQuestionId: moodQuestionId, choiceQuestionId: choiceQuestionId, snapshot: snapshot)
+        return [
+            AnswerDistribution(id: "selected", label: "Selected “\(option.label)”",
+                points: pairs.filter { $0.options.contains(optionId) }.map(\.point)),
+            AnswerDistribution(id: "not-selected", label: "Didn’t select “\(option.label)”",
+                points: pairs.filter { !$0.options.contains(optionId) }.map(\.point))
+        ]
+    }
+
+    private static func choicePoints(
+        moodQuestionId: String, choiceQuestionId: String, snapshot: ExportSnapshot
+    ) -> [(point: MoodPoint, options: Set<String>)] {
+        guard let question = snapshot.survey.questions.first(where: { $0.id == choiceQuestionId }),
+              question.kind == .singleChoice || question.kind == .multiChoice else { return [] }
+        let defined = Set(question.options.map(\.id))
+        let points = Dictionary(moodSeries(questionId: moodQuestionId, snapshot: snapshot)
+            .map { ($0.entryId, $0) }, uniquingKeysWith: { first, _ in first })
+        return snapshot.entries.compactMap { entry in
+            guard let point = points[entry.id], point.value.isFinite,
+                  let answer = firstAnswer(to: choiceQuestionId, in: entry) else { return nil }
+            let options: Set<String>
+            switch answer.value {
+            case .single(let id): options = [id]
+            case .multi(let ids): options = Set(ids)
+            default: return nil
+            }
+            guard options.isSubset(of: defined) else { return nil }
+            return (point, options)
+        }
+    }
+}

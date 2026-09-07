@@ -155,6 +155,7 @@ extension View {
 
 /// One-time global tab chrome. Navigation chrome stays in SwiftUI's shared
 /// `blipScreen` modifier so UIKit retains ownership of native title rendering.
+@MainActor
 enum BlipAppearance {
     static func configure() {
         let tabItem = UITabBarItemAppearance()

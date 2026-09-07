@@ -63,3 +63,33 @@ public struct ComplianceStats: Sendable, Equatable {
         self.rate = rate
     }
 }
+
+/// A distribution retains entry IDs for inspection. Quantiles use linear interpolation
+/// at (count - 1) * probability. Fewer than five answers should be drawn individually.
+public struct AnswerDistribution: Sendable, Equatable, Identifiable {
+    public let id: String
+    public let label: String
+    public let points: [MoodPoint]
+    public var count: Int { points.count }
+    public var minimum: Double? { points.first?.value }
+    public var maximum: Double? { points.last?.value }
+    public var lowerQuartile: Double? { quantile(0.25) }
+    public var median: Double? { quantile(0.5) }
+    public var upperQuartile: Double? { quantile(0.75) }
+    public var showsBox: Bool { count >= 5 }
+
+    public init(id: String, label: String, points: [MoodPoint]) {
+        self.id = id
+        self.label = label
+        self.points = points.filter { $0.value.isFinite }
+            .sorted { ($0.value, $0.id) < ($1.value, $1.id) }
+    }
+
+    private func quantile(_ probability: Double) -> Double? {
+        guard !points.isEmpty else { return nil }
+        let position = Double(points.count - 1) * probability
+        let lower = Int(position)
+        let upper = min(lower + 1, points.count - 1)
+        return points[lower].value + (points[upper].value - points[lower].value) * (position - Double(lower))
+    }
+}

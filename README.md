@@ -54,8 +54,10 @@ or Apple reads says `BlipJournal`, one word.
 - **Yours to erase.** Delete a single entry, permanently erase anything you have archived
   along with every answer to it, or wipe everything from Settings. Erasing overwrites the
   data in the database rather than merely unlinking it.
-- **Built-in charts.** Mood over time, by hour, by weekday, by activity or impact, and
-  compliance rate.
+- **Built-in charts.** Mood over time, by hour and by weekday, plus answer distributions
+  by activity, company or another choice question. Compare entries selecting an option
+  with entries answering without it, and explore the underlying entries. Response rate
+  shows prompt coverage.
 - **Glanceable Journal.** Pick up to two questions per survey whose answers appear on
   each Journal row, such as mood and current activity.
 - **App Store compliant.** Privacy manifest, "Data Not Collected" privacy label, no
