@@ -8,7 +8,7 @@ single audited exception, an `ExportSnapshot` loader, and a JSON `Backup`. Every
 subsystem reads and writes through it. Imports only `Foundation` and `GRDB`.
 
 ```
-Schema.swift            DatabaseMigrator, migrations "v1"..."v3", tables children-first
+Schema.swift            DatabaseMigrator, migrations "v1"..."v4", tables children-first
 Rows.swift              one GRDB record struct per table, no logic
 Store.swift             open/inMemory, configuration, StoreError, current-view resolution
 Store+Definitions.swift insert-only edits, surveys(), survey(), label histories
@@ -19,11 +19,12 @@ Store+Export.swift      exportSnapshot, backup
 Backup.swift            Backup, BackupExporter
 ```
 
-## Schema (v3)
+## Schema (v4)
 
 ```
 survey(id, createdAt)
-surveyVersion(id, surveyId, name, isArchived, createdAt)
+surveyVersion(id, surveyId, name, isArchived, journalSummaryIsConfigured,
+              primarySummaryQuestionId, secondarySummaryQuestionId, createdAt)
 surveySampling(id, surveyId, promptsPerDay, windowStartMinutes, windowEndMinutes,
                minGapMinutes, expiryMinutes, isEnabled, createdAt)
 surveyNotificationPreview(id, surveyId, mode, message, createdAt)
@@ -45,12 +46,19 @@ is set only for `"custom"`. Added by migration `v2`; a survey with no row here (
 survey created before v2 was applied) resolves to `.private`, the same way an absent
 `surveySampling` row resolves to `SamplingConfig.default`.
 
-`questionVersion.spectrumConfig` and `answer.spectrumValue` are added by migration `v3`
+`questionVersion.spectrumConfig` and `answer.spectrumValue` are added by migration `v4`
 for `QuestionKind.spectrum`. `spectrumConfig` holds the whole `SpectrumConfig` as one
 JSON blob (`Store.spectrumConfig(of:)` / `spectrumConfigJSON(_:)`), unlike scale's flat
 columns, because its zone list has no fixed width; `spectrumValue` is a separate `REAL`
 column because a spectrum answer is a `Double` in `0...1` where a scale answer is an
 `Int`, so they cannot share `numericValue`.
+
+Migration `v3` adds the Journal summary fields to `surveyVersion`. New surveys record
+their first active scale or spectrum question by default. An upgraded row has
+`journalSummaryIsConfigured == false`, which preserves the former first-mood summary
+until a choice is saved. Saving even an empty choice sets it true. The question IDs have
+no foreign keys: hard-erasing an archived question must not rewrite immutable history;
+missing and archived questions are omitted from the resolved Journal summary.
 
 IDs are `TEXT PRIMARY KEY`. Timestamps are GRDB's default UTC string
 (`yyyy-MM-dd HH:mm:ss.SSS`), which sorts lexicographically; precision is one
@@ -85,6 +93,8 @@ delete removes is exactly what its code says. Indexes: every foreign key column 
   `surveyNotificationPreview`, `question`, `questionVersion`, `option` or
   `optionVersion`. `updateQuestion` and `updateOption`
   write a version carrying every field; the caller passes the full intended state.
+  Journal summary changes append a survey version containing up to two distinct active
+  question IDs, and later rename/archive versions carry those choices forward.
   Archiving touches only its own level: archiving a question writes nothing to its
   options, so unarchiving it restores exactly the option set that was visible.
 - **One answer per question per entry.** `answer(entryId, questionId)` is unique, so

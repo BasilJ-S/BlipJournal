@@ -115,6 +115,8 @@ public struct Survey: Identifiable, Sendable, Equatable, Hashable, Codable {
     public var sampling: SamplingConfig
     /// What a prompt notification for this survey shows before it is opened.
     public var notificationPreview: NotificationPreview
+    /// Up to two questions whose answers summarize an entry in the Journal, in display order.
+    public var journalSummaryQuestionIds: [String]
     /// Every question, archived included, in no guaranteed order.
     /// See ``activeQuestions`` for display order.
     public var questions: [Question]
@@ -127,6 +129,7 @@ public struct Survey: Identifiable, Sendable, Equatable, Hashable, Codable {
         isArchived: Bool = false,
         sampling: SamplingConfig = .default,
         notificationPreview: NotificationPreview = .default,
+        journalSummaryQuestionIds: [String] = [],
         questions: [Question] = []
     ) {
         self.id = id
@@ -135,6 +138,10 @@ public struct Survey: Identifiable, Sendable, Equatable, Hashable, Codable {
         self.isArchived = isArchived
         self.sampling = sampling
         self.notificationPreview = notificationPreview
+        self.journalSummaryQuestionIds = Array(
+            journalSummaryQuestionIds.reduce(into: [String]()) { ids, id in
+                if !ids.contains(id) { ids.append(id) }
+            }.prefix(2))
         self.questions = questions
     }
 
@@ -145,5 +152,12 @@ public struct Survey: Identifiable, Sendable, Equatable, Hashable, Codable {
         questions
             .filter { !$0.isArchived }
             .sorted { ($0.position, $0.id) < ($1.position, $1.id) }
+    }
+
+    /// Active summary questions in the order chosen for Journal rows.
+    public var journalSummaryQuestions: [Question] {
+        journalSummaryQuestionIds.compactMap { id in
+            questions.first { $0.id == id && !$0.isArchived }
+        }
     }
 }

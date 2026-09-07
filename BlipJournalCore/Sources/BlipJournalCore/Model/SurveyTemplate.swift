@@ -14,65 +14,67 @@ public enum SurveyTemplate {
     ///
     /// - Parameter now: The creation timestamp to stamp on the survey.
     public static func makeDefault(now: Date = Date()) -> Survey {
-        Survey(
+        let questions = [
+            Question(
+                kind: .spectrum,
+                label: "How are you feeling right now?",
+                position: 0,
+                isRequired: true,
+                spectrum: SpectrumConfig()
+            ),
+            Question(
+                kind: .multiChoice,
+                label: "What best describes this feeling?",
+                position: 1,
+                allowsCustomOptions: true,
+                options: makeOptions([
+                    "Calm", "Content", "Happy", "Excited", "Focused", "Tired",
+                    "Bored", "Anxious", "Stressed", "Irritated", "Sad", "Lonely",
+                ])
+            ),
+            Question(
+                kind: .multiChoice,
+                label: "What is having the biggest impact?",
+                position: 2,
+                allowsCustomOptions: true,
+                options: makeOptions([
+                    "Work", "Study", "Family", "Partner", "Friends", "Health",
+                    "Sleep", "Exercise", "Food", "Money", "Weather", "News",
+                    "Hobbies",
+                ])
+            ),
+            Question(
+                kind: .singleChoice,
+                label: "What are you doing?",
+                position: 3,
+                allowsCustomOptions: true,
+                options: makeOptions([
+                    "Working", "Studying", "Commuting", "Eating", "Socialising",
+                    "Exercising", "Resting", "Chores", "Screen time", "Outdoors",
+                ])
+            ),
+            Question(
+                kind: .multiChoice,
+                label: "Who are you with?",
+                position: 4,
+                allowsCustomOptions: true,
+                options: makeOptions([
+                    "Alone", "Partner", "Family", "Friends", "Colleagues",
+                    "Strangers",
+                ])
+            ),
+            Question(
+                kind: .text,
+                label: "Anything else?",
+                position: 5
+            ),
+        ]
+        return Survey(
             name: "Check-in",
             createdAt: now,
             sampling: .default,
-            questions: [
-                Question(
-                    kind: .spectrum,
-                    label: "How are you feeling right now?",
-                    position: 0,
-                    isRequired: true,
-                    spectrum: SpectrumConfig()
-                ),
-                Question(
-                    kind: .multiChoice,
-                    label: "What best describes this feeling?",
-                    position: 1,
-                    allowsCustomOptions: true,
-                    options: makeOptions([
-                        "Calm", "Content", "Happy", "Excited", "Focused", "Tired",
-                        "Bored", "Anxious", "Stressed", "Irritated", "Sad", "Lonely",
-                    ])
-                ),
-                Question(
-                    kind: .multiChoice,
-                    label: "What is having the biggest impact?",
-                    position: 2,
-                    allowsCustomOptions: true,
-                    options: makeOptions([
-                        "Work", "Study", "Family", "Partner", "Friends", "Health",
-                        "Sleep", "Exercise", "Food", "Money", "Weather", "News",
-                        "Hobbies",
-                    ])
-                ),
-                Question(
-                    kind: .singleChoice,
-                    label: "What are you doing?",
-                    position: 3,
-                    allowsCustomOptions: true,
-                    options: makeOptions([
-                        "Working", "Studying", "Commuting", "Eating", "Socialising",
-                        "Exercising", "Resting", "Chores", "Screen time", "Outdoors",
-                    ])
-                ),
-                Question(
-                    kind: .multiChoice,
-                    label: "Who are you with?",
-                    position: 4,
-                    allowsCustomOptions: true,
-                    options: makeOptions([
-                        "Alone", "Partner", "Family", "Friends", "Colleagues",
-                        "Strangers",
-                    ])
-                ),
-                Question(
-                    kind: .text,
-                    label: "Anything else?",
-                    position: 5
-                ),
-            ]
+            journalSummaryQuestionIds: [questions[0].id],
+            questions: questions
         )
     }
 

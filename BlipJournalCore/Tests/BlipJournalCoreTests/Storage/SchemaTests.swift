@@ -10,7 +10,7 @@ struct SchemaTests {
         let store = try Store.inMemory()
         let backup = try store.backup(now: Fixture.t0)
         #expect(backup.schemaVersion == CoreSchema.version)
-        #expect(CoreSchema.version == 3)
+        #expect(CoreSchema.version == 4)
         #expect(backup.rowCounts.values.allSatisfy { $0 == 0 })
         #expect(backup.rowCounts.count == 12)
     }
@@ -60,19 +60,20 @@ struct SchemaTests {
         #expect(try second.backup(now: Fixture.t0) == first.backup(now: Fixture.t0))
     }
 
-    @Test("opening a v2 database preserves existing data and adds spectrum storage")
-    func migratesFromV2() throws {
+    @Test("opening a v3 database preserves existing data and adds spectrum storage")
+    func migratesFromV3() throws {
         let directory = Fixture.temporaryDirectory()
         defer { try? FileManager.default.removeItem(at: directory) }
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         let path = directory.appendingPathComponent(Store.databaseFileName).path
 
         do {
-            var v2Only = DatabaseMigrator()
-            v2Only.registerMigration("v1", migrate: Schema.migrateV1)
-            v2Only.registerMigration("v2", migrate: Schema.migrateV2)
+            var v3Only = DatabaseMigrator()
+            v3Only.registerMigration("v1", migrate: Schema.migrateV1)
+            v3Only.registerMigration("v2", migrate: Schema.migrateV2)
+            v3Only.registerMigration("v3", migrate: Schema.migrateV3)
             let queue = try DatabaseQueue(path: path)
-            try v2Only.migrate(queue)
+            try v3Only.migrate(queue)
             try queue.write { db in
                 try db.execute(
                     sql: "INSERT INTO survey (id, createdAt) VALUES (?, ?)",
@@ -119,5 +120,28 @@ struct SchemaTests {
             id: "a2", entryId: entry.id, questionId: spectrum.id,
             questionVersionId: versionId, answeredAt: Fixture.t0, value: .spectrum(0.75))])
         #expect(try store.answers(entryId: "e2").first?.value == .spectrum(0.75))
+    }
+
+    @Test("v4 repairs a development database that used v3 for spectrum storage")
+    func repairsDevelopmentV3() throws {
+        let directory = Fixture.temporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        let path = directory.appendingPathComponent(Store.databaseFileName).path
+
+        var oldSpectrumV3 = DatabaseMigrator()
+        oldSpectrumV3.registerMigration("v1", migrate: Schema.migrateV1)
+        oldSpectrumV3.registerMigration("v2", migrate: Schema.migrateV2)
+        oldSpectrumV3.registerMigration("v3") { db in
+            try db.alter(table: "questionVersion") { $0.add(column: "spectrumConfig", .text) }
+            try db.alter(table: "answer") { $0.add(column: "spectrumValue", .double) }
+        }
+        let queue = try DatabaseQueue(path: path)
+        try oldSpectrumV3.migrate(queue)
+
+        let store = try Store.open(at: directory)
+        let survey = try Fixture.seed(store)
+        #expect(survey.activeQuestions.first?.kind == .spectrum)
+        #expect(survey.journalSummaryQuestionIds == [survey.activeQuestions[0].id])
     }
 }

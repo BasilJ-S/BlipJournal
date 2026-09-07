@@ -23,15 +23,16 @@ struct RootView: View {
         }
         .preferredColorScheme(.light)
         .tint(BlipBrand.violet)
-        .toolbarBackground(BlipBrand.paper, for: .tabBar, .navigationBar)
-        .toolbarBackground(.visible, for: .tabBar, .navigationBar)
+        // Navigation chrome is owned by each screen's shared blipScreen modifier.
+        .toolbarBackground(BlipBrand.paper, for: .tabBar)
+        .toolbarBackground(.visible, for: .tabBar)
         .blipScreenBackground()
         .sheet(isPresented: Binding(
             get: { appModel.notifications.pendingRoute != nil },
             set: { isPresented in
                 if !isPresented { appModel.notifications.pendingRoute = nil }
             }
-        )) {
+        ), onDismiss: { try? appModel.refresh() }) {
             if let promptId = appModel.notifications.pendingRoute {
                 PromptRouteView(promptId: promptId) {
                     appModel.notifications.pendingRoute = nil

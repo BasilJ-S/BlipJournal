@@ -23,6 +23,7 @@ enum Schema {
         migrator.registerMigration("v1", migrate: migrateV1)
         migrator.registerMigration("v2", migrate: migrateV2)
         migrator.registerMigration("v3", migrate: migrateV3)
+        migrator.registerMigration("v4", migrate: migrateV4)
         return migrator
     }
 
@@ -146,18 +147,47 @@ enum Schema {
         }
     }
 
-    /// Schema version 3: `QuestionKind/spectrum` support.
-    ///
-    /// `spectrumConfig` holds the whole ``SpectrumConfig`` as one JSON blob, unlike
-    /// scale's flat columns, because its zone list has no fixed width. `spectrumValue`
-    /// is a `REAL` column alongside `numericValue`: scale answers are `Int`, spectrum
-    /// answers are a `Double` in `0...1`, so they cannot share a column.
-    private static func migrateV3(_ db: Database) throws {
-        try db.alter(table: "questionVersion") { t in
-            t.add(column: "spectrumConfig", .text)
+    /// Schema version 3: Journal summary choices travel with each survey version.
+    static func migrateV3(_ db: Database) throws {
+        try db.alter(table: "surveyVersion") { t in
+            t.add(column: "journalSummaryIsConfigured", .boolean).notNull().defaults(to: false)
+            t.add(column: "primarySummaryQuestionId", .text)
+            t.add(column: "secondarySummaryQuestionId", .text)
         }
-        try db.alter(table: "answer") { t in
-            t.add(column: "spectrumValue", .double)
+    }
+
+    /// Schema version 4: `QuestionKind/spectrum` support.
+    ///
+    /// The column checks also repair development databases that recorded this branch's
+    /// pre-merge spectrum migration as v3 before main assigned v3 to Journal summaries.
+    private static func migrateV4(_ db: Database) throws {
+        let surveyColumns = Set(try db.columns(in: "surveyVersion").map(\.name))
+        if !surveyColumns.isSuperset(of: [
+            "journalSummaryIsConfigured", "primarySummaryQuestionId", "secondarySummaryQuestionId",
+        ]) {
+            try db.alter(table: "surveyVersion") { t in
+                if !surveyColumns.contains("journalSummaryIsConfigured") {
+                    t.add(column: "journalSummaryIsConfigured", .boolean).notNull().defaults(to: false)
+                }
+                if !surveyColumns.contains("primarySummaryQuestionId") {
+                    t.add(column: "primarySummaryQuestionId", .text)
+                }
+                if !surveyColumns.contains("secondarySummaryQuestionId") {
+                    t.add(column: "secondarySummaryQuestionId", .text)
+                }
+            }
+        }
+        let questionColumns = Set(try db.columns(in: "questionVersion").map(\.name))
+        if !questionColumns.contains("spectrumConfig") {
+            try db.alter(table: "questionVersion") { t in
+                t.add(column: "spectrumConfig", .text)
+            }
+        }
+        let answerColumns = Set(try db.columns(in: "answer").map(\.name))
+        if !answerColumns.contains("spectrumValue") {
+            try db.alter(table: "answer") { t in
+                t.add(column: "spectrumValue", .double)
+            }
         }
     }
 }

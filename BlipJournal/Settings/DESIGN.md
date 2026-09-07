@@ -17,6 +17,8 @@ files, not this list.
 | About | `Settings/AboutView` | A6 |
 
 Every destination takes `init()` and reads `AppModel` from the environment.
+All Settings destinations hide the system List/Form canvas so the shared paper background
+continues below the navigation bar.
 
 ## A6 behaviour
 

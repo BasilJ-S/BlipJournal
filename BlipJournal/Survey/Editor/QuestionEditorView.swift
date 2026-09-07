@@ -46,7 +46,7 @@ struct QuestionEditorView: View {
             }
         }
         .environment(\.editMode, $editMode)
-        .navigationTitle("Edit question")
+        .blipScreen("Edit question")
         .toolbar {
             ToolbarItem(placement: .confirmationAction) {
                 Button("Save question") { save() }

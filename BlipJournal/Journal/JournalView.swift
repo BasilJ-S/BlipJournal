@@ -10,10 +10,13 @@ struct JournalView: View {
 
     var body: some View {
         Group {
-            if appModel.entries.isEmpty {
-                emptyState
-            } else {
-                entryList
+            VStack(spacing: 0) {
+                openSurveyBanner
+                if appModel.entries.isEmpty {
+                    emptyState
+                } else {
+                    entryList
+                }
             }
         }
         // On the Group, not the List: deleting the last entry swaps in the empty state,
@@ -22,10 +25,7 @@ struct JournalView: View {
         .navigationDestination(for: Entry.self) { entry in
             EntryDetailView(entry: entry)
         }
-        .navigationTitle("Journal")
-        .fontDesign(.rounded)
-        .scrollContentBackground(.hidden)
-        .blipScreenBackground()
+        .blipScreen("Journal", titleStyle: .large)
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
                 newEntryControl
@@ -63,15 +63,20 @@ struct JournalView: View {
     private var entryList: some View {
         List {
             ForEach(daySections, id: \.day) { section in
-                Section(Self.dayFormatter.string(from: section.day)) {
+                Section {
                     ForEach(section.entries) { entry in
                         NavigationLink(value: entry) {
                             EntryRow(entry: entry, survey: appModel.surveysById[entry.surveyId])
                         }
+                        .blipCardRow()
                     }
+                } header: {
+                    Text(Self.dayFormatter.string(from: section.day)).blipMonoLabel()
                 }
             }
         }
+        .listStyle(.plain)
+        .environment(\.defaultMinListRowHeight, 0)
     }
 
     private struct DaySection {
@@ -111,6 +116,28 @@ struct JournalView: View {
         formatter.doesRelativeDateFormatting = true
         return formatter
     }()
+
+    // MARK: Open survey banner
+
+    /// Re-evaluated every 30s against the already-loaded `pendingPrompts`, so a window
+    /// opening or closing while the app sits in the foreground updates the banner without
+    /// any extra store reads.
+    ///
+    /// Routes through `appModel.notifications.pendingRoute` — the same field a tapped
+    /// notification sets — rather than a local sheet, so there is exactly one presenter
+    /// (`RootView`) for prompt routing. Two independent `.sheet`s racing to present would
+    /// silently drop whichever loses.
+    @ViewBuilder
+    private var openSurveyBanner: some View {
+        TimelineView(.periodic(from: .now, by: 30)) { context in
+            if let prompt = appModel.openPrompt(at: context.date) {
+                OpenSurveyBanner(surveyName: appModel.surveysById[prompt.surveyId]?.name ?? "Survey") {
+                    appModel.notifications.pendingRoute = prompt.id
+                }
+                .padding([.horizontal, .top])
+            }
+        }
+    }
 
     // MARK: Empty state
 
@@ -172,7 +199,7 @@ struct JournalView: View {
     #endif
 }
 
-/// One Journal row: time, survey name, prompted or manual, first scale value, draft.
+/// One Journal row: time, chosen answer summaries, survey name, provenance, and draft.
 ///
 /// Answers are loaded when the row appears; the list is lazy, so only visible rows pay.
 private struct EntryRow: View {
@@ -185,20 +212,23 @@ private struct EntryRow: View {
         VStack(alignment: .leading, spacing: 4) {
             HStack(alignment: .firstTextBaseline) {
                 Text(entry.startedAt, style: .time)
-                    .font(.headline)
-                if let scaleSummary = summary.value {
-                    Text(scaleSummary)
-                        .font(.headline)
-                        .foregroundStyle(.secondary)
+                    .font(BlipFont.qualifier(17))
+                if let answerSummary = summary.value {
+                    Text(answerSummary)
+                        .font(BlipFont.qualifier(17))
+                        .foregroundStyle(BlipBrand.muted)
                 }
             }
             Text(survey?.name ?? "Unknown survey")
+                .font(BlipFont.body(15))
+                .foregroundStyle(BlipBrand.muted)
             ViewThatFits(in: .horizontal) {
                 HStack(spacing: 8) { badges }
                 VStack(alignment: .leading, spacing: 4) { badges }
             }
         }
-        .padding(.vertical, 2)
+        .padding(.vertical, 6)
+        .padding(.horizontal, 4)
         .accessibilityElement(children: .combine)
         .task(id: appModel.revision) { await loadSummary() }
     }
@@ -216,26 +246,16 @@ private struct EntryRow: View {
     private func loadSummary() async {
         await summary.load {
             guard let survey else { return nil }
-            return await Self.scaleSummary(store: appModel.store, entryId: entry.id, survey: survey)
+            return await Self.answerSummary(store: appModel.store, entryId: entry.id, survey: survey)
         }
     }
 
-    /// The first scale question, in position order, that this entry answered.
-    private nonisolated static func scaleSummary(
+    /// The answered Journal-summary questions, kept in the person's chosen order.
+    private nonisolated static func answerSummary(
         store: Store, entryId: String, survey: Survey
     ) async -> String? {
         guard let answers = try? store.answers(entryId: entryId) else { return nil }
-        let scaleQuestions = survey.questions
-            .filter { $0.kind == .scale }
-            .sorted { ($0.position, $0.id) < ($1.position, $1.id) }
-        for question in scaleQuestions {
-            if let answer = answers.first(where: { $0.questionId == question.id }),
-               case .scale(let value) = answer.value {
-                guard let scale = question.scale else { return "\(value)" }
-                return "\(value) of \(scale.max)"
-            }
-        }
-        return nil
+        return JournalRowSummary.text(answers: answers, survey: survey)
     }
 }
 
@@ -246,10 +266,33 @@ private struct JournalBadge: View {
 
     var body: some View {
         Text(text)
-            .font(.caption.weight(.medium))
+            .blipMonoLabel(size: 9.5)
             .padding(.horizontal, 8)
-            .padding(.vertical, 2)
-            .background(Color(.secondarySystemFill), in: Capsule())
-            .foregroundStyle(.secondary)
+            .padding(.vertical, 3)
+            .background(BlipBrand.paper, in: Capsule())
+    }
+}
+
+/// The card shown on the Journal tab whenever a pending prompt's window is open, so
+/// finding the app open mid-window (rather than tapping the notification itself) still
+/// surfaces that there's something to complete.
+private struct OpenSurveyBanner: View {
+    let surveyName: String
+    let onComplete: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Label(surveyName, systemImage: "bell.badge")
+                .font(.headline)
+            Text("Complete your scheduled survey")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+            Button("Complete now", action: onComplete)
+                .buttonStyle(.borderedProminent)
+                .frame(maxWidth: .infinity, minHeight: 44)
+        }
+        .padding()
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(BlipBrand.sand, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
     }
 }

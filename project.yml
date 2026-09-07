@@ -40,10 +40,7 @@ targets:
         UIUserInterfaceStyle: Light
         NSFaceIDUsageDescription: Blip Journal uses Face ID to keep your journal private.
         ITSAppUsesNonExemptEncryption: false
-    entitlements:
-      path: BlipJournal/BlipJournal.entitlements
-      properties:
-        com.apple.developer.usernotifications.time-sensitive: true
+        UIAppFonts: [Nunito.ttf, JetBrainsMono.ttf]
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: io.github.basilj-s.BlipJournal

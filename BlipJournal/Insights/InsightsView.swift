@@ -16,10 +16,7 @@ struct InsightsView: View {
                 ProgressView()
             }
         }
-        .navigationTitle("Insights")
-        .fontDesign(.rounded)
-        .scrollContentBackground(.hidden)
-        .blipScreenBackground()
+        .blipScreen("Insights", titleStyle: .large)
         // Keyed by the app's write revision, not just first appearance, so entries
         // and survey changes made elsewhere (Journal, Settings) do not leave a stale
         // snapshot on screen. The existing model is reused, not recreated, so this
@@ -74,6 +71,7 @@ private struct InsightsBody: View {
                     .pickerStyle(.menu)
                 }
             }
+            .blipCardRow()
 
             chartSection(title: sectionTitle("Over time"), emptyReason: moodEmptyReason) {
                 if let axis = model.moodAxis {
@@ -102,7 +100,7 @@ private struct InsightsBody: View {
                 }
             }
 
-            Section("By option") {
+            Section {
                 if let axis = model.moodAxis {
                     ByOptionChart(
                         choiceQuestions: model.choiceQuestions,
@@ -116,12 +114,19 @@ private struct InsightsBody: View {
                         "By option", systemImage: "chart.bar",
                         description: Text("No mood question in this survey"))
                 }
+            } header: {
+                Text("By option").blipMonoLabel()
             }
+            .blipCardRow()
 
-            Section("Response rate") {
+            Section {
                 ComplianceTile(stats: model.compliance, accessibilitySummary: model.complianceAccessibilitySummary)
+            } header: {
+                Text("Response rate").blipMonoLabel()
             }
+            .blipCardRow()
         }
+        .listStyle(.plain)
         .onChange(of: model.selectedSurveyId) { _, _ in
             Task { await reload(model) }
         }
@@ -193,12 +198,15 @@ private struct InsightsBody: View {
     private func chartSection<Content: View>(
         title: String, emptyReason: String?, @ViewBuilder content: () -> Content
     ) -> some View {
-        Section(title) {
+        Section {
             if let emptyReason {
                 ContentUnavailableView(title, systemImage: "chart.bar", description: Text(emptyReason))
             } else {
                 content()
             }
+        } header: {
+            Text(title).blipMonoLabel()
         }
+        .blipCardRow()
     }
 }

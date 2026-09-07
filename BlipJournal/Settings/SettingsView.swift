@@ -5,9 +5,9 @@ import SwiftUI
 struct SettingsView: View {
     var body: some View {
         List {
-            NavigationLink("Surveys") { SurveyListView() }
-            NavigationLink("Notifications") { NotificationSettingsView() }
-            NavigationLink("Export") { ExportView() }
+            NavigationLink("Surveys") { SurveyListView() }.blipCardRow()
+            NavigationLink("Notifications") { NotificationSettingsView() }.blipCardRow()
+            NavigationLink("Export") { ExportView() }.blipCardRow()
             NavigationLink {
                 DeleteAllDataView()
             } label: {
@@ -15,11 +15,10 @@ struct SettingsView: View {
                     .foregroundStyle(.red)
             }
             .accessibilityLabel("Delete all data")
-            NavigationLink("About") { AboutView() }
+            .blipCardRow()
+            NavigationLink("About") { AboutView() }.blipCardRow()
         }
-        .navigationTitle("Settings")
-        .fontDesign(.rounded)
-        .scrollContentBackground(.hidden)
-        .blipScreenBackground()
+        .listStyle(.plain)
+        .blipScreen("Settings", titleStyle: .large)
     }
 }

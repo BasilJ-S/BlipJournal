@@ -120,8 +120,20 @@ struct SurveyTests {
         #expect(survey.sampling == .default)
         #expect(survey.notificationPreview == .default)
         #expect(survey.notificationPreview == .private)
+        #expect(survey.journalSummaryQuestionIds.isEmpty)
         #expect(survey.questions.isEmpty)
         #expect(!survey.id.isEmpty)
+    }
+
+    @Test("Journal summary keeps two unique choices in order and resolves active questions")
+    func journalSummaryQuestions() {
+        let questions = makeShuffledQuestions()
+        let survey = Survey(
+            name: "Test",
+            journalSummaryQuestionIds: ["q2", "q0", "q2"],
+            questions: questions)
+        #expect(survey.journalSummaryQuestionIds == ["q2", "q0"])
+        #expect(survey.journalSummaryQuestions.map(\.id) == ["q2", "q0"])
     }
 
     @Test("round-trips through JSON")

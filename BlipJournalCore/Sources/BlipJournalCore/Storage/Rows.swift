@@ -23,7 +23,47 @@ public struct SurveyVersionRow: Sendable, Equatable, Codable, FetchableRecord, P
     public var surveyId: String
     public var name: String
     public var isArchived: Bool
+    public var journalSummaryIsConfigured: Bool
+    public var primarySummaryQuestionId: String?
+    public var secondarySummaryQuestionId: String?
     public var createdAt: Date
+
+    public init(
+        id: String, surveyId: String, name: String, isArchived: Bool,
+        journalSummaryIsConfigured: Bool = false,
+        primarySummaryQuestionId: String? = nil,
+        secondarySummaryQuestionId: String? = nil,
+        createdAt: Date
+    ) {
+        self.id = id
+        self.surveyId = surveyId
+        self.name = name
+        self.isArchived = isArchived
+        self.journalSummaryIsConfigured = journalSummaryIsConfigured
+        self.primarySummaryQuestionId = primarySummaryQuestionId
+        self.secondarySummaryQuestionId = secondarySummaryQuestionId
+        self.createdAt = createdAt
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case id, surveyId, name, isArchived, journalSummaryIsConfigured,
+             primarySummaryQuestionId, secondarySummaryQuestionId, createdAt
+    }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(String.self, forKey: .id)
+        surveyId = try container.decode(String.self, forKey: .surveyId)
+        name = try container.decode(String.self, forKey: .name)
+        isArchived = try container.decode(Bool.self, forKey: .isArchived)
+        journalSummaryIsConfigured = try container.decodeIfPresent(
+            Bool.self, forKey: .journalSummaryIsConfigured) ?? false
+        primarySummaryQuestionId = try container.decodeIfPresent(
+            String.self, forKey: .primarySummaryQuestionId)
+        secondarySummaryQuestionId = try container.decodeIfPresent(
+            String.self, forKey: .secondarySummaryQuestionId)
+        createdAt = try container.decode(Date.self, forKey: .createdAt)
+    }
 }
 
 /// A row of `surveySampling`.

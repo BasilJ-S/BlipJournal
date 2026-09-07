@@ -21,7 +21,7 @@ struct DeleteAllDataView: View {
                     .accessibilityLabel("Delete all data")
             }
         }
-        .navigationTitle("Delete all data")
+        .blipScreen("Delete all data")
         .task { if model == nil { model = DeleteAllDataModel(appModel: appModel) } }
         .confirmationDialog("Delete all data permanently", isPresented: $showingConfirmation, titleVisibility: .visible) {
             Button("Delete all data", role: .destructive) { Task { await performDelete() } }

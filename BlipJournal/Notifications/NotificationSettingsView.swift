@@ -36,7 +36,7 @@ struct NotificationSettingsView: View {
                 explanationSection
             }
         }
-        .navigationTitle("Notifications")
+        .blipScreen("Notifications")
         .task { await loadUpcoming() }
     }
 
@@ -71,7 +71,7 @@ struct NotificationSettingsView: View {
 
     private var authorizedSection: some View {
         Section {
-            Text("Time-sensitive delivery lets prompts through Focus.")
+            Text("Prompts may be silenced by Focus.")
                 .foregroundStyle(.secondary)
 
             if upcoming.isEmpty {

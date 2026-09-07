@@ -11,6 +11,8 @@ public enum StoreError: Error, Equatable {
     /// `updateNotificationPreview` was asked to save a `.custom` preview whose message
     /// is blank once trimmed.
     case invalidNotificationPreview
+    /// Journal summaries accept at most two distinct, active questions from the survey.
+    case invalidJournalSummary
 }
 
 /// The single door to the SQLite database. Every other subsystem reads and writes
@@ -237,6 +239,22 @@ struct DefinitionRows {
                 isEnabled: s.isEnabled)
         }
         let notificationPreview = notificationPreviews[row.id]?.last.map(Store.notificationPreview(of:))
+        let resolvedQuestions = (questions[row.id] ?? []).compactMap(question(for:))
+        let activeQuestionIds = Set(resolvedQuestions.filter { !$0.isArchived }.map(\.id))
+        let summaryQuestionIds: [String]
+        if version.journalSummaryIsConfigured {
+            summaryQuestionIds = [
+                version.primarySummaryQuestionId,
+                version.secondarySummaryQuestionId,
+            ].compactMap { $0 }.filter(activeQuestionIds.contains)
+        } else {
+            // Before v3 Journal rows showed the first answered mood value. Preserve that
+            // default for upgraded databases until the person explicitly changes it.
+            summaryQuestionIds = resolvedQuestions
+                .filter { !$0.isArchived && ($0.kind == .scale || $0.kind == .spectrum) }
+                .sorted { ($0.position, $0.id) < ($1.position, $1.id) }
+                .prefix(1).map(\.id)
+        }
         return Survey(
             id: row.id,
             name: version.name,
@@ -244,7 +262,8 @@ struct DefinitionRows {
             isArchived: version.isArchived,
             sampling: sampling ?? .default,
             notificationPreview: notificationPreview ?? .default,
-            questions: (questions[row.id] ?? []).compactMap(question(for:)))
+            journalSummaryQuestionIds: summaryQuestionIds,
+            questions: resolvedQuestions)
     }
 
     /// The current view of one question row, or nil if it has no version row.

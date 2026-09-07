@@ -243,6 +243,7 @@ struct StoreHardDeleteTests {
         var expected = SurveyTemplate.makeDefault(now: t(10))
         expected.id = reseeded.id
         expected.questions = reseeded.questions    // fresh identifiers; compare content below
+        expected.journalSummaryQuestionIds = reseeded.journalSummaryQuestionIds
         expected.sampling.isEnabled = false
         #expect(reseeded == expected)
         #expect(reseeded.activeQuestions.map(\.label) == SurveyTemplate.makeDefault().activeQuestions.map(\.label))

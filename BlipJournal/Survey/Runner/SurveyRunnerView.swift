@@ -10,9 +10,7 @@ struct SurveyRunnerView: View {
     init(entry: Entry, onFinish: @escaping () -> Void) { survey = nil; self.entry = entry; promptId = nil; self.onFinish = onFinish }
     var body: some View {
         Group { if let draft { content(draft) } else { ProgressView("Loading entry") } }
-            .navigationTitle(draft?.survey.name ?? survey?.name ?? "Entry").navigationBarTitleDisplayMode(.inline)
-            .fontDesign(.rounded)
-            .blipScreenBackground()
+            .blipScreen(draft?.survey.name ?? survey?.name ?? "Entry", titleStyle: .inline)
             .interactiveDismissDisabled(draft != nil).task { load() }
             .onChange(of: draft?.lastError) { _, value in if let value { errorMessage = value } }
             .onChange(of: scenePhase) { _, phase in if phase == .background, let draft { Task { try? await draft.flush() } } }
@@ -26,7 +24,7 @@ struct SurveyRunnerView: View {
         }.toolbar { ToolbarItem(placement: .cancellationAction) { Button("Close") { Task { await finish(draft, complete: false) } }.disabled(leaving) } }
     }
     @ViewBuilder private func card(_ q: Question, _ draft: EntryDraft) -> some View {
-        VStack(alignment: .leading, spacing: 8) { Text(q.label).font(.headline); if q.isRequired { Text("Required").font(.caption).foregroundStyle(.secondary) }; switch q.kind {
+        VStack(alignment: .leading, spacing: 8) { Text(q.label).font(BlipFont.qualifier(17)); if q.isRequired { Text("Required").blipMonoLabel(size: 10) }; switch q.kind {
         case .scale: if let scale = q.scale { ScaleInput(scale: scale, value: draft.values[q.id].flatMap { if case .scale(let n) = $0 { n } else { nil } }, onChange: { number in Task { do { try await draft.set(.scale(number), for: q.id) } catch { errorMessage = String(describing: error) } } }) }
         case .spectrum: if let spectrum = q.spectrum { SpectrumInput(spectrum: spectrum, value: draft.values[q.id].flatMap { if case .spectrum(let n) = $0 { n } else { nil } }, onChange: { value in Task { do { try await draft.set(.spectrum(value), for: q.id) } catch { errorMessage = String(describing: error) } } }) }
         case .singleChoice, .multiChoice: ChipGrid(question: q, value: draft.values[q.id], onChange: { value in Task { do { try await draft.set(value, for: q.id) } catch { errorMessage = String(describing: error) } } }, onAdd: { addQuestion = q })
