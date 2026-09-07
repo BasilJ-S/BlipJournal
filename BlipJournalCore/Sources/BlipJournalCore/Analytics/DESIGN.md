@@ -74,6 +74,13 @@ data and not on the order Storage returned answers in.
 
 ## Known limitations
 
+- **Spectrum questions are out of scope here, deliberately.** Every function above is
+  keyed to `AnswerValue.scale` and `ScaleConfig`'s caller-chosen integer range; a
+  spectrum answer is a `Double` in a fixed `0...1`, not on that range, and forcing it
+  through `scaleSeries`/`byOption` would average two incompatible units under one mood
+  chart. Spectrum questions simply do not appear in any series or bucket here; nothing
+  reads `AnswerValue.spectrum`. Charting spectrum answers, if ever wanted, needs its own
+  function, not a widened `scaleSeries`.
 - No correlation, no significance testing, no confidence intervals: means and counts
   only. A bucket of one point looks as solid as one of a hundred; `count` is there for
   the chart to show.

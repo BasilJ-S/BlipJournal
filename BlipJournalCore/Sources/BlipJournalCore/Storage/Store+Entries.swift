@@ -122,6 +122,9 @@ extension Store {
         case .scale:
             guard let value = row.numericValue else { throw mismatch(row, "numericValue") }
             return .scale(value)
+        case .spectrum:
+            guard let value = row.spectrumValue else { throw mismatch(row, "spectrumValue") }
+            return .spectrum(value)
         case .singleChoice:
             guard let optionId = optionIds.first else { throw mismatch(row, "an answerOption row") }
             return .single(optionId: optionId)
@@ -153,7 +156,7 @@ extension Store {
         case .multi(let optionIds):
             var seen: Set<String> = []
             return optionIds.filter { seen.insert($0).inserted }
-        case .scale, .yesNo, .text:
+        case .scale, .spectrum, .yesNo, .text:
             return []
         }
     }
@@ -184,8 +187,10 @@ extension AnswerRow {
         var numericValue: Int?
         var textValue: String?
         var boolValue: Bool?
+        var spectrumValue: Double?
         switch answer.value {
         case .scale(let value): numericValue = value
+        case .spectrum(let value): spectrumValue = value
         case .yesNo(let value): boolValue = value
         case .text(let value): textValue = value
         case .single, .multi: break
@@ -194,6 +199,6 @@ extension AnswerRow {
             id: answer.id, entryId: answer.entryId, questionId: answer.questionId,
             questionVersionId: answer.questionVersionId, answeredAt: answer.answeredAt,
             kind: answer.value.kind, numericValue: numericValue, textValue: textValue,
-            boolValue: boolValue)
+            boolValue: boolValue, spectrumValue: spectrumValue)
     }
 }

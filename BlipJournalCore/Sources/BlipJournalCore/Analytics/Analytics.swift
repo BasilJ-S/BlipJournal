@@ -187,7 +187,7 @@ public enum Analytics {
         case .multi(let optionIds):
             var seen = Set<String>()
             return optionIds.filter { seen.insert($0).inserted }
-        case .scale, .yesNo, .text:
+        case .scale, .spectrum, .yesNo, .text:
             return []
         }
     }

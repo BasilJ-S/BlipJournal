@@ -1,4 +1,14 @@
+import BlipJournalCore
 import SwiftUI
+
+extension SpectrumColor {
+    var color: Color { Color(red: red, green: green, blue: blue) }
+
+    init(_ color: Color) {
+        let resolved = color.resolve(in: EnvironmentValues())
+        self.init(red: Double(resolved.red), green: Double(resolved.green), blue: Double(resolved.blue))
+    }
+}
 
 enum BlipBrand {
     static let ink = Color(hex: 0x1F1A17)

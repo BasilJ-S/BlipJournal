@@ -22,6 +22,7 @@ enum Schema {
         var migrator = DatabaseMigrator()
         migrator.registerMigration("v1", migrate: migrateV1)
         migrator.registerMigration("v2", migrate: migrateV2)
+        migrator.registerMigration("v3", migrate: migrateV3)
         return migrator
     }
 
@@ -142,6 +143,21 @@ enum Schema {
             t.column("mode", .text).notNull()
             t.column("message", .text)
             t.column("createdAt", .datetime).notNull()
+        }
+    }
+
+    /// Schema version 3: `QuestionKind/spectrum` support.
+    ///
+    /// `spectrumConfig` holds the whole ``SpectrumConfig`` as one JSON blob, unlike
+    /// scale's flat columns, because its zone list has no fixed width. `spectrumValue`
+    /// is a `REAL` column alongside `numericValue`: scale answers are `Int`, spectrum
+    /// answers are a `Double` in `0...1`, so they cannot share a column.
+    private static func migrateV3(_ db: Database) throws {
+        try db.alter(table: "questionVersion") { t in
+            t.add(column: "spectrumConfig", .text)
+        }
+        try db.alter(table: "answer") { t in
+            t.add(column: "spectrumValue", .double)
         }
     }
 }

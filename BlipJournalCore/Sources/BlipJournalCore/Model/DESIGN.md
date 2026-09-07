@@ -11,7 +11,8 @@ no persistence.
 
 ```
 Survey ──< Question ──< ChoiceOption          definitions, insert-only upstream
-  │          └─ ScaleConfig?                  scale questions only
+  │          ├─ ScaleConfig?                  scale questions only
+  │          └─ SpectrumConfig?               spectrum questions only
   ├─ SamplingConfig                           this survey's own schedule
   └─ NotificationPreview                      what a prompt notification shows
 
@@ -48,10 +49,15 @@ SurveyTemplate.makeDefault()                  the six-question survey a new inst
   archived definition and every answer to it. That is a Storage operation on a definition
   the model has already marked archived; nothing here models it, and no type carries a
   "deleted" state, because after it runs there is nothing left to carry one.
-- **`kind` fixes the shape.** `scale` is non-nil only for scale questions; `options` and
-  `allowsCustomOptions` are only meaningful when `QuestionKind.usesOptions`. Nothing here
-  enforces that — these are value types with no validation hook — so the constructing
-  code is responsible.
+- **`kind` fixes the shape.** `scale` is non-nil only for scale questions, `spectrum`
+  only for spectrum questions; `options` and `allowsCustomOptions` are only meaningful
+  when `QuestionKind.usesOptions`. Nothing here enforces that — these are value types
+  with no validation hook — so the constructing code is responsible.
+- **Spectrum boundaries are breakpoints, not per-zone ranges.** `SpectrumConfig` stores
+  `zones` and a separate `breakpoints: [Double]` (interior boundaries, one fewer than
+  `zones.count`) rather than a start/end per zone, so the zones can never be constructed
+  with a gap or an overlap — contiguity is a consequence of the shape, not a rule
+  `isValid` has to check.
 - **Schedules are minutes, not dates.** `SamplingConfig` stores times of day as minutes
   after local midnight so a schedule means the same thing on every date and across a DST
   transition. Turning them into instants is the sampler's job.
@@ -72,7 +78,7 @@ this is how each part of the moment is recovered, and what each part depends on:
 
 | What was on screen | Recovered from | Exact, or replayed? |
 |---|---|---|
-| Question wording, position, required flag, scale bounds | `Answer.questionVersionId` | Exact: a direct pin |
+| Question wording, position, required flag, scale bounds, spectrum zones | `Answer.questionVersionId` | Exact: a direct pin |
 | Whether custom options were offered | `Answer.questionVersionId` (`allowsCustomOptions`) | Exact |
 | The options offered, their labels and their order | every option of that question, each at its version current at `Answer.answeredAt`, archived ones dropped, sorted by that version's `position` | Replayed by timestamp |
 | Which options the person chose | `AnswerValue.single` / `.multi` option identifiers | Exact |

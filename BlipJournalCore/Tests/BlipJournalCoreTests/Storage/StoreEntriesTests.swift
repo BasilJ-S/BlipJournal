@@ -92,6 +92,9 @@ struct StoreEntriesTests {
         let yesNo = try store.addQuestion(
             surveyId: survey.id, kind: .yesNo, label: "Slept well?", isRequired: false,
             scale: nil, allowsCustomOptions: false, now: t(1))
+        let mood = try store.addQuestion(
+            surveyId: survey.id, kind: .spectrum, label: "How pleasant was your day?",
+            isRequired: false, scale: nil, spectrum: SpectrumConfig(), allowsCustomOptions: false, now: t(1))
         let tired = try describes.option(labelled: "Tired")
         let calm = try describes.option(labelled: "Calm")
         let sad = try describes.option(labelled: "Sad")
@@ -102,11 +105,12 @@ struct StoreEntriesTests {
             (impact, .multi(optionIds: [])),
             (doing, .single(optionId: try doing.option(labelled: "Eating").id)),
             (yesNo, .yesNo(false)),
+            (mood, .spectrum(0.75)),
             (anything, .text("")),
         ])
 
         let stored = try store.answers(entryId: answers[0].entryId)
-        #expect(stored.count == 6)
+        #expect(stored.count == 7)
         for answer in answers {
             let match = try #require(stored.first { $0.id == answer.id })
             if answer.questionId == describes.id {

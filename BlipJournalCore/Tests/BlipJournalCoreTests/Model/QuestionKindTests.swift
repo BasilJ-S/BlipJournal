@@ -9,6 +9,7 @@ struct QuestionKindTests {
         #expect(QuestionKind.singleChoice.usesOptions)
         #expect(QuestionKind.multiChoice.usesOptions)
         #expect(!QuestionKind.scale.usesOptions)
+        #expect(!QuestionKind.spectrum.usesOptions)
         #expect(!QuestionKind.yesNo.usesOptions)
         #expect(!QuestionKind.text.usesOptions)
     }
@@ -16,7 +17,7 @@ struct QuestionKindTests {
     @Test("raw values are the persisted contract")
     func rawValues() {
         #expect(QuestionKind.allCases.map(\.rawValue) == [
-            "scale", "singleChoice", "multiChoice", "yesNo", "text",
+            "scale", "spectrum", "singleChoice", "multiChoice", "yesNo", "text",
         ])
     }
 }
@@ -76,5 +77,75 @@ struct ScaleConfigTests {
         let scale = ScaleConfig(min: 0, max: 10, minLabel: "Low", maxLabel: "High")
         let data = try JSONEncoder().encode(scale)
         #expect(try JSONDecoder().decode(ScaleConfig.self, from: data) == scale)
+    }
+}
+
+@Suite("SpectrumConfig")
+struct SpectrumConfigTests {
+    @Test("defaults are the three-band pleasantness spectrum")
+    func defaults() {
+        let spectrum = SpectrumConfig()
+        #expect(spectrum.zones.map(\.label) == ["Very unpleasant", "Neutral", "Very pleasant"])
+        #expect(spectrum.breakpoints == [1.0 / 3.0, 2.0 / 3.0])
+        #expect(spectrum.isValid)
+    }
+
+    @Test("every preset is valid")
+    func presetsAreValid() {
+        #expect(SpectrumConfig.presets.allSatisfy { $0.config.isValid })
+    }
+
+    @Test("isValid rejects a breakpoint count that does not match zones minus one")
+    func rejectsMismatchedBreakpointCount() {
+        var spectrum = SpectrumConfig()
+        spectrum.breakpoints = [0.5]
+        #expect(!spectrum.isValid)
+        spectrum.breakpoints = [0.2, 0.5, 0.8]
+        #expect(!spectrum.isValid)
+    }
+
+    @Test("isValid rejects breakpoints out of order, out of range, or repeated")
+    func rejectsMalformedBreakpoints() {
+        var spectrum = SpectrumConfig()
+        spectrum.breakpoints = [2.0 / 3.0, 1.0 / 3.0]
+        #expect(!spectrum.isValid)
+        spectrum.breakpoints = [0, 2.0 / 3.0]
+        #expect(!spectrum.isValid)
+        spectrum.breakpoints = [1.0 / 3.0, 1]
+        #expect(!spectrum.isValid)
+        spectrum.breakpoints = [0.5, 0.5]
+        #expect(!spectrum.isValid)
+    }
+
+    @Test("isValid rejects fewer than two zones")
+    func rejectsTooFewZones() {
+        let spectrum = SpectrumConfig(zones: [SpectrumConfig.Zone(label: "Only", color: SpectrumColor(red: 0, green: 0, blue: 0))], breakpoints: [])
+        #expect(!spectrum.isValid)
+    }
+
+    @Test("zoneIndex(for:) picks the zone the value falls in, clamped to 0...1")
+    func zoneIndexPicksTheRightBand() {
+        let spectrum = SpectrumConfig()
+        #expect(spectrum.zoneIndex(for: 0) == 0)
+        #expect(spectrum.zoneIndex(for: 0.2) == 0)
+        #expect(spectrum.zoneIndex(for: 1.0 / 3.0) == 1)
+        #expect(spectrum.zoneIndex(for: 0.5) == 1)
+        #expect(spectrum.zoneIndex(for: 2.0 / 3.0) == 2)
+        #expect(spectrum.zoneIndex(for: 1) == 2)
+        #expect(spectrum.zoneIndex(for: -1) == 0)
+        #expect(spectrum.zoneIndex(for: 2) == 2)
+    }
+
+    @Test("zone(for:) returns the zone at that index")
+    func zoneReturnsTheZone() {
+        let spectrum = SpectrumConfig()
+        #expect(spectrum.zone(for: 0.9).label == "Very pleasant")
+    }
+
+    @Test("round-trips through JSON")
+    func roundTrips() throws {
+        let spectrum = SpectrumConfig()
+        let data = try JSONEncoder().encode(spectrum)
+        #expect(try JSONDecoder().decode(SpectrumConfig.self, from: data) == spectrum)
     }
 }

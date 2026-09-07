@@ -73,6 +73,9 @@ public struct QuestionVersionRow: Sendable, Equatable, Codable, FetchableRecord,
     public var scaleMax: Int?
     public var scaleMinLabel: String?
     public var scaleMaxLabel: String?
+    /// The question's ``SpectrumConfig``, JSON-encoded. Non-nil only for spectrum
+    /// questions.
+    public var spectrumConfig: String?
     public var allowsCustomOptions: Bool
     public var createdAt: Date
 }
@@ -118,9 +121,9 @@ public struct EntryRow: Sendable, Equatable, Codable, FetchableRecord, Persistab
     public var completedAt: Date?
 }
 
-/// A row of `answer`. Exactly one of the three value columns is set for scale, yes/no
-/// and text answers; choice answers set none and keep their selections in
-/// `answerOption`.
+/// A row of `answer`. Exactly one of the four value columns is set for scale,
+/// spectrum, yes/no and text answers; choice answers set none and keep their
+/// selections in `answerOption`.
 public struct AnswerRow: Sendable, Equatable, Codable, FetchableRecord, PersistableRecord {
     public static let databaseTableName = "answer"
     public var id: String
@@ -132,6 +135,7 @@ public struct AnswerRow: Sendable, Equatable, Codable, FetchableRecord, Persista
     public var numericValue: Int?
     public var textValue: String?
     public var boolValue: Bool?
+    public var spectrumValue: Double?
 }
 
 /// A row of `answerOption`: one selected option of one choice answer.

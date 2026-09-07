@@ -88,7 +88,7 @@ extension Store {
     /// highest current position, archived questions included, or 0 for the first.
     public func addQuestion(
         surveyId: String, kind: QuestionKind, label: String, isRequired: Bool,
-        scale: ScaleConfig?, allowsCustomOptions: Bool, now: Date = Date()
+        scale: ScaleConfig?, spectrum: SpectrumConfig? = nil, allowsCustomOptions: Bool, now: Date = Date()
     ) throws -> Question {
         try dbQueue.write { db in
             let rows = try DefinitionRows.load(db, surveyId: surveyId)
@@ -98,7 +98,7 @@ extension Store {
             let position = survey.questions.map(\.position).max().map { $0 + 1 } ?? 0
             let question = Question(
                 kind: kind, label: label, position: position, isRequired: isRequired,
-                scale: scale, allowsCustomOptions: allowsCustomOptions)
+                scale: scale, spectrum: spectrum, allowsCustomOptions: allowsCustomOptions)
             try insertQuestion(db, question, surveyId: surveyId, now: now)
             return question
         }
@@ -108,14 +108,14 @@ extension Store {
     /// not a diff. Archiving a question writes nothing to its options.
     public func updateQuestion(
         _ id: String, label: String, position: Int, isRequired: Bool, isArchived: Bool,
-        scale: ScaleConfig?, allowsCustomOptions: Bool, now: Date = Date()
+        scale: ScaleConfig?, spectrum: SpectrumConfig? = nil, allowsCustomOptions: Bool, now: Date = Date()
     ) throws {
         try dbQueue.write { db in
             guard try QuestionRow.exists(db, key: id) else { throw StoreError.notFound }
             try makeQuestionVersionRow(
                 questionId: id, label: label, position: position, isRequired: isRequired,
-                isArchived: isArchived, scale: scale, allowsCustomOptions: allowsCustomOptions,
-                now: now
+                isArchived: isArchived, scale: scale, spectrum: spectrum,
+                allowsCustomOptions: allowsCustomOptions, now: now
             ).insert(db)
         }
     }
@@ -241,7 +241,7 @@ extension Store {
         try makeQuestionVersionRow(
             questionId: question.id, label: question.label, position: question.position,
             isRequired: question.isRequired, isArchived: question.isArchived, scale: question.scale,
-            allowsCustomOptions: question.allowsCustomOptions, now: now
+            spectrum: question.spectrum, allowsCustomOptions: question.allowsCustomOptions, now: now
         ).insert(db)
         for option in question.options {
             try insertOption(db, option, questionId: question.id, now: now)
@@ -270,13 +270,14 @@ extension Store {
 
     private func makeQuestionVersionRow(
         questionId: String, label: String, position: Int, isRequired: Bool, isArchived: Bool,
-        scale: ScaleConfig?, allowsCustomOptions: Bool, now: Date
+        scale: ScaleConfig?, spectrum: SpectrumConfig?, allowsCustomOptions: Bool, now: Date
     ) -> QuestionVersionRow {
         QuestionVersionRow(
             id: Identifier.make(), questionId: questionId, label: label, position: position,
             isRequired: isRequired, isArchived: isArchived,
             scaleMin: scale?.min, scaleMax: scale?.max,
             scaleMinLabel: scale?.minLabel, scaleMaxLabel: scale?.maxLabel,
+            spectrumConfig: Store.spectrumConfigJSON(spectrum),
             allowsCustomOptions: allowsCustomOptions, createdAt: now)
     }
 }

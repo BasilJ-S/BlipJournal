@@ -9,7 +9,7 @@ struct SchemaTests {
         let store = try Store.inMemory()
         let backup = try store.backup(now: Fixture.t0)
         #expect(backup.schemaVersion == CoreSchema.version)
-        #expect(CoreSchema.version == 2)
+        #expect(CoreSchema.version == 3)
         #expect(backup.rowCounts.values.allSatisfy { $0 == 0 })
         #expect(backup.rowCounts.count == 12)
     }
