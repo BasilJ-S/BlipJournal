@@ -131,7 +131,9 @@ BlipJournal/        iOS app target. SwiftUI only.
   random time per block, enforce the minimum gap. Times are rounded to the minute.
 - Changing a survey's schedule discards that survey's future pending prompts and
   regenerates them.
-- Prompts use the time-sensitive interruption level so they break through Focus.
+- Time-sensitive interruption level (to break through Focus) is implemented but disabled
+  under Personal Team signing, which can't hold the required entitlement; see
+  `LiveNotificationCenterClient.useTimeSensitiveInterruption`.
 - A prompt opened after its expiry is logged as missed and the user is offered a manual
   entry instead.
 
