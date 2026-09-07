@@ -24,6 +24,11 @@
 	<false/>
 	<key>NSFaceIDUsageDescription</key>
 	<string>Blip Journal uses Face ID to keep your journal private.</string>
+	<key>UIAppFonts</key>
+	<array>
+		<string>Nunito.ttf</string>
+		<string>JetBrainsMono.ttf</string>
+	</array>
 	<key>UILaunchScreen</key>
 	<dict/>
 	<key>UISupportedInterfaceOrientations</key>

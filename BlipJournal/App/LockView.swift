@@ -27,7 +27,7 @@ struct LockView: View {
             Spacer()
             BlipMark(size: 72)
             Text("Blip Journal")
-                .font(.system(.largeTitle, design: .rounded).weight(.heavy))
+                .font(BlipFont.title(30))
             content
             Spacer()
         }

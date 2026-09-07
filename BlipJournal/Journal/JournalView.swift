@@ -63,15 +63,20 @@ struct JournalView: View {
     private var entryList: some View {
         List {
             ForEach(daySections, id: \.day) { section in
-                Section(Self.dayFormatter.string(from: section.day)) {
+                Section {
                     ForEach(section.entries) { entry in
                         NavigationLink(value: entry) {
                             EntryRow(entry: entry, survey: appModel.surveysById[entry.surveyId])
                         }
+                        .blipCardRow()
                     }
+                } header: {
+                    Text(Self.dayFormatter.string(from: section.day)).blipMonoLabel()
                 }
             }
         }
+        .listStyle(.plain)
+        .environment(\.defaultMinListRowHeight, 0)
     }
 
     private struct DaySection {
@@ -185,20 +190,23 @@ private struct EntryRow: View {
         VStack(alignment: .leading, spacing: 4) {
             HStack(alignment: .firstTextBaseline) {
                 Text(entry.startedAt, style: .time)
-                    .font(.headline)
+                    .font(BlipFont.qualifier(17))
                 if let scaleSummary = summary.value {
                     Text(scaleSummary)
-                        .font(.headline)
-                        .foregroundStyle(.secondary)
+                        .font(BlipFont.qualifier(17))
+                        .foregroundStyle(BlipBrand.muted)
                 }
             }
             Text(survey?.name ?? "Unknown survey")
+                .font(BlipFont.body(15))
+                .foregroundStyle(BlipBrand.muted)
             ViewThatFits(in: .horizontal) {
                 HStack(spacing: 8) { badges }
                 VStack(alignment: .leading, spacing: 4) { badges }
             }
         }
-        .padding(.vertical, 2)
+        .padding(.vertical, 6)
+        .padding(.horizontal, 4)
         .accessibilityElement(children: .combine)
         .task(id: appModel.revision) { await loadSummary() }
     }
@@ -246,10 +254,9 @@ private struct JournalBadge: View {
 
     var body: some View {
         Text(text)
-            .font(.caption.weight(.medium))
+            .blipMonoLabel(size: 9.5)
             .padding(.horizontal, 8)
-            .padding(.vertical, 2)
-            .background(Color(.secondarySystemFill), in: Capsule())
-            .foregroundStyle(.secondary)
+            .padding(.vertical, 3)
+            .background(BlipBrand.paper, in: Capsule())
     }
 }
