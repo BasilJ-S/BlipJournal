@@ -94,13 +94,13 @@ public struct PromptPlanner: Sendable {
         let day: String
     }
 
-    /// New pending prompts for every eligible survey and every day in the horizon that
-    /// has none yet, ascending by `scheduledAt`, ties by survey ID then generation order.
+    /// New pending prompts for uncovered days, plus recovery for an incomplete today
+    /// with no future prompts. Existing future schedules are never redrawn.
     private static func generate<G: RandomNumberGenerator>(
         now: Date, surveys: [Survey], existing: [Prompt],
         horizonDays: Int, calendar: Calendar, using rng: inout G
     ) -> [Prompt] {
-        let covered = Set(existing.map { SurveyDay(surveyId: $0.surveyId, day: $0.day) })
+        let byDay = Dictionary(grouping: existing) { SurveyDay(surveyId: $0.surveyId, day: $0.day) }
         let earliest = now.addingTimeInterval(60)
         let today = calendar.startOfDay(for: now)
         let sampler = DaySampler()
@@ -111,10 +111,21 @@ public struct PromptPlanner: Sendable {
             for offset in 0..<horizonDays {
                 guard let day = calendar.date(byAdding: .day, value: offset, to: today) else { continue }
                 let dayKey = DayKey.string(for: day, calendar: calendar)
-                guard !covered.contains(SurveyDay(surveyId: survey.id, day: dayKey)) else { continue }
+                let dayPrompts = byDay[SurveyDay(surveyId: survey.id, day: dayKey)] ?? []
+                let remaining = survey.sampling.promptsPerDay - dayPrompts.count
+                guard remaining > 0 else { continue }
+                if !dayPrompts.isEmpty {
+                    // Changing a schedule removes future pending rows but preserves
+                    // history. That history must not block the rest of today forever.
+                    guard offset == 0, !dayPrompts.contains(where: { $0.scheduledAt > now }) else { continue }
+                }
 
                 let times = sampler.sample(day: day, config: survey.sampling, calendar: calendar, using: &rng)
-                for scheduledAt in times where scheduledAt > earliest {
+                let gap = TimeInterval(max(survey.sampling.minGapMinutes, 1) * 60)
+                let available = times.filter { time in
+                    time > earliest && dayPrompts.allSatisfy { abs(time.timeIntervalSince($0.scheduledAt)) >= gap }
+                }
+                for scheduledAt in available.prefix(remaining) {
                     let prompt = Prompt(
                         surveyId: survey.id,
                         day: dayKey,

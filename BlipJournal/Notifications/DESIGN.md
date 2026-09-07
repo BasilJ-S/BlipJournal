@@ -19,6 +19,16 @@ NotificationSettingsView.swift   Settings → Notifications
 
 `refresh(now:)` runs every foreground and after every schedule-affecting write:
 
+The Settings button uses this same refresh: it preserves existing future times, fills
+uncovered days (including an incomplete today with no future prompts), and restores
+missing system requests. Its inline explanation distinguishes refresh from editing a
+survey's schedule. The upcoming list shows the next five stored future prompts.
+The separate Reschedule button calls `reschedule(now:)`: under the same refresh lock,
+delete all surveys' future pending prompts, then plan and reconcile new random times.
+Past prompts and answers survive; daily history counts toward today's limit. The UI
+disables both buttons during either operation and reports reschedule success or failure.
+Request-add errors propagate to that result; refresh can retry the persisted schedule.
+
 1. Load every survey (archived included) and `existing`: pending prompts plus every
    prompt whose `day` is today or later (`prompts(status: nil)`, filtered — volumes are
    small).

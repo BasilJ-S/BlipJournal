@@ -51,7 +51,11 @@ iOS holds at most 64 pending local notifications per app; `maxPending` is 60.
 eligible surveys (not archived, enabled, valid, count above zero), so one survey at
 three per day looks a week ahead while heavy schedules look only as far as fits.
 Generation covers day offsets `0..<horizonDays` from today, skipping any survey-day that
-already has a prompt of any status in `existing`. Today keeps only times later than
+already has a prompt of any status in `existing`, except an incomplete today with no
+future prompts: history left after a schedule change must not block recovery. Recovery
+counts every status toward the daily limit, respects the minimum gap from history, and
+stops once future prompts exist. It does not replace existing times or catch up a full
+day's quota after its window closes. Today keeps only times later than
 `now + 60s`. If live pending plus new would exceed the cap, the latest new prompts are
 dropped first. `newPrompts` is ascending by `scheduledAt`, ties by survey ID, then by
 generation order. The planner never proposes deletions; the app clears a survey's future

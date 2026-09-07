@@ -119,6 +119,7 @@ final class SpyNotificationCoordinator: NotificationCoordinating {
     var onRefresh: (() -> Void)?
 
     func requestAuthorization() async -> Bool { false }
+    func reschedule(now: Date) async -> Bool { false }
     func refresh(now: Date) async {
         refreshDates.append(now)
         let callback = onRefresh

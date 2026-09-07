@@ -139,7 +139,7 @@ struct PromptPlannerTests {
         #expect(result.newPrompts.filter { $0.day == "2026-09-06" }.count == 3)
     }
 
-    @Test("days already present in existing are skipped, whatever the status")
+    @Test("future days already present are skipped; an incomplete today can recover")
     func existingDaysSkipped() {
         let tomorrow = F.date(2026, 9, 6, 12, 0)
         let dayAfter = F.date(2026, 9, 7, 12, 0)
@@ -152,13 +152,51 @@ struct PromptPlannerTests {
         let result = plan(surveys: [F.survey(id: "s"), F.survey(id: "t")], existing: existing)
         let sDays = dayKeys(result.newPrompts.filter { $0.surveyId == "s" })
         let tDays = dayKeys(result.newPrompts.filter { $0.surveyId == "t" })
-        #expect(!sDays.contains("2026-09-05"))
+        #expect(sDays.contains("2026-09-05"))
         #expect(!sDays.contains("2026-09-06"))
         #expect(!sDays.contains("2026-09-07"))
-        #expect(sDays.count == 4)
+        #expect(sDays.count == 5)
         #expect(!tDays.contains("2026-09-06"))
         #expect(tDays.contains("2026-09-05"))
         #expect(tDays.count == 6)
+    }
+
+    @Test("refresh recovers today after a schedule change leaves only its first prompt")
+    func recoverTodayAfterScheduleChange() {
+        let morning = F.date(2026, 9, 5, 10, 0)
+        let config = SamplingConfig(
+            promptsPerDay: 3, windowStartMinutes: 540, windowEndMinutes: 1380, minGapMinutes: 120)
+        let survey = F.survey(id: "s", sampling: config)
+        for status in [PromptStatus.pending, .answered, .missed] {
+            let first = F.prompt(survey: "s", at: F.date(2026, 9, 5, 9, 30), status: status)
+            for seed in 0..<100 {
+                let result = plan(now: morning, surveys: [survey], existing: [first], seed: UInt64(seed))
+                let today = result.newPrompts.filter { $0.day == first.day }
+                #expect(today.count == 2)
+                for prompt in today {
+                    #expect(prompt.scheduledAt > morning.addingTimeInterval(60))
+                    #expect(prompt.scheduledAt.timeIntervalSince(first.scheduledAt) >= 120 * 60)
+                    #expect(F.minuteOfDay(prompt.scheduledAt) < 1380)
+                }
+                let again = plan(now: morning, surveys: [survey], existing: [first] + result.newPrompts)
+                #expect(again.newPrompts.isEmpty)
+            }
+        }
+    }
+
+    @Test("recovery preserves future times, counts history, and respects a closed window")
+    func recoveryLimits() {
+        let survey = F.survey(id: "s")
+        let first = F.prompt(survey: "s", at: F.date(2026, 9, 5, 9, 30), status: .answered)
+        let future = F.prompt(survey: "s", at: F.date(2026, 9, 5, 20, 0))
+        let fullHistory = (0..<3).map {
+            F.prompt(survey: "s", at: F.date(2026, 9, 5, 9 + $0, 30), status: .missed)
+        }
+        for existing in [[first, future], fullHistory] {
+            #expect(plan(surveys: [survey], existing: existing).newPrompts.allSatisfy { $0.day != first.day })
+        }
+        let late = F.date(2026, 9, 5, 23, 0)
+        #expect(plan(now: late, surveys: [survey], existing: [first]).newPrompts.allSatisfy { $0.day != first.day })
     }
 
     @Test("days before today are never generated even if the horizon is wide")
