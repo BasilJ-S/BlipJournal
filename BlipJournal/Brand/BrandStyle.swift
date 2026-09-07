@@ -81,6 +81,8 @@ extension View {
             .navigationBarTitleDisplayMode(titleDisplayMode)
             .fontDesign(.rounded)
             .scrollContentBackground(.hidden)
+            .toolbarBackground(BlipBrand.paper, for: .navigationBar)
+            .toolbarBackground(.visible, for: .navigationBar)
             .blipScreenBackground()
     }
 
@@ -99,25 +101,10 @@ extension View {
     }
 }
 
-/// One-time global chrome: reliable rounded navigation titles and tab labels in
-/// JetBrains Mono 500. Call once at launch.
+/// One-time global tab chrome. Navigation chrome stays in SwiftUI's shared
+/// `blipScreen` modifier so UIKit retains ownership of native title rendering.
 enum BlipAppearance {
     static func configure() {
-        let navigation = UINavigationBarAppearance()
-        navigation.configureWithOpaqueBackground()
-        navigation.backgroundColor = UIColor(BlipBrand.paper)
-        navigation.titleTextAttributes = [
-            .font: navigationFont(size: 17),
-            .foregroundColor: UIColor(BlipBrand.ink)
-        ]
-        navigation.largeTitleTextAttributes = [
-            .font: navigationFont(size: 34),
-            .foregroundColor: UIColor(BlipBrand.ink)
-        ]
-        UINavigationBar.appearance().standardAppearance = navigation
-        UINavigationBar.appearance().scrollEdgeAppearance = navigation
-        UINavigationBar.appearance().compactAppearance = navigation
-
         let tabItem = UITabBarItemAppearance()
         let tabFont = BlipFont.variableUIFont(BlipFont.jetBrainsMonoPostScriptName, weight: 500, size: 10)
         tabItem.normal.titleTextAttributes = [.font: tabFont]
@@ -128,15 +115,6 @@ enum BlipAppearance {
         tabBar.stackedLayoutAppearance = tabItem
         UITabBar.appearance().standardAppearance = tabBar
         UITabBar.appearance().scrollEdgeAppearance = tabBar
-    }
-
-    /// UIKit's large-title renderer does not reliably draw a variable-font descriptor
-    /// at the scroll edge. The rounded system face is the safe native-chrome fallback;
-    /// content headings continue to use Nunito through `BlipFont`.
-    private static func navigationFont(size: CGFloat) -> UIFont {
-        let base = UIFont.systemFont(ofSize: size, weight: .heavy)
-        guard let descriptor = base.fontDescriptor.withDesign(.rounded) else { return base }
-        return UIFont(descriptor: descriptor, size: size)
     }
 }
 

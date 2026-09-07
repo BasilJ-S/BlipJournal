@@ -23,8 +23,7 @@ struct RootView: View {
         }
         .preferredColorScheme(.light)
         .tint(BlipBrand.violet)
-        // Navigation chrome is owned by BlipAppearance. Setting it again here through
-        // SwiftUI replaces the scroll-edge appearance and can suppress large titles.
+        // Navigation chrome is owned by each screen's shared blipScreen modifier.
         .toolbarBackground(BlipBrand.paper, for: .tabBar)
         .toolbarBackground(.visible, for: .tabBar)
         .blipScreenBackground()

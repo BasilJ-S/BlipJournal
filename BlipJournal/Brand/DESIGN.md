@@ -9,6 +9,6 @@ works at Dynamic Type and does not add an image-loading dependency.
 `blipScreen(_:titleDisplayMode:)` is the single screen-theme boundary: it applies the
 navigation title, rounded typography, tint, paper surface, and hides opaque List/Form
 canvases. Root tabs explicitly request large titles; pushed and sheet screens keep the
-platform's contextual title mode. Native navigation titles use a rounded system fallback
-because UIKit's scroll-edge renderer does not reliably draw the bundled variable font;
-content headings continue to use Nunito.
+platform's contextual title mode. Navigation bars retain SwiftUI's native title renderer;
+overriding `UINavigationBarAppearance` caused scroll-edge titles to disappear. Content
+headings continue to use Nunito.
