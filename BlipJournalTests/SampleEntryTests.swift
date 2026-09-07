@@ -57,6 +57,8 @@ struct SampleEntryTests {
             case .scale(let value):
                 let scale = try #require(question.scale)
                 #expect((scale.min...scale.max).contains(value))
+            case .spectrum(let value):
+                #expect((0...1).contains(value))
             case .single(let optionId):
                 #expect(question.options.contains { $0.id == optionId })
             case .multi(let optionIds):

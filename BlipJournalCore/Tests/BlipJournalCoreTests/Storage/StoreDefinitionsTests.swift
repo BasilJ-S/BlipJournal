@@ -182,11 +182,18 @@ struct StoreDefinitionsTests {
             allowsCustomOptions: false, now: t(3))
         #expect(scaled.position == 7)
 
+        let spectrumed = try store.addQuestion(
+            surveyId: survey.id, kind: .spectrum, label: "How do you feel?", isRequired: false,
+            scale: nil, spectrum: SpectrumConfig(), allowsCustomOptions: false, now: t(3))
+        #expect(spectrumed.position == 8)
+        #expect(spectrumed.spectrum == SpectrumConfig())
+
         let reloaded = try #require(try store.survey(survey.id))
-        #expect(reloaded.questions.count == 8)
+        #expect(reloaded.questions.count == 9)
         #expect(reloaded.questions.first { $0.id == added.id } == added)
         #expect(reloaded.questions.first { $0.id == scaled.id } == scaled)
-        #expect(reloaded.activeQuestions.map(\.position) == [0, 1, 2, 3, 4, 6, 7])
+        #expect(reloaded.questions.first { $0.id == spectrumed.id } == spectrumed)
+        #expect(reloaded.activeQuestions.map(\.position) == [0, 1, 2, 3, 4, 6, 7, 8])
 
         let doing = try survey.question(labelled: "What are you doing?")
         let option = try store.addOption(questionId: doing.id, label: "Gardening", now: t(4))

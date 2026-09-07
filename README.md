@@ -161,7 +161,7 @@ BlipJournal/        iOS app target. SwiftUI only.
 
 Default survey, all questions optional except the first:
 
-1. How are you feeling right now? Scale 1 to 7, "Very unpleasant" to "Very pleasant".
+1. How are you feeling right now? Spectrum from "Very unpleasant" to "Very pleasant".
 2. What best describes this feeling? Multiple choice.
 3. What is having the biggest impact? Multiple choice, expandable.
 4. What are you doing? Single choice, expandable.

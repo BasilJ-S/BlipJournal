@@ -12,6 +12,7 @@ enum EditorError: Error, Equatable {
     case invalidSampling([SamplingConfig.ValidationError])
     case surveyNeedsQuestion
     case invalidScale
+    case invalidSpectrum
 }
 
 @MainActor @Observable
@@ -47,6 +48,7 @@ final class EditorModel {
                 position: index,
                 isRequired: question.isRequired,
                 scale: question.scale,
+                spectrum: question.spectrum,
                 allowsCustomOptions: question.allowsCustomOptions,
                 options: question.activeOptions.enumerated().map { optionIndex, option in
                     ChoiceOption(label: option.label, position: optionIndex)
@@ -93,20 +95,23 @@ final class EditorModel {
     @discardableResult
     func addQuestion(
         surveyId: String, kind: QuestionKind, label: String, isRequired: Bool,
-        scale: ScaleConfig?, allowsCustomOptions: Bool, now: Date = Date()
+        scale: ScaleConfig?, spectrum: SpectrumConfig? = nil, allowsCustomOptions: Bool, now: Date = Date()
     ) throws -> Question {
         if kind == .scale && !(scale?.isValid ?? false) { throw EditorError.invalidScale }
+        if kind == .spectrum && !(spectrum?.isValid ?? false) { throw EditorError.invalidSpectrum }
         return try store.addQuestion(
             surveyId: surveyId, kind: kind, label: label, isRequired: isRequired,
-            scale: scale, allowsCustomOptions: allowsCustomOptions, now: now)
+            scale: scale, spectrum: spectrum, allowsCustomOptions: allowsCustomOptions, now: now)
     }
 
     func updateQuestion(_ question: Question, now: Date = Date()) throws {
         if question.kind == .scale && !(question.scale?.isValid ?? false) { throw EditorError.invalidScale }
+        if question.kind == .spectrum && !(question.spectrum?.isValid ?? false) { throw EditorError.invalidSpectrum }
         try store.updateQuestion(
             question.id, label: question.label, position: question.position,
             isRequired: question.isRequired, isArchived: question.isArchived,
-            scale: question.scale, allowsCustomOptions: question.allowsCustomOptions, now: now)
+            scale: question.scale, spectrum: question.spectrum,
+            allowsCustomOptions: question.allowsCustomOptions, now: now)
     }
 
     func moveQuestions(surveyId: String, from: IndexSet, to: Int, now: Date = Date()) throws {

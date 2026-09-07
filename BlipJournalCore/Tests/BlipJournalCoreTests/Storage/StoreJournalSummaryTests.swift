@@ -7,8 +7,8 @@ import Testing
 struct StoreJournalSummaryTests {
     private let t = Fixture.at
 
-    @Test("a new survey defaults to its first scale question")
-    func defaultsToFirstScale() throws {
+    @Test("a new survey defaults to its first mood question")
+    func defaultsToFirstMood() throws {
         let (store, created) = try Fixture.seeded()
         let survey = try #require(try store.survey(created.id))
         #expect(survey.journalSummaryQuestionIds == [survey.activeQuestions[0].id])
@@ -62,6 +62,7 @@ struct StoreJournalSummaryTests {
         try store.updateQuestion(
             mood.id, label: mood.label, position: mood.position,
             isRequired: mood.isRequired, isArchived: true, scale: mood.scale,
+            spectrum: mood.spectrum,
             allowsCustomOptions: mood.allowsCustomOptions, now: t(2))
 
         #expect(try store.survey(survey.id)?.journalSummaryQuestionIds == [activity.id])
@@ -79,24 +80,32 @@ struct StoreJournalSummaryTests {
             v1Only.registerMigration("v1", migrate: Schema.migrateV1)
             let queue = try DatabaseQueue(path: path)
             try v1Only.migrate(queue)
-            let template = SurveyTemplate.makeDefault(now: t(0))
+            let question = Question(
+                id: "q1", kind: .scale, label: "Mood", position: 0,
+                scale: ScaleConfig())
             try queue.write { db in
                 try SurveyRow(id: "s1", createdAt: t(0)).insert(db)
                 try db.execute(
                     sql: "INSERT INTO surveyVersion (id, surveyId, name, isArchived, createdAt) VALUES (?, ?, ?, ?, ?)",
                     arguments: ["sv1", "s1", "Old", false, t(0)])
-                for question in template.questions {
+                for question in [question] {
                     try QuestionRow(
                         id: question.id, surveyId: "s1", kind: question.kind,
                         createdAt: t(0)).insert(db)
-                    try QuestionVersionRow(
-                        id: Identifier.make(), questionId: question.id, label: question.label,
-                        position: question.position, isRequired: question.isRequired,
-                        isArchived: false, scaleMin: question.scale?.min,
-                        scaleMax: question.scale?.max, scaleMinLabel: question.scale?.minLabel,
-                        scaleMaxLabel: question.scale?.maxLabel,
-                        allowsCustomOptions: question.allowsCustomOptions,
-                        createdAt: t(0)).insert(db)
+                    try db.execute(
+                        sql: """
+                            INSERT INTO questionVersion
+                                (id, questionId, label, position, isRequired, isArchived,
+                                 scaleMin, scaleMax, scaleMinLabel, scaleMaxLabel,
+                                 allowsCustomOptions, createdAt)
+                            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                            """,
+                        arguments: [
+                            Identifier.make(), question.id, question.label, question.position,
+                            question.isRequired, false, question.scale?.min, question.scale?.max,
+                            question.scale?.minLabel, question.scale?.maxLabel,
+                            question.allowsCustomOptions, t(0),
+                        ])
                 }
             }
         }

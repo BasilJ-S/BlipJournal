@@ -97,6 +97,7 @@ struct JournalSummarySettingsView: View {
     private func icon(for kind: QuestionKind) -> String {
         switch kind {
         case .scale: "slider.horizontal.3"
+        case .spectrum: "slider.horizontal.below.sun.max"
         case .singleChoice: "circle.grid.2x2"
         case .multiChoice: "checklist"
         case .yesNo: "checkmark.circle"

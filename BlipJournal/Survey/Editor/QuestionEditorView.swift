@@ -8,6 +8,7 @@ struct QuestionEditorView: View {
     @State private var label = ""
     @State private var required = false
     @State private var scale = ScaleConfig()
+    @State private var spectrum = SpectrumConfig()
     @State private var customOptions = false
     @State private var editMode = EditMode.inactive
     @State private var errorMessage: String?
@@ -24,6 +25,7 @@ struct QuestionEditorView: View {
                     Text("The kind cannot change because answers depend on it.").font(.footnote).foregroundStyle(.secondary)
                     Text("Question fields save when you tap Save question. Option changes are saved immediately.").font(.footnote).foregroundStyle(.secondary)
                     if question.kind == .scale { ScaleFields(scale: $scale) }
+                    if question.kind == .spectrum { SpectrumFields(spectrum: $spectrum) }
                     if question.kind.usesOptions {
                         Toggle("Allow adding options while answering", isOn: $customOptions)
                     }
@@ -74,9 +76,9 @@ struct QuestionEditorView: View {
         .alert("Could not save question", isPresented: Binding(get: { errorMessage != nil }, set: { if !$0 { errorMessage = nil } })) { Button("OK", role: .cancel) {} } message: { Text(errorMessage ?? "") }
     }
 
-    private func load() { guard let q = question else { return }; label = q.label; required = q.isRequired; scale = q.scale ?? ScaleConfig(); customOptions = q.allowsCustomOptions }
+    private func load() { guard let q = question else { return }; label = q.label; required = q.isRequired; scale = q.scale ?? ScaleConfig(); spectrum = q.spectrum ?? SpectrumConfig(); customOptions = q.allowsCustomOptions }
     private func save() {
-        guard var q = question else { return }; q.label = label; q.isRequired = required; q.scale = q.kind == .scale ? scale : nil; q.allowsCustomOptions = q.kind.usesOptions && customOptions
+        guard var q = question else { return }; q.label = label; q.isRequired = required; q.scale = q.kind == .scale ? scale : nil; q.spectrum = q.kind == .spectrum ? spectrum : nil; q.allowsCustomOptions = q.kind.usesOptions && customOptions
         do {
             try EditorModel(store: appModel.store, notifications: appModel.notifications).updateQuestion(q)
             try appModel.refresh()

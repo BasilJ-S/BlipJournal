@@ -125,6 +125,21 @@ extension Store {
         return ScaleConfig(min: min, max: max, minLabel: minLabel, maxLabel: maxLabel)
     }
 
+    /// The spectrum a question version row describes, or nil when the column is unset
+    /// or does not decode. A row this store wrote always decodes; a failure here means
+    /// data from outside this module, which is treated the same as no spectrum at all.
+    static func spectrumConfig(of row: QuestionVersionRow) -> SpectrumConfig? {
+        guard let json = row.spectrumConfig, let data = json.data(using: .utf8) else { return nil }
+        return try? JSONDecoder().decode(SpectrumConfig.self, from: data)
+    }
+
+    /// The JSON blob a spectrum config writes to `questionVersion.spectrumConfig`, or
+    /// nil for no spectrum.
+    static func spectrumConfigJSON(_ spectrum: SpectrumConfig?) -> String? {
+        guard let spectrum, let data = try? JSONEncoder().encode(spectrum) else { return nil }
+        return String(data: data, encoding: .utf8)
+    }
+
     /// The preview a notification preview row describes. An unrecognised `mode` (there
     /// is none on any row this module writes) resolves to `.private`, the same as a
     /// missing row, rather than trapping on data written by a future version.
@@ -233,10 +248,10 @@ struct DefinitionRows {
                 version.secondarySummaryQuestionId,
             ].compactMap { $0 }.filter(activeQuestionIds.contains)
         } else {
-            // Before v3 Journal rows showed the first answered scale. Preserve that
+            // Before v3 Journal rows showed the first answered mood value. Preserve that
             // default for upgraded databases until the person explicitly changes it.
             summaryQuestionIds = resolvedQuestions
-                .filter { !$0.isArchived && $0.kind == .scale }
+                .filter { !$0.isArchived && ($0.kind == .scale || $0.kind == .spectrum) }
                 .sorted { ($0.position, $0.id) < ($1.position, $1.id) }
                 .prefix(1).map(\.id)
         }
@@ -262,6 +277,7 @@ struct DefinitionRows {
             isRequired: version.isRequired,
             isArchived: version.isArchived,
             scale: Store.scaleConfig(of: version),
+            spectrum: Store.spectrumConfig(of: version),
             allowsCustomOptions: version.allowsCustomOptions,
             options: (options[row.id] ?? []).compactMap(option(for:)))
     }

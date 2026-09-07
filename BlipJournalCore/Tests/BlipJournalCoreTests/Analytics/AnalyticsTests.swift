@@ -105,18 +105,18 @@ private func point(_ id: String, at date: Date, value: Double, prompted: Bool = 
     MoodPoint(id: id, entryId: "e-\(id)", date: date, value: value, prompted: prompted)
 }
 
-// MARK: - defaultScaleQuestion
+// MARK: - defaultMoodQuestion
 
-@Suite("Analytics.defaultScaleQuestion")
-struct DefaultScaleQuestionTests {
-    @Test("picks the lowest-position active scale question")
+@Suite("Analytics.defaultMoodQuestion")
+struct DefaultMoodQuestionTests {
+    @Test("picks the lowest-position active mood question")
     func lowestPosition() {
         let survey = Survey(name: "Test", questions: [
             Question(id: "later", kind: .scale, label: "Energy", position: 3, scale: ScaleConfig()),
             Question(id: "text", kind: .text, label: "Notes", position: 0),
             Question(id: "first", kind: .scale, label: "Mood", position: 1, scale: ScaleConfig()),
         ])
-        #expect(Analytics.defaultScaleQuestion(in: survey)?.id == "first")
+        #expect(Analytics.defaultMoodQuestion(in: survey)?.id == "first")
     }
 
     @Test("skips archived scale questions")
@@ -125,7 +125,7 @@ struct DefaultScaleQuestionTests {
             Question(id: "old", kind: .scale, label: "Old", position: 0, isArchived: true, scale: ScaleConfig()),
             Question(id: "live", kind: .scale, label: "Mood", position: 5, scale: ScaleConfig()),
         ])
-        #expect(Analytics.defaultScaleQuestion(in: survey)?.id == "live")
+        #expect(Analytics.defaultMoodQuestion(in: survey)?.id == "live")
     }
 
     @Test("equal positions fall back to identifier order")
@@ -134,24 +134,25 @@ struct DefaultScaleQuestionTests {
             Question(id: "z", kind: .scale, label: "Z", position: 0, scale: ScaleConfig()),
             Question(id: "a", kind: .scale, label: "A", position: 0, scale: ScaleConfig()),
         ])
-        #expect(Analytics.defaultScaleQuestion(in: survey)?.id == "a")
+        #expect(Analytics.defaultMoodQuestion(in: survey)?.id == "a")
     }
 
-    @Test("nil when there is no active scale question")
+    @Test("includes spectrum questions and returns nil without an active mood question")
     func none() {
         let noScale = Survey(name: "Test", questions: [
             Question(id: "text", kind: .text, label: "Notes", position: 0),
             Question(id: "old", kind: .scale, label: "Old", position: 1, isArchived: true, scale: ScaleConfig()),
+            Question(id: "spectrum", kind: .spectrum, label: "Mood", position: 2, spectrum: SpectrumConfig()),
         ])
-        #expect(Analytics.defaultScaleQuestion(in: noScale) == nil)
-        #expect(Analytics.defaultScaleQuestion(in: Survey(name: "Empty")) == nil)
+        #expect(Analytics.defaultMoodQuestion(in: noScale)?.id == "spectrum")
+        #expect(Analytics.defaultMoodQuestion(in: Survey(name: "Empty")) == nil)
     }
 }
 
-// MARK: - scaleSeries
+// MARK: - moodSeries
 
-@Suite("Analytics.scaleSeries")
-struct ScaleSeriesTests {
+@Suite("Analytics.moodSeries")
+struct MoodSeriesTests {
     @Test("one point per completed scale answer, ascending by date, prompted carried through")
     func basics() {
         let snap = snapshot(entries: [
@@ -159,7 +160,7 @@ struct ScaleSeriesTests {
             entry("e1", at: at(2026, 3, 1), mood: 4),
             entry("e2", at: at(2026, 3, 2), mood: 5),
         ])
-        let series = Analytics.scaleSeries(questionId: scaleQ, snapshot: snap)
+        let series = Analytics.moodSeries(questionId: scaleQ, snapshot: snap)
         #expect(series == [
             MoodPoint(id: "e1/\(scaleQ)", entryId: "e1", date: at(2026, 3, 1), value: 4, prompted: true),
             MoodPoint(id: "e2/\(scaleQ)", entryId: "e2", date: at(2026, 3, 2), value: 5, prompted: true),
@@ -173,7 +174,7 @@ struct ScaleSeriesTests {
             entry("done", at: at(2026, 3, 1), mood: 4),
             entry("partial", at: at(2026, 3, 2), completed: false, mood: 7),
         ])
-        #expect(Analytics.scaleSeries(questionId: scaleQ, snapshot: snap).map(\.entryId) == ["done"])
+        #expect(Analytics.moodSeries(questionId: scaleQ, snapshot: snap).map(\.entryId) == ["done"])
     }
 
     @Test("ignores answers that are not scale values and entries without the question")
@@ -185,21 +186,21 @@ struct ScaleSeriesTests {
             entry("none", at: at(2026, 3, 4), answers: []),
             entry("ok", at: at(2026, 3, 5), mood: 3),
         ])
-        #expect(Analytics.scaleSeries(questionId: scaleQ, snapshot: snap).map(\.entryId) == ["ok"])
+        #expect(Analytics.moodSeries(questionId: scaleQ, snapshot: snap).map(\.entryId) == ["ok"])
     }
 
     @Test("only the requested question contributes")
     func otherQuestion() {
         let snap = snapshot(entries: [entry("e1", at: at(2026, 3, 1), mood: 4)])
-        #expect(Analytics.scaleSeries(questionId: textQ, snapshot: snap).isEmpty)
-        #expect(Analytics.scaleSeries(questionId: "missing", snapshot: snap).isEmpty)
+        #expect(Analytics.moodSeries(questionId: textQ, snapshot: snap).isEmpty)
+        #expect(Analytics.moodSeries(questionId: "missing", snapshot: snap).isEmpty)
     }
 
     @Test("the point date is the answer's answeredAt, not the entry's dates")
     func usesAnsweredAt() {
         var exportEntry = entry("e1", at: at(2026, 3, 1, 8), mood: 4)
         exportEntry.answers[0].answeredAt = at(2026, 3, 1, 8, 5)
-        let series = Analytics.scaleSeries(questionId: scaleQ, snapshot: snapshot(entries: [exportEntry]))
+        let series = Analytics.moodSeries(questionId: scaleQ, snapshot: snapshot(entries: [exportEntry]))
         #expect(series.map(\.date) == [at(2026, 3, 1, 8, 5)])
     }
 
@@ -209,7 +210,7 @@ struct ScaleSeriesTests {
         early.answers[0].answeredAt = at(2026, 3, 1, 9)                     // answered 09:00
         var late = entry("startedLate", at: at(2026, 3, 1, 8, 30), mood: 5) // started 08:30
         late.answers[0].answeredAt = at(2026, 3, 1, 8, 45)                  // answered 08:45
-        let series = Analytics.scaleSeries(questionId: scaleQ, snapshot: snapshot(entries: [early, late]))
+        let series = Analytics.moodSeries(questionId: scaleQ, snapshot: snapshot(entries: [early, late]))
         #expect(series.map(\.entryId) == ["startedLate", "startedEarly"])
     }
 
@@ -219,7 +220,7 @@ struct ScaleSeriesTests {
         orphaned.prompt = nil
         var stray = entry("stray", at: at(2026, 3, 2), prompted: false, mood: 5)
         stray.prompt = prompt(id: "p-stray", status: .answered)
-        let series = Analytics.scaleSeries(questionId: scaleQ, snapshot: snapshot(entries: [orphaned, stray]))
+        let series = Analytics.moodSeries(questionId: scaleQ, snapshot: snapshot(entries: [orphaned, stray]))
         #expect(series.map(\.prompted) == [true, false])
     }
 
@@ -231,7 +232,7 @@ struct ScaleSeriesTests {
                 (scaleQ, .scale(5), "b-second"),
             ]),
         ])
-        #expect(Analytics.scaleSeries(questionId: scaleQ, snapshot: snap).isEmpty)
+        #expect(Analytics.moodSeries(questionId: scaleQ, snapshot: snap).isEmpty)
     }
 
     @Test("duplicate answers to one question resolve to the first by answer ID")
@@ -242,7 +243,7 @@ struct ScaleSeriesTests {
                 (scaleQ, .scale(2), "a-first"),
             ]),
         ])
-        let series = Analytics.scaleSeries(questionId: scaleQ, snapshot: snap)
+        let series = Analytics.moodSeries(questionId: scaleQ, snapshot: snap)
         #expect(series.map(\.id) == ["a-first"])
         #expect(series.map(\.value) == [2])
     }
@@ -253,7 +254,61 @@ struct ScaleSeriesTests {
             entry("e1", at: at(2026, 3, 1), answers: [(scaleQ, .scale(1), "z")]),
             entry("e2", at: at(2026, 3, 1), answers: [(scaleQ, .scale(2), "a")]),
         ])
-        #expect(Analytics.scaleSeries(questionId: scaleQ, snapshot: snap).map(\.id) == ["a", "z"])
+        #expect(Analytics.moodSeries(questionId: scaleQ, snapshot: snap).map(\.id) == ["a", "z"])
+    }
+
+    @Test("spectrum answers are converted to 0 through 100")
+    func spectrum() {
+        let snap = snapshot(entries: [
+            entry("low", at: at(2026, 3, 1), answers: [(scaleQ, .spectrum(0), nil)]),
+            entry("middle", at: at(2026, 3, 2), answers: [(scaleQ, .spectrum(0.425), nil)]),
+            entry("high", at: at(2026, 3, 3), answers: [(scaleQ, .spectrum(1), nil)]),
+        ])
+        #expect(Analytics.moodSeries(questionId: scaleQ, snapshot: snap).map(\.value) == [0, 42.5, 100])
+    }
+}
+
+// MARK: - moodAxis
+
+@Suite("Analytics.moodAxis")
+struct MoodAxisTests {
+    @Test("scale uses its configured range and endpoint labels")
+    func scale() throws {
+        let question = Question(
+            kind: .scale, label: "Mood", position: 0,
+            scale: ScaleConfig(min: -2, max: 8, minLabel: "Low", maxLabel: "High"))
+        let axis = try #require(Analytics.moodAxis(for: question))
+        #expect(axis.domain == -2...8)
+        #expect(axis.minLabel == "Low")
+        #expect(axis.maxLabel == "High")
+    }
+
+    @Test("spectrum uses 0 through 100 and the outer zone labels")
+    func spectrum() throws {
+        let config = SpectrumConfig(zones: [
+            .init(label: "Calm", color: .init(red: 0, green: 0, blue: 0)),
+            .init(label: "Alert", color: .init(red: 1, green: 1, blue: 1)),
+        ], breakpoints: [0.5])
+        let axis = try #require(Analytics.moodAxis(
+            for: Question(kind: .spectrum, label: "Energy", position: 0, spectrum: config)))
+        #expect(axis.domain == 0...100)
+        #expect(axis.minLabel == "Calm")
+        #expect(axis.maxLabel == "Alert")
+    }
+
+    @Test("returns nil for non-mood questions and missing or invalid configurations")
+    func invalid() {
+        #expect(Analytics.moodAxis(for: Question(kind: .text, label: "Notes", position: 0)) == nil)
+        #expect(Analytics.moodAxis(for: Question(kind: .scale, label: "Mood", position: 0)) == nil)
+        let empty = SpectrumConfig(zones: [], breakpoints: [])
+        #expect(Analytics.moodAxis(
+            for: Question(kind: .spectrum, label: "Mood", position: 0, spectrum: empty)) == nil)
+        let blankLabel = SpectrumConfig(zones: [
+            .init(label: "Low", color: .init(red: 0, green: 0, blue: 0)),
+            .init(label: " ", color: .init(red: 1, green: 1, blue: 1)),
+        ], breakpoints: [0.5])
+        #expect(Analytics.moodAxis(
+            for: Question(kind: .spectrum, label: "Mood", position: 0, spectrum: blankLabel)) == nil)
     }
 }
 
@@ -419,7 +474,7 @@ struct ByWeekdayTests {
 @Suite("Analytics.byOption")
 struct ByOptionTests {
     private func stats(_ entries: [ExportEntry]) -> [BucketStat] {
-        Analytics.byOption(scaleQuestionId: scaleQ, choiceQuestionId: choiceQ, snapshot: snapshot(entries: entries))
+        Analytics.byOption(moodQuestionId: scaleQ, choiceQuestionId: choiceQ, snapshot: snapshot(entries: entries))
     }
 
     @Test("an entry selecting two options counts toward both")
@@ -460,7 +515,7 @@ struct ByOptionTests {
             ]),
         ])
         let snap = snapshot(survey, entries: [entry("e1", at: at(2026, 3, 1), mood: 3, options: ["retired"])])
-        let buckets = Analytics.byOption(scaleQuestionId: scaleQ, choiceQuestionId: choiceQ, snapshot: snap)
+        let buckets = Analytics.byOption(moodQuestionId: scaleQ, choiceQuestionId: choiceQ, snapshot: snap)
         #expect(buckets.map(\.id) == ["retired", "live"])
     }
 
@@ -494,7 +549,7 @@ struct ByOptionTests {
         let snap = snapshot(tied, entries: [
             entry("e1", at: at(2026, 3, 1), answers: [(scaleQ, .scale(4), nil), (choiceQ, .single(optionId: "a"), nil)]),
         ])
-        let buckets = Analytics.byOption(scaleQuestionId: scaleQ, choiceQuestionId: choiceQ, snapshot: snap)
+        let buckets = Analytics.byOption(moodQuestionId: scaleQ, choiceQuestionId: choiceQ, snapshot: snap)
         #expect(buckets.map(\.id) == ["q", "m", "z", "a"])
         #expect(buckets[3] == BucketStat(id: "a", label: "A", mean: 4, count: 1))
     }
@@ -523,7 +578,7 @@ struct ByOptionTests {
             ]),
         ])
         let snap = snapshot(survey, entries: [entry("e1", at: at(2026, 3, 1), mood: 4, options: ["twin"])])
-        let buckets = Analytics.byOption(scaleQuestionId: scaleQ, choiceQuestionId: choiceQ, snapshot: snap)
+        let buckets = Analytics.byOption(moodQuestionId: scaleQ, choiceQuestionId: choiceQ, snapshot: snap)
         #expect(buckets == [
             BucketStat(id: "twin", label: "Earlier", mean: 4, count: 1),
             BucketStat(id: "other", label: "Other", mean: nil, count: 0),
@@ -540,7 +595,20 @@ struct ByOptionTests {
     @Test("an unknown choice question yields no buckets")
     func unknownQuestion() {
         let snap = snapshot(entries: [entry("e1", at: at(2026, 3, 1), mood: 5, options: ["opt-a"])])
-        #expect(Analytics.byOption(scaleQuestionId: scaleQ, choiceQuestionId: "missing", snapshot: snap).isEmpty)
+        #expect(Analytics.byOption(moodQuestionId: scaleQ, choiceQuestionId: "missing", snapshot: snap).isEmpty)
+    }
+
+    @Test("spectrum answers are converted to 0 through 100")
+    func spectrum() {
+        let buckets = stats([
+            entry("e1", at: at(2026, 3, 1), answers: [
+                (scaleQ, .spectrum(0.25), nil), (choiceQ, .multi(optionIds: ["opt-a"]), nil),
+            ]),
+            entry("e2", at: at(2026, 3, 2), answers: [
+                (scaleQ, .spectrum(0.75), nil), (choiceQ, .multi(optionIds: ["opt-a"]), nil),
+            ]),
+        ])
+        #expect(buckets.first { $0.id == "opt-a" } == BucketStat(id: "opt-a", label: "Alpha", mean: 50, count: 2))
     }
 }
 
@@ -595,23 +663,23 @@ struct EmptySnapshotTests {
 
     @Test("every function returns empty or zeroed output")
     func everything() {
-        #expect(Analytics.defaultScaleQuestion(in: empty.survey) == nil)
-        let series = Analytics.scaleSeries(questionId: scaleQ, snapshot: empty)
+        #expect(Analytics.defaultMoodQuestion(in: empty.survey) == nil)
+        let series = Analytics.moodSeries(questionId: scaleQ, snapshot: empty)
         #expect(series.isEmpty)
         #expect(Analytics.rollingMean(series, window: 7).isEmpty)
         let hours = Analytics.byHour(series, calendar: toronto)
         #expect(hours.count == 24 && hours.allSatisfy { $0.count == 0 && $0.mean == nil })
         let weekdays = Analytics.byWeekday(series, calendar: toronto)
         #expect(weekdays.count == 7 && weekdays.allSatisfy { $0.count == 0 && $0.mean == nil })
-        #expect(Analytics.byOption(scaleQuestionId: scaleQ, choiceQuestionId: choiceQ, snapshot: empty).isEmpty)
+        #expect(Analytics.byOption(moodQuestionId: scaleQ, choiceQuestionId: choiceQ, snapshot: empty).isEmpty)
         #expect(Analytics.compliance(prompts: []).rate == nil)
     }
 
     @Test("a survey with questions but no entries yields empty series and zeroed option buckets")
     func noEntries() {
         let snap = snapshot(entries: [])
-        #expect(Analytics.scaleSeries(questionId: scaleQ, snapshot: snap).isEmpty)
-        let buckets = Analytics.byOption(scaleQuestionId: scaleQ, choiceQuestionId: choiceQ, snapshot: snap)
+        #expect(Analytics.moodSeries(questionId: scaleQ, snapshot: snap).isEmpty)
+        let buckets = Analytics.byOption(moodQuestionId: scaleQ, choiceQuestionId: choiceQ, snapshot: snap)
         #expect(buckets == [
             BucketStat(id: "opt-a", label: "Alpha", mean: nil, count: 0),
             BucketStat(id: "opt-b", label: "Bravo", mean: nil, count: 0),

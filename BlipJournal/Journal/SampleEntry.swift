@@ -56,6 +56,8 @@ enum SampleEntry {
         case .scale:
             let scale = question.scale ?? ScaleConfig()
             return .scale(Int.random(in: scale.min...scale.max, using: &rng))
+        case .spectrum:
+            return .spectrum(Double.random(in: 0...1, using: &rng))
         case .singleChoice:
             guard let option = question.activeOptions.randomElement(using: &rng) else { return nil }
             return .single(optionId: option.id)

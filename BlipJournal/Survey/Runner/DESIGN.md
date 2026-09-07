@@ -8,3 +8,7 @@ buffer so draft observation updates cannot replace the focused editor. Custom op
 creation order remains recoverable. Known limitations: no conditional questions, no
 undo, no completed-entry editing, and a brief text-loss window before debounce or forced
 termination; quick notes are limited to 500 Swift characters.
+
+Scale and spectrum questions use adjustable sliders with explicit accessibility labels.
+An unanswered spectrum shows "Not selected" and no thumb; its first adjustment begins
+from the midpoint. Invalid spectrum configuration is rendered inert rather than trapping.

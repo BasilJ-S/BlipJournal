@@ -10,12 +10,13 @@ a colour, allocates a formatter, or reads the clock; the only import is `Foundat
 ## Functions
 
 ```
-Analytics.defaultScaleQuestion(in:)                first active scale question by (position, id)
-Analytics.scaleSeries(questionId:snapshot:)        [MoodPoint], one per completed scale answer, by date
+Analytics.defaultMoodQuestion(in:)                 first active scale/spectrum question by (position, id)
+Analytics.moodSeries(questionId:snapshot:)         [MoodPoint], one per completed mood answer, by date
+Analytics.moodAxis(for:)                           numeric domain and endpoint labels for a mood question
 Analytics.rollingMean(_:window:)                   trailing mean, same length and order
 Analytics.byHour(_:calendar:)                      24 BucketStats, ids "0"..."23"
 Analytics.byWeekday(_:calendar:)                   7 BucketStats from calendar.firstWeekday
-Analytics.byOption(scaleQuestionId:choiceQuestionId:snapshot:)
+Analytics.byOption(moodQuestionId:choiceQuestionId:snapshot:)
                                                    one BucketStat per option of the choice question
 Analytics.compliance(prompts:)                     ComplianceStats: counts by status and a rate
 ```
@@ -30,8 +31,9 @@ An entry counts only when `entry.completedAt != nil`. Every function except `com
 drops partial entries first, so a half-finished autosave never moves a chart.
 `compliance` looks at prompts, not entries, and counts every status.
 
-A scale answer is `AnswerValue.scale`; any other value for the scale question is
-ignored. There should be one answer per question per entry. If there are several, the
+A mood answer is `AnswerValue.scale`, preserved as a `Double`, or
+`AnswerValue.spectrum`, converted from `0...1` to `0...100`; any other value is ignored.
+There should be one answer per question per entry. If there are several, the
 first by answer ID is taken before its shape is checked, so the result depends on the
 data and not on the order Storage returned answers in.
 
@@ -46,7 +48,7 @@ data and not on the order Storage returned answers in.
 - **Options are the exception.** `byOption` returns one bucket per option of the choice
   question, ordered by `(position, id)`, labelled with the option's current label. Live
   options are always present; archived ones only when their count is greater than zero.
-  An entry that selected several options counts once toward each. An entry with no scale
+  An entry that selected several options counts once toward each. An entry with no mood
   value contributes nothing, so `count` is always the number of values behind `mean`.
   Option IDs the question does not define, and an unknown choice question, yield nothing.
 - **Means** are plain arithmetic means as `Double`, unrounded. The chart formats.
@@ -78,7 +80,7 @@ data and not on the order Storage returned answers in.
   only. A bucket of one point looks as solid as one of a hundred; `count` is there for
   the chart to show.
 - No per-survey comparison. A snapshot is one survey.
-- Nothing validates a scale value against its `ScaleConfig`; an out-of-range value
+- Nothing validates a mood value against its configuration; an out-of-range value
   stored upstream is averaged like any other.
 - `byOption` uses the option's current label, not the wording on screen at answer time.
   Export owns the rename-history replay.

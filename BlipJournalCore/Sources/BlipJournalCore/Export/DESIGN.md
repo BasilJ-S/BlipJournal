@@ -26,9 +26,12 @@ entry_id, survey, prompted, prompt_scheduled_at, started_at, completed_at, laten
 `survey` is the survey's current name. `prompted` is `yes` when `entry.promptId` is set;
 `prompt_scheduled_at` and `latency_seconds` are empty for manual entries. If two
 questions share a label, every duplicate gets ` [` + the first 8 characters of its ID +
-`]` appended. Cells: scale as the integer; single choice as the current option label;
-multi choice as current option labels joined with `; ` in option `(position, id)` order;
-yes/no as `yes`/`no`; text verbatim; unanswered or empty multi as empty.
+`]` appended. Cells: scale as the integer; spectrum as its raw `0...1` value (via
+`String(Double)`, so e.g. `0.75`), not the zone label — the label depends on the
+question's current `SpectrumConfig`, which the value alone does not carry; single choice
+as the current option label; multi choice as current option labels joined with `; ` in
+option `(position, id)` order; yes/no as `yes`/`no`; text verbatim; unanswered or empty
+multi as empty.
 
 **Long.** One row per answer; choice answers produce one row per selected option, and an
 empty multi-choice answer one row with empty option columns:
@@ -44,7 +47,9 @@ Rows are ordered by entry order, then question `(position, id)`, then selected o
 `(position, id)`. `question_kind` is the question's `QuestionKind.rawValue` (the value's
 kind only when the question is unknown). At most one of `numeric_value`, `bool_value`,
 `text_value` is non-empty, the one matching the value's case; all three are empty on
-choice rows and on an empty text answer.
+choice rows and on an empty text answer. A spectrum answer writes its raw `0...1` value
+into `numeric_value`, the same column a scale answer uses — there is no separate
+spectrum column, since the two never share a row.
 
 ## Label-at-time resolution
 

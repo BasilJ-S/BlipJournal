@@ -34,8 +34,9 @@ public struct ChoiceOption: Identifiable, Sendable, Equatable, Hashable, Codable
 ///
 /// A `Question` is a flattened view of the newest version row plus the current
 /// versions of its options, including archived ones. Which fields apply depends on
-/// ``kind``: ``scale`` is non-nil only for scale questions, and ``options`` and
-/// ``allowsCustomOptions`` are only meaningful when ``QuestionKind/usesOptions``.
+/// ``kind``: ``scale`` is non-nil only for scale questions, ``spectrum`` only for
+/// spectrum questions, and ``options`` and ``allowsCustomOptions`` are only meaningful
+/// when ``QuestionKind/usesOptions``.
 public struct Question: Identifiable, Sendable, Equatable, Hashable, Codable {
     /// Stable identity, shared by every version of this question.
     public var id: String
@@ -52,6 +53,8 @@ public struct Question: Identifiable, Sendable, Equatable, Hashable, Codable {
     public var isArchived: Bool
     /// Bounds and endpoint labels. Non-nil only when ``kind`` is ``QuestionKind/scale``.
     public var scale: ScaleConfig?
+    /// Zones and breakpoints. Non-nil only when ``kind`` is ``QuestionKind/spectrum``.
+    public var spectrum: SpectrumConfig?
     /// Whether the runner offers an "add option" chip while answering.
     /// Only meaningful when ``kind`` uses options.
     public var allowsCustomOptions: Bool
@@ -68,6 +71,7 @@ public struct Question: Identifiable, Sendable, Equatable, Hashable, Codable {
         isRequired: Bool = false,
         isArchived: Bool = false,
         scale: ScaleConfig? = nil,
+        spectrum: SpectrumConfig? = nil,
         allowsCustomOptions: Bool = false,
         options: [ChoiceOption] = []
     ) {
@@ -78,6 +82,7 @@ public struct Question: Identifiable, Sendable, Equatable, Hashable, Codable {
         self.isRequired = isRequired
         self.isArchived = isArchived
         self.scale = scale
+        self.spectrum = spectrum
         self.allowsCustomOptions = allowsCustomOptions
         self.options = options
     }

@@ -16,16 +16,11 @@ public enum SurveyTemplate {
     public static func makeDefault(now: Date = Date()) -> Survey {
         let questions = [
             Question(
-                kind: .scale,
+                kind: .spectrum,
                 label: "How are you feeling right now?",
                 position: 0,
                 isRequired: true,
-                scale: ScaleConfig(
-                    min: 1,
-                    max: 7,
-                    minLabel: "Very unpleasant",
-                    maxLabel: "Very pleasant"
-                )
+                spectrum: SpectrumConfig()
             ),
             Question(
                 kind: .multiChoice,

@@ -196,6 +196,8 @@ struct EntryDetailView: View {
                 return "\(value) of \(scale.max)"
             }
             return "\(value)"
+        case .spectrum(let value):
+            return "\(Int((value * 100).rounded()))%"
         case .single(let optionId):
             return optionLabel(optionId, in: question)
         case .multi(let optionIds):

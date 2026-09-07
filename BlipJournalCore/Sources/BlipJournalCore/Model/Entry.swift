@@ -47,6 +47,8 @@ public struct Entry: Identifiable, Sendable, Equatable, Hashable, Codable {
 public enum AnswerValue: Sendable, Equatable, Hashable {
     /// A rating on the question's ``ScaleConfig`` range.
     case scale(Int)
+    /// A position on the question's ``SpectrumConfig``, `0...1`.
+    case spectrum(Double)
     /// The single option selected.
     case single(optionId: String)
     /// Every option selected, possibly none.
@@ -60,6 +62,7 @@ public enum AnswerValue: Sendable, Equatable, Hashable {
     public var kind: QuestionKind {
         switch self {
         case .scale: .scale
+        case .spectrum: .spectrum
         case .single: .singleChoice
         case .multi: .multiChoice
         case .yesNo: .yesNo
@@ -75,7 +78,7 @@ public enum AnswerValue: Sendable, Equatable, Hashable {
         switch self {
         case .multi(let optionIds): optionIds.isEmpty
         case .text(let text): text.isEmpty
-        case .scale, .single, .yesNo: false
+        case .scale, .spectrum, .single, .yesNo: false
         }
     }
 }
@@ -94,6 +97,8 @@ extension AnswerValue: Codable {
         try container.encode(kind, forKey: .kind)
         switch self {
         case .scale(let value):
+            try container.encode(value, forKey: .value)
+        case .spectrum(let value):
             try container.encode(value, forKey: .value)
         case .single(let optionId):
             try container.encode(optionId, forKey: .optionId)
@@ -114,6 +119,8 @@ extension AnswerValue: Codable {
         switch try container.decode(QuestionKind.self, forKey: .kind) {
         case .scale:
             self = .scale(try container.decode(Int.self, forKey: .value))
+        case .spectrum:
+            self = .spectrum(try container.decode(Double.self, forKey: .value))
         case .singleChoice:
             self = .single(optionId: try container.decode(String.self, forKey: .optionId))
         case .multiChoice:

@@ -6,33 +6,52 @@ import Foundation
 /// Nothing here formats a date, picks a colour, or reads the clock. The Insights
 /// screen draws what these return and does no arithmetic of its own.
 public enum Analytics {
-    /// The first active scale question by `(position, id)`, or nil when the survey has
+    /// The first active scale or spectrum question by `(position, id)`, or nil when the survey has
     /// none. What Insights charts by default.
-    public static func defaultScaleQuestion(in survey: Survey) -> Question? {
-        survey.activeQuestions.first { $0.kind == .scale }
+    public static func defaultMoodQuestion(in survey: Survey) -> Question? {
+        survey.activeQuestions.first { $0.kind == .scale || $0.kind == .spectrum }
     }
 
-    /// One point per completed entry that answered `questionId` with a scale value,
+    /// One point per completed entry that answered `questionId` with a mood value,
     /// ascending by date. Partial entries are excluded.
     ///
     /// Two points with the same date are ordered by answer identifier so the series is
     /// stable across runs.
-    public static func scaleSeries(questionId: String, snapshot: ExportSnapshot) -> [MoodPoint] {
+    public static func moodSeries(questionId: String, snapshot: ExportSnapshot) -> [MoodPoint] {
         snapshot.entries
             .filter(isCompleted)
             .compactMap { exportEntry -> MoodPoint? in
                 guard let answer = firstAnswer(to: questionId, in: exportEntry),
-                      case .scale(let value) = answer.value
+                      let value = moodValue(answer.value)
                 else { return nil }
                 return MoodPoint(
                     id: answer.id,
                     entryId: exportEntry.entry.id,
                     date: answer.answeredAt,
-                    value: Double(value),
+                    value: value,
                     prompted: exportEntry.entry.isPrompted
                 )
             }
             .sorted { ($0.date, $0.id) < ($1.date, $1.id) }
+    }
+
+    /// Numeric domain and endpoint labels for a scale or spectrum mood question.
+    public static func moodAxis(
+        for question: Question
+    ) -> (domain: ClosedRange<Double>, minLabel: String, maxLabel: String)? {
+        switch question.kind {
+        case .scale:
+            guard let scale = question.scale else { return nil }
+            return (Double(scale.min)...Double(scale.max), scale.minLabel, scale.maxLabel)
+        case .spectrum:
+            guard let spectrum = question.spectrum, spectrum.isValid,
+                  let first = spectrum.zones.first,
+                  let last = spectrum.zones.last
+            else { return nil }
+            return (0...100, first.label, last.label)
+        case .singleChoice, .multiChoice, .yesNo, .text:
+            return nil
+        }
     }
 
     /// Trailing mean over the previous `window` points including the current one.
@@ -90,13 +109,13 @@ public enum Analytics {
     /// One bucket per option of `choiceQuestionId`, ordered by `(position, id)`,
     /// archived options included only when their count is greater than zero.
     ///
-    /// The mean is over the scale value of `scaleQuestionId` in every completed entry
+    /// The mean is over the mood value of `moodQuestionId` in every completed entry
     /// whose answer to the choice question selected that option. An entry that selected
-    /// several options counts toward each of them. An entry with no scale value
+    /// several options counts toward each of them. An entry with no mood value
     /// contributes to no bucket, so `count` is always the number of values behind
     /// `mean`. Returns empty when the survey has no question with `choiceQuestionId`.
     public static func byOption(
-        scaleQuestionId: String,
+        moodQuestionId: String,
         choiceQuestionId: String,
         snapshot: ExportSnapshot
     ) -> [BucketStat] {
@@ -105,11 +124,11 @@ public enum Analytics {
 
         var accumulators = [String: Accumulator]()
         for exportEntry in snapshot.entries where isCompleted(exportEntry) {
-            guard let answer = firstAnswer(to: scaleQuestionId, in: exportEntry),
-                  case .scale(let value) = answer.value
+            guard let answer = firstAnswer(to: moodQuestionId, in: exportEntry),
+                  let value = moodValue(answer.value)
             else { continue }
             for optionId in selectedOptionIds(for: choiceQuestionId, in: exportEntry) {
-                accumulators[optionId, default: Accumulator()].add(Double(value))
+                accumulators[optionId, default: Accumulator()].add(value)
             }
         }
 
@@ -167,6 +186,14 @@ public enum Analytics {
         exportEntry.entry.completedAt != nil
     }
 
+    private static func moodValue(_ value: AnswerValue) -> Double? {
+        switch value {
+        case .scale(let value): Double(value)
+        case .spectrum(let value): value * 100
+        case .single, .multi, .yesNo, .text: nil
+        }
+    }
+
     /// The entry's answer to `questionId`, whatever its shape. There should be at most
     /// one; if there are several, the lowest answer identifier wins so the choice is
     /// deterministic. Callers check the value's shape themselves.
@@ -187,7 +214,7 @@ public enum Analytics {
         case .multi(let optionIds):
             var seen = Set<String>()
             return optionIds.filter { seen.insert($0).inserted }
-        case .scale, .yesNo, .text:
+        case .scale, .spectrum, .yesNo, .text:
             return []
         }
     }

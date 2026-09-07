@@ -76,6 +76,6 @@ struct SurveyEditorView: View {
     }
 
     private func icon(for kind: QuestionKind) -> String {
-        switch kind { case .scale: "slider.horizontal.3"; case .singleChoice: "circle.grid.2x2"; case .multiChoice: "checklist"; case .yesNo: "checkmark.circle"; case .text: "text.alignleft" }
+        switch kind { case .scale: "slider.horizontal.3"; case .spectrum: "gauge.with.dots.needle.50percent"; case .singleChoice: "circle.grid.2x2"; case .multiChoice: "checklist"; case .yesNo: "checkmark.circle"; case .text: "text.alignleft" }
     }
 }

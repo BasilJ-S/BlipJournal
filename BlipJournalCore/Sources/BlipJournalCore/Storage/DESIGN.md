@@ -8,7 +8,7 @@ single audited exception, an `ExportSnapshot` loader, and a JSON `Backup`. Every
 subsystem reads and writes through it. Imports only `Foundation` and `GRDB`.
 
 ```
-Schema.swift            DatabaseMigrator, migration "v1", tables children-first
+Schema.swift            DatabaseMigrator, migrations "v1"..."v4", tables children-first
 Rows.swift              one GRDB record struct per table, no logic
 Store.swift             open/inMemory, configuration, StoreError, current-view resolution
 Store+Definitions.swift insert-only edits, surveys(), survey(), label histories
@@ -19,7 +19,7 @@ Store+Export.swift      exportSnapshot, backup
 Backup.swift            Backup, BackupExporter
 ```
 
-## Schema (v3)
+## Schema (v4)
 
 ```
 survey(id, createdAt)
@@ -30,13 +30,14 @@ surveySampling(id, surveyId, promptsPerDay, windowStartMinutes, windowEndMinutes
 surveyNotificationPreview(id, surveyId, mode, message, createdAt)
 question(id, surveyId, kind, createdAt)
 questionVersion(id, questionId, label, position, isRequired, isArchived,
-                scaleMin, scaleMax, scaleMinLabel, scaleMaxLabel, allowsCustomOptions, createdAt)
+                scaleMin, scaleMax, scaleMinLabel, scaleMaxLabel, spectrumConfig,
+                allowsCustomOptions, createdAt)
 option(id, questionId, createdAt)
 optionVersion(id, optionId, label, position, isArchived, createdAt)
 prompt(id, surveyId, day, scheduledAt, expiresAt, status, respondedAt)
 entry(id, surveyId, promptId, startedAt, completedAt)
 answer(id, entryId, questionId, questionVersionId, answeredAt, kind,
-       numericValue, textValue, boolValue)   UNIQUE (entryId, questionId)
+       numericValue, textValue, boolValue, spectrumValue)   UNIQUE (entryId, questionId)
 answerOption(answerId, optionId)        PRIMARY KEY (answerId, optionId)
 ```
 
@@ -45,19 +46,27 @@ is set only for `"custom"`. Added by migration `v2`; a survey with no row here (
 survey created before v2 was applied) resolves to `.private`, the same way an absent
 `surveySampling` row resolves to `SamplingConfig.default`.
 
+`questionVersion.spectrumConfig` and `answer.spectrumValue` are added by migration `v4`
+for `QuestionKind.spectrum`. `spectrumConfig` holds the whole `SpectrumConfig` as one
+JSON blob (`Store.spectrumConfig(of:)` / `spectrumConfigJSON(_:)`), unlike scale's flat
+columns, because its zone list has no fixed width; `spectrumValue` is a separate `REAL`
+column because a spectrum answer is a `Double` in `0...1` where a scale answer is an
+`Int`, so they cannot share `numericValue`.
+
 Migration `v3` adds the Journal summary fields to `surveyVersion`. New surveys record
-their first active scale question by default. An upgraded row has
-`journalSummaryIsConfigured == false`, which preserves the former first-scale summary
+their first active scale or spectrum question by default. An upgraded row has
+`journalSummaryIsConfigured == false`, which preserves the former first-mood summary
 until a choice is saved. Saving even an empty choice sets it true. The question IDs have
 no foreign keys: hard-erasing an archived question must not rewrite immutable history;
 missing and archived questions are omitted from the resolved Journal summary.
 
 IDs are `TEXT PRIMARY KEY`. Timestamps are GRDB's default UTC string
 (`yyyy-MM-dd HH:mm:ss.SSS`), which sorts lexicographically; precision is one
-millisecond. `answer.kind` and `prompt.status` hold the enum raw values. Scale, yes/no and
-text answers use `numericValue`, `boolValue` and `textValue` respectively; choice answers
-use none of them and keep their selections in `answerOption`, so an empty multi-choice
-answer is an `answer` row with no `answerOption` rows. Foreign keys are enforced with no
+millisecond. `answer.kind` and `prompt.status` hold the enum raw values. Scale, spectrum,
+yes/no and text answers use `numericValue`, `spectrumValue`, `boolValue` and `textValue`
+respectively; choice answers use none of them and keep their selections in
+`answerOption`, so an empty multi-choice answer is an `answer` row with no `answerOption`
+rows. Foreign keys are enforced with no
 `ON DELETE CASCADE`: every deletion is written out explicitly, children first, so what a
 delete removes is exactly what its code says. Indexes: every foreign key column except
 `answer.questionVersionId`, plus `prompt(surveyId, day)`, `prompt(status)`,

@@ -232,6 +232,8 @@ public enum CSVExporter {
             switch answer.value {
             case .scale(let value):
                 return String(value)
+            case .spectrum(let value):
+                return String(value)
             case .single(let optionId):
                 return optionLabelCurrent(optionId)
             case .multi(let optionIds):
@@ -268,6 +270,8 @@ public enum CSVExporter {
             }
             switch answer.value {
             case .scale(let value):
+                return [head + ["", "", "", String(value), "", ""]]
+            case .spectrum(let value):
                 return [head + ["", "", "", String(value), "", ""]]
             case .single(let optionId):
                 return [optionRow(optionId)]

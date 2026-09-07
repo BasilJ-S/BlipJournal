@@ -23,6 +23,7 @@ enum Schema {
         migrator.registerMigration("v1", migrate: migrateV1)
         migrator.registerMigration("v2", migrate: migrateV2)
         migrator.registerMigration("v3", migrate: migrateV3)
+        migrator.registerMigration("v4", migrate: migrateV4)
         return migrator
     }
 
@@ -31,9 +32,8 @@ enum Schema {
     /// Every ID is `TEXT PRIMARY KEY`; every timestamp is a `DATETIME` column holding
     /// GRDB's default UTC string, which sorts lexicographically.
     ///
-    /// Internal, not private: a migration test builds a genuine pre-`v2` database by
-    /// running this one migration alone, then opens it through `Store` to prove the next
-    /// migration applies cleanly against real prior state.
+    /// Internal, not private: migration tests build genuine older databases and then
+    /// open them through `Store` to prove later migrations preserve real prior state.
     static func migrateV1(_ db: Database) throws {
         try db.create(table: "survey") { t in
             t.primaryKey("id", .text)
@@ -136,7 +136,8 @@ enum Schema {
     /// to `.private`, the same way an absent `surveySampling` row resolves to
     /// `SamplingConfig.default`. No backfill is written, so this migration only creates
     /// the table.
-    private static func migrateV2(_ db: Database) throws {
+    /// Internal for the v2-to-v3 migration test.
+    static func migrateV2(_ db: Database) throws {
         try db.create(table: "surveyNotificationPreview") { t in
             t.primaryKey("id", .text)
             t.column("surveyId", .text).notNull().indexed().references("survey")
@@ -147,11 +148,46 @@ enum Schema {
     }
 
     /// Schema version 3: Journal summary choices travel with each survey version.
-    private static func migrateV3(_ db: Database) throws {
+    static func migrateV3(_ db: Database) throws {
         try db.alter(table: "surveyVersion") { t in
             t.add(column: "journalSummaryIsConfigured", .boolean).notNull().defaults(to: false)
             t.add(column: "primarySummaryQuestionId", .text)
             t.add(column: "secondarySummaryQuestionId", .text)
+        }
+    }
+
+    /// Schema version 4: `QuestionKind/spectrum` support.
+    ///
+    /// The column checks also repair development databases that recorded this branch's
+    /// pre-merge spectrum migration as v3 before main assigned v3 to Journal summaries.
+    private static func migrateV4(_ db: Database) throws {
+        let surveyColumns = Set(try db.columns(in: "surveyVersion").map(\.name))
+        if !surveyColumns.isSuperset(of: [
+            "journalSummaryIsConfigured", "primarySummaryQuestionId", "secondarySummaryQuestionId",
+        ]) {
+            try db.alter(table: "surveyVersion") { t in
+                if !surveyColumns.contains("journalSummaryIsConfigured") {
+                    t.add(column: "journalSummaryIsConfigured", .boolean).notNull().defaults(to: false)
+                }
+                if !surveyColumns.contains("primarySummaryQuestionId") {
+                    t.add(column: "primarySummaryQuestionId", .text)
+                }
+                if !surveyColumns.contains("secondarySummaryQuestionId") {
+                    t.add(column: "secondarySummaryQuestionId", .text)
+                }
+            }
+        }
+        let questionColumns = Set(try db.columns(in: "questionVersion").map(\.name))
+        if !questionColumns.contains("spectrumConfig") {
+            try db.alter(table: "questionVersion") { t in
+                t.add(column: "spectrumConfig", .text)
+            }
+        }
+        let answerColumns = Set(try db.columns(in: "answer").map(\.name))
+        if !answerColumns.contains("spectrumValue") {
+            try db.alter(table: "answer") { t in
+                t.add(column: "spectrumValue", .double)
+            }
         }
     }
 }
