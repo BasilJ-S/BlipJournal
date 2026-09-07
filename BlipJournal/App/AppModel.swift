@@ -18,6 +18,9 @@ final class AppModel {
     private(set) var surveysById: [String: Survey] = [:]
     /// Every entry of every survey, newest first.
     private(set) var entries: [Entry] = []
+    /// Every prompt still pending, ordered by `scheduledAt`. Used to tell whether a
+    /// prompt's window is currently open, for the Journal's "survey open" banner.
+    private(set) var pendingPrompts: [Prompt] = []
     /// Invalidates answer-derived UI after writes that leave the entry itself unchanged.
     private(set) var revision: UInt64 = 0
     /// True from init until `unlock()`, and again whenever the lock policy says so.
@@ -65,24 +68,41 @@ final class AppModel {
         surveysById = Dictionary(all.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
         surveys = all.filter { !$0.isArchived }
         entries = try store.entries(surveyId: nil, from: nil, to: nil).reversed()
+        pendingPrompts = try store.prompts(status: .pending)
         revision &+= 1
     }
 
+    /// Reloads state, since a prompt whose window opened while backgrounded (or while
+    /// locked, however long that lasted) needs to be reflected immediately.
     func unlock() {
         isLocked = false
+        try? refresh()
     }
 
     func didEnterBackground(at now: Date) {
         backgroundedAt = now
     }
 
+    /// The earliest pending prompt whose window is currently open, if any.
+    func openPrompt(at now: Date) -> Prompt? {
+        pendingPrompts.first { $0.scheduledAt <= now && !$0.isExpired(at: now) }
+    }
+
     /// Applies the lock policy against the last background time, then asks the
     /// notification coordinator to replan.
+    ///
+    /// Skips the store read when the app is about to lock: `RootView` is torn down for
+    /// `LockView` regardless, so refreshing here would be a synchronous SQLite read on
+    /// every foreground transition — including ones as brief as Control Centre — that
+    /// nothing on screen would use before `unlock()` reloads anyway.
     func willEnterForeground(at now: Date) {
-        if lockPolicy.shouldLock(backgroundedAt: backgroundedAt, now: now) {
-            isLocked = true
-        }
+        let shouldLock = lockPolicy.shouldLock(backgroundedAt: backgroundedAt, now: now)
         backgroundedAt = nil
+        if shouldLock {
+            isLocked = true
+        } else {
+            try? refresh()
+        }
         let notifications = notifications
         Task { await notifications.refresh(now: now) }
     }

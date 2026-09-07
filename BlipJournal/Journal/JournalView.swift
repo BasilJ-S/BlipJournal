@@ -10,10 +10,13 @@ struct JournalView: View {
 
     var body: some View {
         Group {
-            if appModel.entries.isEmpty {
-                emptyState
-            } else {
-                entryList
+            VStack(spacing: 0) {
+                openSurveyBanner
+                if appModel.entries.isEmpty {
+                    emptyState
+                } else {
+                    entryList
+                }
             }
         }
         // On the Group, not the List: deleting the last entry swaps in the empty state,
@@ -111,6 +114,28 @@ struct JournalView: View {
         formatter.doesRelativeDateFormatting = true
         return formatter
     }()
+
+    // MARK: Open survey banner
+
+    /// Re-evaluated every 30s against the already-loaded `pendingPrompts`, so a window
+    /// opening or closing while the app sits in the foreground updates the banner without
+    /// any extra store reads.
+    ///
+    /// Routes through `appModel.notifications.pendingRoute` — the same field a tapped
+    /// notification sets — rather than a local sheet, so there is exactly one presenter
+    /// (`RootView`) for prompt routing. Two independent `.sheet`s racing to present would
+    /// silently drop whichever loses.
+    @ViewBuilder
+    private var openSurveyBanner: some View {
+        TimelineView(.periodic(from: .now, by: 30)) { context in
+            if let prompt = appModel.openPrompt(at: context.date) {
+                OpenSurveyBanner(surveyName: appModel.surveysById[prompt.surveyId]?.name ?? "Survey") {
+                    appModel.notifications.pendingRoute = prompt.id
+                }
+                .padding([.horizontal, .top])
+            }
+        }
+    }
 
     // MARK: Empty state
 
@@ -251,5 +276,29 @@ private struct JournalBadge: View {
             .padding(.vertical, 2)
             .background(Color(.secondarySystemFill), in: Capsule())
             .foregroundStyle(.secondary)
+    }
+}
+
+/// The card shown on the Journal tab whenever a pending prompt's window is open, so
+/// finding the app open mid-window (rather than tapping the notification itself) still
+/// surfaces that there's something to complete.
+private struct OpenSurveyBanner: View {
+    let surveyName: String
+    let onComplete: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Label(surveyName, systemImage: "bell.badge")
+                .font(.headline)
+            Text("Complete your scheduled survey")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+            Button("Complete now", action: onComplete)
+                .buttonStyle(.borderedProminent)
+                .frame(maxWidth: .infinity, minHeight: 44)
+        }
+        .padding()
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(BlipBrand.sand, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
     }
 }
