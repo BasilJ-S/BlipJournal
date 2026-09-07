@@ -27,7 +27,7 @@ struct SurveyRunnerView: View {
         }.toolbar { ToolbarItem(placement: .cancellationAction) { Button("Close") { Task { await finish(draft, complete: false) } }.disabled(leaving) } }
     }
     @ViewBuilder private func card(_ q: Question, _ draft: EntryDraft) -> some View {
-        VStack(alignment: .leading, spacing: 8) { Text(q.label).font(.headline); if q.isRequired { Text("Required").font(.caption).foregroundStyle(.secondary) }; switch q.kind {
+        VStack(alignment: .leading, spacing: 8) { Text(q.label).font(BlipFont.qualifier(17)); if q.isRequired { Text("Required").blipMonoLabel(size: 10) }; switch q.kind {
         case .scale: if let scale = q.scale { ScaleInput(scale: scale, value: draft.values[q.id].flatMap { if case .scale(let n) = $0 { n } else { nil } }, onChange: { number in Task { do { try await draft.set(.scale(number), for: q.id) } catch { errorMessage = String(describing: error) } } }) }
         case .singleChoice, .multiChoice: ChipGrid(question: q, value: draft.values[q.id], onChange: { value in Task { do { try await draft.set(value, for: q.id) } catch { errorMessage = String(describing: error) } } }, onAdd: { addQuestion = q })
         case .yesNo: YesNoInput(value: draft.values[q.id].flatMap { if case .yesNo(let b) = $0 { b } else { nil } }, onChange: { answer in Task { do { try await draft.set(.yesNo(answer), for: q.id) } catch { errorMessage = String(describing: error) } } })

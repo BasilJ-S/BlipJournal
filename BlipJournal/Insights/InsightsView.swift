@@ -74,6 +74,7 @@ private struct InsightsBody: View {
                     .pickerStyle(.menu)
                 }
             }
+            .blipCardRow()
 
             chartSection(title: sectionTitle("Over time"), emptyReason: scaleEmptyReason) {
                 if let scaleQuestion = model.scaleQuestion, let scale = scaleQuestion.scale {
@@ -101,7 +102,7 @@ private struct InsightsBody: View {
                 }
             }
 
-            Section("By option") {
+            Section {
                 if let scale = model.scaleQuestion?.scale {
                     ByOptionChart(
                         choiceQuestions: model.choiceQuestions,
@@ -115,12 +116,19 @@ private struct InsightsBody: View {
                         "By option", systemImage: "chart.bar",
                         description: Text("No scale question in this survey"))
                 }
+            } header: {
+                Text("By option").blipMonoLabel()
             }
+            .blipCardRow()
 
-            Section("Response rate") {
+            Section {
                 ComplianceTile(stats: model.compliance, accessibilitySummary: model.complianceAccessibilitySummary)
+            } header: {
+                Text("Response rate").blipMonoLabel()
             }
+            .blipCardRow()
         }
+        .listStyle(.plain)
         .onChange(of: model.selectedSurveyId) { _, _ in
             Task { await reload(model) }
         }
@@ -192,12 +200,15 @@ private struct InsightsBody: View {
     private func chartSection<Content: View>(
         title: String, emptyReason: String?, @ViewBuilder content: () -> Content
     ) -> some View {
-        Section(title) {
+        Section {
             if let emptyReason {
                 ContentUnavailableView(title, systemImage: "chart.bar", description: Text(emptyReason))
             } else {
                 content()
             }
+        } header: {
+            Text(title).blipMonoLabel()
         }
+        .blipCardRow()
     }
 }

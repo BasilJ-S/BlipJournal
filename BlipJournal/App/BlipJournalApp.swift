@@ -32,6 +32,7 @@ struct BlipJournalApp: App {
     }
 
     init() {
+        BlipAppearance.configure()
         do {
             _launch = State(initialValue: .ready(try AppModel.live()))
         } catch {
