@@ -26,7 +26,7 @@ struct ExportView: View {
                 Text("JSON backups are reserved for a future import. CSV files open in Numbers and Excel.").font(.footnote).foregroundStyle(.secondary)
             }
         }
-        .navigationTitle("Export")
+        .blipScreen("Export")
         .sheet(isPresented: Binding(get: { shareURL != nil }, set: { if !$0 { shareURL = nil; model?.cleanUp() } })) { if let url = shareURL { ActivityView(url: url) { self.model?.cleanUp(); shareURL = nil } } }
         .alert("Export failed", isPresented: Binding(get: { errorMessage != nil }, set: { if !$0 { errorMessage = nil } })) { Button("OK") {} } message: { Text(errorMessage ?? "") }
         .task { if model == nil { model = ExportModel(store: appModel.store) } }

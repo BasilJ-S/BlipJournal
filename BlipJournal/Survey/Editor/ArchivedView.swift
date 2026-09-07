@@ -53,7 +53,7 @@ struct ArchivedView: View {
             questionsSection
             optionsSection
         }
-        .navigationTitle("Archived")
+        .blipScreen("Archived")
         .confirmationDialog("Delete permanently?", isPresented: Binding(
             get: { pendingTarget != nil },
             set: { if !$0 { pendingTarget = nil } })) {

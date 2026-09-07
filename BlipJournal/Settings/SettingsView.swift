@@ -19,9 +19,6 @@ struct SettingsView: View {
             NavigationLink("About") { AboutView() }.blipCardRow()
         }
         .listStyle(.plain)
-        .navigationTitle("Settings")
-        .fontDesign(.rounded)
-        .scrollContentBackground(.hidden)
-        .blipScreenBackground()
+        .blipScreen("Settings", titleStyle: .large)
     }
 }

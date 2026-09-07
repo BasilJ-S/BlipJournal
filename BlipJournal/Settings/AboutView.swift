@@ -23,7 +23,7 @@ struct AboutView: View {
             Section("Licence") { DisclosureGroup("MIT Licence") { Text(mitLicence).font(.footnote).textSelection(.enabled) } }
             Section { Link(destination: URL(string: "https://github.com/BasilJ-S/BlipJournal")!) { Label("View source repository", systemImage: "link") }.accessibilityLabel("View Blip Journal source repository") }
         }
-        .navigationTitle("About")
+        .blipScreen("About")
     }
 
     private var mitLicence: String { """

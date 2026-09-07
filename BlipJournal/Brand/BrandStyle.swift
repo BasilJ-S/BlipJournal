@@ -64,9 +64,68 @@ struct BlipMonoLabelStyle: ViewModifier {
     }
 }
 
+enum BlipTitleStyle {
+    case automatic
+    case inline
+    case large
+}
+
+private struct BlipScreenStyle: ViewModifier {
+    let title: String
+    let titleStyle: BlipTitleStyle
+
+    @ViewBuilder
+    func body(content: Content) -> some View {
+        Group {
+            switch titleStyle {
+            case .automatic:
+                content
+                    .navigationTitle(title)
+                    .navigationBarTitleDisplayMode(.automatic)
+            case .inline:
+                content
+                    .navigationTitle(title)
+                    .navigationBarTitleDisplayMode(.inline)
+            case .large:
+                // The native large-title host is producing a zero-height render
+                // surface on the current target. Keep the native bar for toolbar
+                // controls, but render the root heading as ordinary SwiftUI content.
+                content
+                    .navigationTitle("")
+                    .navigationBarTitleDisplayMode(.inline)
+                    .safeAreaInset(edge: .top, spacing: 0) {
+                        Text(title)
+                            .font(BlipFont.title(34))
+                            .foregroundStyle(BlipBrand.ink)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 8)
+                            .background(BlipBrand.paper)
+                            .accessibilityAddTraits(.isHeader)
+                    }
+            }
+        }
+        .fontDesign(.rounded)
+        .scrollContentBackground(.hidden)
+        .toolbarBackground(BlipBrand.paper, for: .navigationBar)
+        .toolbarBackground(.visible, for: .navigationBar)
+        .blipScreenBackground()
+    }
+}
+
 extension View {
     func blipMonoLabel(size: CGFloat = 11, color: Color = BlipBrand.muted) -> some View {
         modifier(BlipMonoLabelStyle(size: size, color: color))
+    }
+
+    /// The shared treatment for every navigated screen. Lists and Forms bring their
+    /// own opaque system canvas, so hiding it belongs here alongside the title and
+    /// page surface rather than being reimplemented by each feature.
+    func blipScreen(
+        _ title: String,
+        titleStyle: BlipTitleStyle = .automatic
+    ) -> some View {
+        modifier(BlipScreenStyle(title: title, titleStyle: titleStyle))
     }
 
     /// A row that reads as a paper card sitting on the sand ground, rather than a
@@ -84,26 +143,10 @@ extension View {
     }
 }
 
-/// One-time global chrome: navigation titles in Nunito 800 and tab labels in JetBrains
-/// Mono 500, so the brand's two faces carry into every screen without touching each
-/// view. Call once at launch.
+/// One-time global tab chrome. Navigation chrome stays in SwiftUI's shared
+/// `blipScreen` modifier so UIKit retains ownership of native title rendering.
 enum BlipAppearance {
     static func configure() {
-        let navigation = UINavigationBarAppearance()
-        navigation.configureWithTransparentBackground()
-        navigation.backgroundColor = UIColor(BlipBrand.paper)
-        navigation.titleTextAttributes = [
-            .font: BlipFont.variableUIFont(BlipFont.nunitoPostScriptName, weight: 800, size: 17),
-            .foregroundColor: UIColor(BlipBrand.ink)
-        ]
-        navigation.largeTitleTextAttributes = [
-            .font: BlipFont.variableUIFont(BlipFont.nunitoPostScriptName, weight: 800, size: 34),
-            .foregroundColor: UIColor(BlipBrand.ink)
-        ]
-        UINavigationBar.appearance().standardAppearance = navigation
-        UINavigationBar.appearance().scrollEdgeAppearance = navigation
-        UINavigationBar.appearance().compactAppearance = navigation
-
         let tabItem = UITabBarItemAppearance()
         let tabFont = BlipFont.variableUIFont(BlipFont.jetBrainsMonoPostScriptName, weight: 500, size: 10)
         tabItem.normal.titleTextAttributes = [.font: tabFont]
