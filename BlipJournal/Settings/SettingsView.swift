@@ -19,6 +19,6 @@ struct SettingsView: View {
             NavigationLink("About") { AboutView() }.blipCardRow()
         }
         .listStyle(.plain)
-        .blipScreen("Settings", titleDisplayMode: .large)
+        .blipScreen("Settings", titleStyle: .large)
     }
 }

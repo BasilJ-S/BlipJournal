@@ -64,6 +64,55 @@ struct BlipMonoLabelStyle: ViewModifier {
     }
 }
 
+enum BlipTitleStyle {
+    case automatic
+    case inline
+    case large
+}
+
+private struct BlipScreenStyle: ViewModifier {
+    let title: String
+    let titleStyle: BlipTitleStyle
+
+    @ViewBuilder
+    func body(content: Content) -> some View {
+        Group {
+            switch titleStyle {
+            case .automatic:
+                content
+                    .navigationTitle(title)
+                    .navigationBarTitleDisplayMode(.automatic)
+            case .inline:
+                content
+                    .navigationTitle(title)
+                    .navigationBarTitleDisplayMode(.inline)
+            case .large:
+                // The native large-title host is producing a zero-height render
+                // surface on the current target. Keep the native bar for toolbar
+                // controls, but render the root heading as ordinary SwiftUI content.
+                content
+                    .navigationTitle("")
+                    .navigationBarTitleDisplayMode(.inline)
+                    .safeAreaInset(edge: .top, spacing: 0) {
+                        Text(title)
+                            .font(BlipFont.title(34))
+                            .foregroundStyle(BlipBrand.ink)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 8)
+                            .background(BlipBrand.paper)
+                            .accessibilityAddTraits(.isHeader)
+                    }
+            }
+        }
+        .fontDesign(.rounded)
+        .scrollContentBackground(.hidden)
+        .toolbarBackground(BlipBrand.paper, for: .navigationBar)
+        .toolbarBackground(.visible, for: .navigationBar)
+        .blipScreenBackground()
+    }
+}
+
 extension View {
     func blipMonoLabel(size: CGFloat = 11, color: Color = BlipBrand.muted) -> some View {
         modifier(BlipMonoLabelStyle(size: size, color: color))
@@ -74,16 +123,9 @@ extension View {
     /// page surface rather than being reimplemented by each feature.
     func blipScreen(
         _ title: String,
-        titleDisplayMode: NavigationBarItem.TitleDisplayMode = .automatic
+        titleStyle: BlipTitleStyle = .automatic
     ) -> some View {
-        self
-            .navigationTitle(title)
-            .navigationBarTitleDisplayMode(titleDisplayMode)
-            .fontDesign(.rounded)
-            .scrollContentBackground(.hidden)
-            .toolbarBackground(BlipBrand.paper, for: .navigationBar)
-            .toolbarBackground(.visible, for: .navigationBar)
-            .blipScreenBackground()
+        modifier(BlipScreenStyle(title: title, titleStyle: titleStyle))
     }
 
     /// A row that reads as a paper card sitting on the sand ground, rather than a

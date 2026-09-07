@@ -10,7 +10,7 @@ struct SurveyRunnerView: View {
     init(entry: Entry, onFinish: @escaping () -> Void) { survey = nil; self.entry = entry; promptId = nil; self.onFinish = onFinish }
     var body: some View {
         Group { if let draft { content(draft) } else { ProgressView("Loading entry") } }
-            .blipScreen(draft?.survey.name ?? survey?.name ?? "Entry", titleDisplayMode: .inline)
+            .blipScreen(draft?.survey.name ?? survey?.name ?? "Entry", titleStyle: .inline)
             .interactiveDismissDisabled(draft != nil).task { load() }
             .onChange(of: draft?.lastError) { _, value in if let value { errorMessage = value } }
             .onChange(of: scenePhase) { _, phase in if phase == .background, let draft { Task { try? await draft.flush() } } }
