@@ -60,6 +60,14 @@ struct NotificationRequestSpec: Sendable, Equatable {
 /// Wraps `UNUserNotificationCenter.current()`. Stateless: every call reaches the live
 /// centre, which Apple documents as safe to call from any thread.
 struct LiveNotificationCenterClient: NotificationCenterClient {
+    /// Whether to request `.timeSensitive` delivery (lets prompts through Focus). Off
+    /// because that needs the `com.apple.developer.usernotifications.time-sensitive`
+    /// entitlement, which isn't available under Personal Team signing; flip back to
+    /// `true` once the app is signed with a team that can hold that entitlement, and
+    /// restore it in `BlipJournal/BlipJournal.entitlements` / `project.yml` (see commit
+    /// "Remove unsupported notification entitlement").
+    static let useTimeSensitiveInterruption = false
+
     init() {}
 
     private var center: UNUserNotificationCenter { .current() }
@@ -90,7 +98,9 @@ struct LiveNotificationCenterClient: NotificationCenterClient {
         content.title = spec.content.title
         content.body = spec.content.body
         content.sound = .default
-        content.interruptionLevel = .timeSensitive
+        if Self.useTimeSensitiveInterruption {
+            content.interruptionLevel = .timeSensitive
+        }
         content.categoryIdentifier = NotificationCoordinator.categoryIdentifier
         content.userInfo = ["promptId": spec.identifier]
         let trigger = UNCalendarNotificationTrigger(dateMatching: spec.dateComponents, repeats: false)

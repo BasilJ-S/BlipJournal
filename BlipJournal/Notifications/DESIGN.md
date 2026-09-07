@@ -59,9 +59,13 @@ whose rendered content actually changed — nothing else is touched.
 
 `Survey.notificationPreview.content(surveyName:)` (`BlipJournalCore`) is the only source
 of a notification's title and body. Never anything from inside the survey beyond its name
-in `.surveyName` mode. Sound is the default; `interruptionLevel` is `.timeSensitive`
-(letting prompts through Focus); `categoryIdentifier` is `"PROMPT"`, registered with no
-actions at launch.
+in `.surveyName` mode. Sound is the default; interruption level is left at its default
+(`.active`) rather than `.timeSensitive`, gated by
+`LiveNotificationCenterClient.useTimeSensitiveInterruption` (currently `false`), since
+letting prompts through Focus needs the
+`com.apple.developer.usernotifications.time-sensitive` entitlement, which isn't available
+under Personal Team signing; `categoryIdentifier` is `"PROMPT"`, registered with no actions
+at launch.
 
 ## Denied or undetermined permission
 
