@@ -42,20 +42,21 @@ struct InsightsModelTests {
             name: name, sampling: template.sampling, questions: template.questions, now: now)
     }
 
-    /// Writes a completed entry answering the survey's default scale question, and
+    /// Writes a completed entry answering the survey's default mood question, and
     /// optionally its first multi-choice question, both at `date`.
     @discardableResult
     private func addEntry(
-        _ store: Store, survey: Survey, at date: Date, scaleValue: Int? = 5, options: [String] = []
+        _ store: Store, survey: Survey, at date: Date,
+        moodValue: AnswerValue? = .spectrum(0.5), options: [String] = []
     ) throws -> Entry {
         let versionIds = try store.currentQuestionVersionIds(surveyId: survey.id)
         let entry = Entry(surveyId: survey.id, startedAt: date, completedAt: date)
         var answers: [Answer] = []
-        if let scaleValue, let question = survey.activeQuestions.first(where: { $0.kind == .scale }),
+        if let moodValue, let question = survey.activeQuestions.first(where: { $0.kind == moodValue.kind }),
            let versionId = versionIds[question.id] {
             answers.append(Answer(
                 entryId: entry.id, questionId: question.id, questionVersionId: versionId,
-                answeredAt: date, value: .scale(scaleValue)))
+                answeredAt: date, value: moodValue))
         }
         if !options.isEmpty, let question = survey.activeQuestions.first(where: { $0.kind == .multiChoice }),
            let versionId = versionIds[question.id] {
@@ -85,7 +86,8 @@ struct InsightsModelTests {
         try model.load(now: now)
 
         #expect(model.selectedSurveyId == survey.id)
-        #expect(model.scaleQuestion?.label == "How are you feeling right now?")
+        #expect(model.moodQuestion?.label == "How are you feeling right now?")
+        #expect(model.moodQuestion?.kind == .spectrum)
         #expect(model.choiceQuestion?.label == "What best describes this feeling?")
     }
 
@@ -116,17 +118,56 @@ struct InsightsModelTests {
         let model = InsightsModel(store: store, calendar: toronto)
         try model.load(now: now)
 
-        #expect(model.scaleQuestion?.id == focusQuestion.id)
+        #expect(model.moodQuestion?.id == focusQuestion.id)
         #expect(model.series.map(\.value) == [4, 2])
         #expect(model.byHour.reduce(0) { $0 + $1.count } == 2)
         #expect(model.seriesAccessibilitySummary.hasPrefix("How focused are you?"))
         #expect(!model.seriesAccessibilitySummary.contains("Mood"))
 
-        model.scaleQuestion = energyQuestion
+        model.moodQuestion = energyQuestion
 
         #expect(model.series.map(\.value) == [7, 5])
         #expect(model.rolling.map(\.value) == [7, 6])
         #expect(model.seriesAccessibilitySummary.hasPrefix("How energetic?"))
+    }
+
+    @Test func spectrumQuestionDrivesSeriesAxesAndBuckets() throws {
+        let now = at(2026, 3, 10)
+        let store = try Store.inMemory()
+        let spectrum = SpectrumConfig(zones: [
+            .init(label: "Low", color: .init(red: 0, green: 0, blue: 0)),
+            .init(label: "High", color: .init(red: 1, green: 1, blue: 1)),
+        ], breakpoints: [0.5])
+        let mood = Question(kind: .spectrum, label: "Energy", position: 0, spectrum: spectrum)
+        let place = Question(kind: .singleChoice, label: "Place", position: 1, options: [
+            ChoiceOption(id: "home", label: "Home", position: 0),
+        ])
+        let survey = try store.createSurvey(
+            name: "Custom", sampling: .default, questions: [mood, place], now: at(2026, 1, 1))
+        let versionIds = try store.currentQuestionVersionIds(surveyId: survey.id)
+        let date = at(2026, 3, 9, 9)
+        let entry = Entry(surveyId: survey.id, startedAt: date, completedAt: date)
+        try store.saveEntry(entry, answers: [
+            Answer(
+                entryId: entry.id, questionId: mood.id, questionVersionId: versionIds[mood.id]!,
+                answeredAt: date, value: .spectrum(0.42)),
+            Answer(
+                entryId: entry.id, questionId: place.id, questionVersionId: versionIds[place.id]!,
+                answeredAt: date, value: .single(optionId: "home")),
+        ])
+
+        let model = InsightsModel(store: store, calendar: toronto)
+        try model.load(now: now)
+
+        #expect(model.moodQuestion?.id == mood.id)
+        #expect(model.moodQuestions.map(\.id) == [mood.id])
+        #expect(model.series.map(\.value) == [42])
+        #expect(model.byHour.first { $0.id == "9" }?.mean == 42)
+        #expect(model.byWeekday.reduce(0) { $0 + $1.count } == 1)
+        #expect(model.byOption.first == BucketStat(id: "home", label: "Home", mean: 42, count: 1))
+        #expect(model.moodAxis?.domain == 0...100)
+        #expect(model.moodAxis?.minLabel == "Low")
+        #expect(model.moodAxis?.maxLabel == "High")
     }
 
     // MARK: Range presets
@@ -323,12 +364,12 @@ struct InsightsModelTests {
         let model = InsightsModel(store: store, calendar: toronto)
         model.selectedSurveyId = surveyA.id
         try model.load(now: now)
-        #expect(model.scaleQuestion?.label == "How are you feeling right now?")
+        #expect(model.moodQuestion?.label == "How are you feeling right now?")
 
         model.selectedSurveyId = surveyB.id
         try model.load(now: now)
 
-        #expect(model.scaleQuestion?.id == focusQuestion.id)
+        #expect(model.moodQuestion?.id == focusQuestion.id)
         #expect(model.choiceQuestion == nil)
     }
 
@@ -337,7 +378,7 @@ struct InsightsModelTests {
         let store = try Store.inMemory()
         let surveyA = try makeSurvey(store, name: "A", now: at(2026, 1, 1))
         let surveyB = try makeSurvey(store, name: "B", now: at(2026, 1, 2))
-        try addEntry(store, survey: surveyA, at: at(2026, 2, 1), scaleValue: 3)
+        try addEntry(store, survey: surveyA, at: at(2026, 2, 1), moodValue: .spectrum(0.3))
         try store.archiveSurvey(surveyA.id, now: at(2026, 1, 3))
 
         let model = InsightsModel(store: store, calendar: toronto)

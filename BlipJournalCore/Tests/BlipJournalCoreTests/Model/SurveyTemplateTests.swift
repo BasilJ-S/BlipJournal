@@ -6,7 +6,7 @@ import BlipJournalCore
 struct SurveyTemplateTests {
     /// The six default questions as the README and the C1 handoff specify them.
     private static let expected: [(kind: QuestionKind, label: String, options: Int, isRequired: Bool)] = [
-        (.scale, "How are you feeling right now?", 0, true),
+        (.spectrum, "How are you feeling right now?", 0, true),
         (.multiChoice, "What best describes this feeling?", 12, false),
         (.multiChoice, "What is having the biggest impact?", 13, false),
         (.singleChoice, "What are you doing?", 10, false),
@@ -34,16 +34,14 @@ struct SurveyTemplateTests {
         }
     }
 
-    @Test("only the scale question carries a ScaleConfig, and it is 1 to 7")
-    func scaleQuestion() throws {
+    @Test("only the feeling question carries a SpectrumConfig, and it is the default pleasantness spectrum")
+    func spectrumQuestion() throws {
         let questions = SurveyTemplate.makeDefault().activeQuestions
-        let scale = try #require(questions.first?.scale)
-        #expect(scale.min == 1)
-        #expect(scale.max == 7)
-        #expect(scale.minLabel == "Very unpleasant")
-        #expect(scale.maxLabel == "Very pleasant")
-        #expect(scale.isValid)
-        #expect(questions.dropFirst().allSatisfy { $0.scale == nil })
+        let spectrum = try #require(questions.first?.spectrum)
+        #expect(spectrum == SpectrumConfig())
+        #expect(spectrum.isValid)
+        #expect(questions.dropFirst().allSatisfy { $0.spectrum == nil })
+        #expect(questions.allSatisfy { $0.scale == nil })
     }
 
     @Test("every choice question allows custom options and no other kind does")

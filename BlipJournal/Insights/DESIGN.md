@@ -14,18 +14,19 @@ straight from `Analytics`, or a small aggregate (a mean, a count, a percentage)
   control, falling back to a menu via `ViewThatFits` when it does not fit at the
   current text size. Custom reveals "Start date" and "End date" pickers, both
   constrained to non-future dates.
-- **Scale question picker.** Shown when the survey has more than one active scale
-  question. Its label becomes every scale-derived section's heading ("{label} — Over
+- **Mood question picker.** Shown when the survey has more than one active scale or
+  spectrum question. Its label becomes every mood-derived section's heading ("{label} — Over
   time", "— By hour", "— By weekday"), so a custom survey's own wording appears
   verbatim; nothing here assumes "Mood" or that a scale measures feelings.
 - **Over time.** `MoodOverTimeChart`: prompted points filled, manual points hollow
   (a legend from `.chartSymbolScale`), a secondary rolling-mean line. Y axis is the
-  question's own `min...max`, labelled at the two ends; X axis by day.
+  question's own domain, labelled at the two ends; X axis by day. Spectrum answers use
+  `0...100` and the first and last zone labels.
 - **By hour / By weekday.** `BucketBarChart` (vertical): one bar per non-empty bucket,
   its count annotated at a fixed, non-scaling text size. Bars run from zero to the
   actual mean, including negative means. Their numeric domain is
-  `min(0, scale.min)...max(0, scale.max)`; this is deliberately separate from the
-  timeline's `scale.min...scale.max` domain. Endpoint annotations get reserved chart
+  `min(0, domain.lowerBound)...max(0, domain.upperBound)`; this is deliberately separate
+  from the timeline's mood domain. Endpoint annotations get reserved chart
   space and category labels remain outside the plot area.
 - **By option.** A picker over the survey's active choice questions (when more than
   one), then `BucketBarChart` (horizontal) of mean per option, in `Analytics.byOption`'s
@@ -35,7 +36,7 @@ straight from `Analytics`, or a small aggregate (a mean, a count, a percentage)
   answered/missed/dismissed/pending counts in a row.
 
 Every section title doubles as its `ContentUnavailableView` title when empty, with a
-one-line reason: "No scale question in this survey", "No choice question in this
+one-line reason: "No mood question in this survey", "No choice question in this
 survey", or "No entries in this range".
 
 ## InsightsModel
@@ -46,10 +47,10 @@ sorted before archived, Store order kept within each group), resolves
 `selectedSurveyId` (first active, else first archived, else nil; preserved across
 reload when it still names a survey, including one just archived; reset to the default
 when it no longer does, including after a hard delete), then loads that survey's
-`exportSnapshot` and every prompt filtered to it. `scaleQuestion`/`choiceQuestion` are
+`exportSnapshot` and every prompt filtered to it. `moodQuestion`/`choiceQuestion` are
 resolved the same way: kept if they still name an active question of the (possibly new)
 survey, refreshed to that question's current version; otherwise reset to
-`Analytics.defaultScaleQuestion` and the first active choice question. Every other
+`Analytics.defaultMoodQuestion` and the first active choice question. Every other
 public property — `series`, `rolling`, `byHour`, `byWeekday`, `byOption`, `compliance`,
 and the accessibility summaries — is a computed property over the loaded snapshot,
 prompts, selected questions and range, so changing a selection updates every dependent

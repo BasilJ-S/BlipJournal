@@ -56,11 +56,6 @@ struct EntryDetailView: View {
                                     .font(.caption)
                                     .foregroundStyle(.secondary)
                             }
-                            if case .spectrum(let value) = item.answer.value {
-                                Text("\(Int((value * 100).rounded()))% along the spectrum")
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                            }
                         }
                         .accessibilityElement(children: .combine)
                     }
@@ -203,9 +198,6 @@ struct EntryDetailView: View {
             }
             return "\(value)"
         case .spectrum(let value):
-            if let spectrum = question.spectrum {
-                return spectrum.zone(for: value).label
-            }
             return "\(Int((value * 100).rounded()))%"
         case .single(let optionId):
             return optionLabel(optionId, in: question)

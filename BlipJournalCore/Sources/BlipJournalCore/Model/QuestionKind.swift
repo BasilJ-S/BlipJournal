@@ -146,17 +146,21 @@ public struct SpectrumConfig: Sendable, Equatable, Hashable, Codable {
             breakpoints: [1.0 / 3.0, 2.0 / 3.0])),
     ]
 
-    /// Whether the zones and breakpoints are usable: at least two zones, exactly one
-    /// fewer breakpoint than zones, every breakpoint strictly between 0 and 1, and
-    /// strictly increasing.
+    /// Whether the zones and breakpoints are usable: at least two non-blank zones,
+    /// exactly one fewer breakpoint than zones, every breakpoint strictly between 0
+    /// and 1, and strictly increasing.
     public var isValid: Bool {
         guard zones.count >= 2, breakpoints.count == zones.count - 1 else { return false }
+        guard zones.allSatisfy({ !$0.label.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty })
+        else { return false }
         guard breakpoints.allSatisfy({ $0 > 0 && $0 < 1 }) else { return false }
         return breakpoints == breakpoints.sorted() && Set(breakpoints).count == breakpoints.count
     }
 
-    /// The index into `zones` that `value` (clamped to `0...1`) falls in.
-    public func zoneIndex(for value: Double) -> Int {
+    /// The index into `zones` that `value` (clamped to `0...1`) falls in, or nil when
+    /// the configuration is invalid.
+    public func zoneIndex(for value: Double) -> Int? {
+        guard isValid else { return nil }
         let clamped = min(max(value, 0), 1)
         var index = 0
         for breakpoint in breakpoints where clamped >= breakpoint {
@@ -165,8 +169,9 @@ public struct SpectrumConfig: Sendable, Equatable, Hashable, Codable {
         return min(index, zones.count - 1)
     }
 
-    /// The zone `value` (clamped to `0...1`) falls in.
-    public func zone(for value: Double) -> Zone {
-        zones[zoneIndex(for: value)]
+    /// The zone `value` (clamped to `0...1`) falls in, or nil when the configuration
+    /// is invalid.
+    public func zone(for value: Double) -> Zone? {
+        zoneIndex(for: value).map { zones[$0] }
     }
 }

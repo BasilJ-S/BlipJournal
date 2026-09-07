@@ -58,6 +58,10 @@ SurveyTemplate.makeDefault()                  the six-question survey a new inst
   `zones.count`) rather than a start/end per zone, so the zones can never be constructed
   with a gap or an overlap — contiguity is a consequence of the shape, not a rule
   `isValid` has to check.
+- **Spectrum lookup is defensive.** `zoneIndex(for:)` and `zone(for:)` return nil for an
+  invalid configuration rather than indexing malformed persisted data.
+- **The default survey starts with pleasantness.** Its required first question uses the
+  default three-zone spectrum from "Very unpleasant" to "Very pleasant".
 - **Schedules are minutes, not dates.** `SamplingConfig` stores times of day as minutes
   after local midnight so a schedule means the same thing on every date and across a DST
   transition. Turning them into instants is the sampler's job.

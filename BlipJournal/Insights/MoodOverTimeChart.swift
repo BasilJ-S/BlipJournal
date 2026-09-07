@@ -2,20 +2,18 @@ import Charts
 import SwiftUI
 import BlipJournalCore
 
-/// Scale answers over time: prompted entries as filled points, manual entries as
+/// Mood answers over time: prompted entries as filled points, manual entries as
 /// hollow ones, with a trailing 7-point rolling mean line. Y axis is the question's
-/// own scale, labelled at its two ends; the view supplies no numbers of its own.
+/// own domain, labelled at its two ends; the view supplies no numbers of its own.
 struct MoodOverTimeChart: View {
     let points: [MoodPoint]
     let rolling: [MoodPoint]
-    let scale: ScaleConfig
+    let domain: ClosedRange<Double>
+    let minLabel: String
+    let maxLabel: String
     let accessibilitySummary: String
 
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
-
-    private var yDomain: ClosedRange<Double> {
-        Double(scale.min)...Double(scale.max)
-    }
 
     var body: some View {
         Chart {
@@ -38,13 +36,13 @@ struct MoodOverTimeChart: View {
             Self.manualLabel: AnyChartSymbolShape(.circle.strokeBorder()),
         ])
         .chartForegroundStyleScale([Self.promptedLabel: Color.accentColor, Self.manualLabel: Color.accentColor])
-        .chartYScale(domain: yDomain)
+        .chartYScale(domain: domain)
         .chartYAxis {
-            AxisMarks(values: [yDomain.lowerBound, yDomain.upperBound]) { value in
+            AxisMarks(values: [domain.lowerBound, domain.upperBound]) { value in
                 AxisGridLine()
                 AxisValueLabel {
                     if let raw = value.as(Double.self) {
-                        Text(raw == yDomain.lowerBound ? scale.minLabel : scale.maxLabel)
+                        Text(raw == domain.lowerBound ? minLabel : maxLabel)
                     }
                 }
             }

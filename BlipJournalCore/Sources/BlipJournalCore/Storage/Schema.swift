@@ -31,9 +31,8 @@ enum Schema {
     /// Every ID is `TEXT PRIMARY KEY`; every timestamp is a `DATETIME` column holding
     /// GRDB's default UTC string, which sorts lexicographically.
     ///
-    /// Internal, not private: a migration test builds a genuine pre-`v2` database by
-    /// running this one migration alone, then opens it through `Store` to prove the next
-    /// migration applies cleanly against real prior state.
+    /// Internal, not private: migration tests build genuine older databases and then
+    /// open them through `Store` to prove later migrations preserve real prior state.
     static func migrateV1(_ db: Database) throws {
         try db.create(table: "survey") { t in
             t.primaryKey("id", .text)
@@ -136,7 +135,8 @@ enum Schema {
     /// to `.private`, the same way an absent `surveySampling` row resolves to
     /// `SamplingConfig.default`. No backfill is written, so this migration only creates
     /// the table.
-    private static func migrateV2(_ db: Database) throws {
+    /// Internal for the v2-to-v3 migration test.
+    static func migrateV2(_ db: Database) throws {
         try db.create(table: "surveyNotificationPreview") { t in
             t.primaryKey("id", .text)
             t.column("surveyId", .text).notNull().indexed().references("survey")

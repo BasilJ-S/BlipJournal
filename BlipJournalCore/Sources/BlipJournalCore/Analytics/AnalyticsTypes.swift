@@ -2,7 +2,7 @@ import Foundation
 
 /// One scale answer, placed in time, ready to plot.
 ///
-/// Produced by `Analytics.scaleSeries` and carried through `Analytics.rollingMean`,
+/// Produced by `Analytics.moodSeries` and carried through `Analytics.rollingMean`,
 /// which replaces `value` and nothing else.
 public struct MoodPoint: Sendable, Equatable, Identifiable {
     /// The answer's identifier.

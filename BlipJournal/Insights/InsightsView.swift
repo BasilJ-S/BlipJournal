@@ -65,9 +65,9 @@ private struct InsightsBody: View {
                     DatePicker(
                         "End date", selection: $model.customEnd, in: ...Date.now, displayedComponents: .date)
                 }
-                if model.scaleQuestions.count > 1 {
-                    Picker("Scale question", selection: $model.scaleQuestion) {
-                        ForEach(model.scaleQuestions) { question in
+                if model.moodQuestions.count > 1 {
+                    Picker("Mood question", selection: $model.moodQuestion) {
+                        ForEach(model.moodQuestions) { question in
                             Text(question.label).tag(Optional(question))
                         }
                     }
@@ -75,45 +75,46 @@ private struct InsightsBody: View {
                 }
             }
 
-            chartSection(title: sectionTitle("Over time"), emptyReason: scaleEmptyReason) {
-                if let scaleQuestion = model.scaleQuestion, let scale = scaleQuestion.scale {
+            chartSection(title: sectionTitle("Over time"), emptyReason: moodEmptyReason) {
+                if let axis = model.moodAxis {
                     MoodOverTimeChart(
-                        points: model.series, rolling: model.rolling, scale: scale,
+                        points: model.series, rolling: model.rolling, domain: axis.domain,
+                        minLabel: axis.minLabel, maxLabel: axis.maxLabel,
                         accessibilitySummary: model.seriesAccessibilitySummary)
                 }
             }
 
-            chartSection(title: sectionTitle("By hour"), emptyReason: scaleEmptyReason) {
-                if let scale = model.scaleQuestion?.scale {
+            chartSection(title: sectionTitle("By hour"), emptyReason: moodEmptyReason) {
+                if let axis = model.moodAxis {
                     BucketBarChart(
                         title: sectionTitle("By hour"), buckets: model.byHour,
-                        valueDomain: Double(scale.min)...Double(scale.max))
+                        valueDomain: axis.domain)
                         .accessibilityLabel(model.byHourAccessibilitySummary)
                 }
             }
 
-            chartSection(title: sectionTitle("By weekday"), emptyReason: scaleEmptyReason) {
-                if let scale = model.scaleQuestion?.scale {
+            chartSection(title: sectionTitle("By weekday"), emptyReason: moodEmptyReason) {
+                if let axis = model.moodAxis {
                     BucketBarChart(
                         title: sectionTitle("By weekday"), buckets: model.byWeekday,
-                        valueDomain: Double(scale.min)...Double(scale.max))
+                        valueDomain: axis.domain)
                         .accessibilityLabel(model.byWeekdayAccessibilitySummary)
                 }
             }
 
             Section("By option") {
-                if let scale = model.scaleQuestion?.scale {
+                if let axis = model.moodAxis {
                     ByOptionChart(
                         choiceQuestions: model.choiceQuestions,
                         selectedChoiceQuestion: $model.choiceQuestion,
                         buckets: model.byOption,
-                        valueDomain: Double(scale.min)...Double(scale.max),
+                        valueDomain: axis.domain,
                         accessibilitySummary: model.byOptionAccessibilitySummary,
                         emptyReason: byOptionEmptyReason)
                 } else {
                     ContentUnavailableView(
                         "By option", systemImage: "chart.bar",
-                        description: Text("No scale question in this survey"))
+                        description: Text("No mood question in this survey"))
                 }
             }
 
@@ -172,12 +173,12 @@ private struct InsightsBody: View {
     // MARK: Section framing
 
     private func sectionTitle(_ context: String) -> String {
-        guard let label = model.scaleQuestion?.label else { return context }
+        guard let label = model.moodQuestion?.label else { return context }
         return "\(label) — \(context)"
     }
 
-    private var scaleEmptyReason: String? {
-        if model.scaleQuestions.isEmpty { return "No scale question in this survey" }
+    private var moodEmptyReason: String? {
+        if model.moodQuestions.isEmpty { return "No mood question in this survey" }
         if model.series.isEmpty { return "No entries in this range" }
         return nil
     }

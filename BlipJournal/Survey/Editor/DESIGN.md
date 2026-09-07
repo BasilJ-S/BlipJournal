@@ -13,5 +13,8 @@ delegated to Store after an impact confirmation.
 The confirmation text uses Store's `DeletionImpact` counts and oldest answer date. It
 states what survives, mentions emptied entries, and ends with “It cannot be undone.”
 
+Spectrum questions require at least two non-blank labelled zones and ordered interior
+boundaries. Their colour pickers and boundary sliders carry labels naming their zones.
+
 Known limitations: drag reorder is available only in EditMode; question kinds cannot
 change; copying duplicates current active configuration only, never response history.

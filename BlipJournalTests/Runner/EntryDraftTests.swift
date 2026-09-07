@@ -27,11 +27,11 @@ struct EntryDraftTests {
     @Test func keepsAnswerIdentityAndFirstTimestamp() async throws {
         let (store, survey) = try fixture()
         let draft = try EntryDraft(store: store, survey: survey, promptId: nil, now: now)
-        let question = try #require(survey.activeQuestions.first(where: { $0.kind == .scale }))
-        try await draft.set(.scale(2), for: question.id, now: now)
-        try await draft.set(.scale(5), for: question.id, now: now.addingTimeInterval(10))
+        let question = try #require(survey.activeQuestions.first(where: { $0.kind == .spectrum }))
+        try await draft.set(.spectrum(0.2), for: question.id, now: now)
+        try await draft.set(.spectrum(0.5), for: question.id, now: now.addingTimeInterval(10))
         let answer = try #require(try store.answers(entryId: draft.entry.id).first)
-        #expect(answer.value == .scale(5)); #expect(answer.answeredAt == now)
+        #expect(answer.value == .spectrum(0.5)); #expect(answer.answeredAt == now)
     }
 
     @Test func clearRemovesAnswerAndRequiredGating() async throws {

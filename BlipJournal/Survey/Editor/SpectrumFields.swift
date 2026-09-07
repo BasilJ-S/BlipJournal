@@ -16,7 +16,9 @@ struct SpectrumFields: View {
                 ColorPicker("", selection: Binding(
                     get: { spectrum.zones[index].color.color },
                     set: { spectrum.zones[index].color = SpectrumColor($0) }))
-                    .labelsHidden().fixedSize()
+                    .labelsHidden()
+                    .accessibilityLabel("Color for \(zoneName(at: index))")
+                    .fixedSize()
                 TextField("Zone label", text: Binding(
                     get: { spectrum.zones[index].label },
                     set: { spectrum.zones[index].label = $0 }))
@@ -32,6 +34,8 @@ struct SpectrumFields: View {
                     Slider(value: Binding(
                         get: { spectrum.breakpoints[index] },
                         set: { setBreakpoint(index, to: $0) }), in: 0.01...0.99)
+                        .accessibilityLabel("Boundary between \(zoneName(at: index)) and \(zoneName(at: index + 1))")
+                        .accessibilityValue("\(Int(spectrum.breakpoints[index] * 100)) percent")
                     Text("\(Int(spectrum.breakpoints[index] * 100))%").monospacedDigit()
                 }.font(.footnote)
             }
@@ -48,6 +52,11 @@ struct SpectrumFields: View {
         let lowerBound = index == 0 ? 0.01 : spectrum.breakpoints[index - 1] + 0.01
         let upperBound = index == spectrum.breakpoints.count - 1 ? 0.99 : spectrum.breakpoints[index + 1] - 0.01
         spectrum.breakpoints[index] = min(max(value, lowerBound), upperBound)
+    }
+
+    private func zoneName(at index: Int) -> String {
+        let label = spectrum.zones[index].label.trimmingCharacters(in: .whitespacesAndNewlines)
+        return label.isEmpty ? "zone \(index + 1)" : label
     }
 
     private func addZone() {

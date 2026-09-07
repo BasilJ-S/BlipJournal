@@ -36,9 +36,9 @@ final class InsightsModel {
     /// Every prompt of the selected survey, all statuses, unfiltered by range.
     private(set) var prompts: [Prompt] = []
 
-    /// The scale question every scale-derived chart reads. User-changeable among the
-    /// selected survey's active scale questions; defaults to `Analytics.defaultScaleQuestion`.
-    var scaleQuestion: Question?
+    /// The mood question every mood-derived chart reads. User-changeable among the
+    /// selected survey's active scale and spectrum questions; defaults to `Analytics.defaultMoodQuestion`.
+    var moodQuestion: Question?
     /// The choice question the "By option" chart reads. User-changeable among the
     /// selected survey's active choice questions; defaults to the first by position.
     var choiceQuestion: Question?
@@ -110,7 +110,7 @@ final class InsightsModel {
     }
 
     /// Reloads surveys, the selected survey's snapshot and prompts, and resolves the
-    /// scale and choice question selections. Call on appear and whenever
+    /// mood and choice question selections. Call on appear and whenever
     /// `selectedSurveyId` changes.
     func load(now: Date = Date()) throws {
         self.now = now
@@ -127,7 +127,7 @@ final class InsightsModel {
         guard let selectedSurveyId else {
             snapshot = nil
             prompts = []
-            scaleQuestion = nil
+            moodQuestion = nil
             choiceQuestion = nil
             return
         }
@@ -136,19 +136,23 @@ final class InsightsModel {
         self.snapshot = snapshot
         prompts = try store.prompts(status: nil).filter { $0.surveyId == selectedSurveyId }
 
-        scaleQuestion = Self.resolve(scaleQuestion, among: scaleQuestions)
-            ?? Analytics.defaultScaleQuestion(in: snapshot.survey)
+        moodQuestion = Self.resolve(moodQuestion, among: moodQuestions)
+            ?? Analytics.defaultMoodQuestion(in: snapshot.survey)
         choiceQuestion = Self.resolve(choiceQuestion, among: choiceQuestions)
             ?? choiceQuestions.first
     }
 
     // MARK: - Question choices
 
-    /// Active scale questions of the selected survey, in position order.
-    var scaleQuestions: [Question] {
+    /// Active scale and spectrum questions of the selected survey, in position order.
+    var moodQuestions: [Question] {
         (snapshot?.survey.activeQuestions ?? [])
-            .filter { $0.kind == .scale }
+            .filter { $0.kind == .scale || $0.kind == .spectrum }
             .sorted { ($0.position, $0.id) < ($1.position, $1.id) }
+    }
+
+    var moodAxis: (domain: ClosedRange<Double>, minLabel: String, maxLabel: String)? {
+        moodQuestion.flatMap { Analytics.moodAxis(for: $0) }
     }
 
     /// Active choice questions (single or multi) of the selected survey, in position order.
@@ -160,11 +164,11 @@ final class InsightsModel {
 
     // MARK: - Chart data
 
-    /// `Analytics.scaleSeries` for `scaleQuestion`, filtered to the selected range.
+    /// `Analytics.moodSeries` for `moodQuestion`, filtered to the selected range.
     var series: [MoodPoint] {
-        guard let snapshot, let scaleQuestion else { return [] }
+        guard let snapshot, let moodQuestion else { return [] }
         let bounds = computeBounds()
-        return Analytics.scaleSeries(questionId: scaleQuestion.id, snapshot: snapshot)
+        return Analytics.moodSeries(questionId: moodQuestion.id, snapshot: snapshot)
             .filter { contains($0.date, in: bounds) }
     }
 
@@ -184,7 +188,7 @@ final class InsightsModel {
     /// `Analytics.byOption`, restricted to the same entries `series` includes so every
     /// chart shares one set of bounds.
     var byOption: [BucketStat] {
-        guard let snapshot, let scaleQuestion, let choiceQuestion else { return [] }
+        guard let snapshot, let moodQuestion, let choiceQuestion else { return [] }
         let includedEntryIds = Set(series.map(\.entryId))
         let boundedSnapshot = ExportSnapshot(
             survey: snapshot.survey,
@@ -193,7 +197,7 @@ final class InsightsModel {
             optionLabelHistory: snapshot.optionLabelHistory,
             questionVersionLabels: snapshot.questionVersionLabels)
         return Analytics.byOption(
-            scaleQuestionId: scaleQuestion.id, choiceQuestionId: choiceQuestion.id, snapshot: boundedSnapshot)
+            moodQuestionId: moodQuestion.id, choiceQuestionId: choiceQuestion.id, snapshot: boundedSnapshot)
     }
 
     /// `Analytics.compliance` over `prompts` restricted to the selected range by
@@ -207,7 +211,7 @@ final class InsightsModel {
 
     /// "{question label}. Average {mean} over {count} entries." or a no-data summary.
     var seriesAccessibilitySummary: String {
-        let label = scaleQuestion?.label ?? "Scale"
+        let label = moodQuestion?.label ?? "Mood"
         guard !series.isEmpty else { return "\(label). No entries in this range." }
         let mean = series.map(\.value).reduce(0, +) / Double(series.count)
         let entryWord = series.count == 1 ? "entry" : "entries"
@@ -215,11 +219,11 @@ final class InsightsModel {
     }
 
     var byHourAccessibilitySummary: String {
-        Self.bucketSummary(byHour, label: scaleQuestion?.label ?? "Scale", axis: "hour of day")
+        Self.bucketSummary(byHour, label: moodQuestion?.label ?? "Mood", axis: "hour of day")
     }
 
     var byWeekdayAccessibilitySummary: String {
-        Self.bucketSummary(byWeekday, label: scaleQuestion?.label ?? "Scale", axis: "day of week")
+        Self.bucketSummary(byWeekday, label: moodQuestion?.label ?? "Mood", axis: "day of week")
     }
 
     var byOptionAccessibilitySummary: String {
@@ -227,7 +231,7 @@ final class InsightsModel {
         // once per bucket by `Analytics.byOption`, so summing bucket counts here would
         // overcount any multi-choice question.
         Self.bucketSummary(
-            byOption, label: scaleQuestion?.label ?? "Scale", axis: choiceQuestion?.label ?? "option",
+            byOption, label: moodQuestion?.label ?? "Mood", axis: choiceQuestion?.label ?? "option",
             unit: "selections")
     }
 

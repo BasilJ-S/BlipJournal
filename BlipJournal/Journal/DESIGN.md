@@ -15,6 +15,8 @@ text badges for source and draft status. Badges wrap at large Dynamic Type.
   Sheet dismissal reloads the model, including swipe dismissal.
 - `EntryDetailView` shows answered questions only, archived included, in position
   order. Choice answers use current option labels; scales include their end labels.
+  Spectrum answers show the stable raw percentage, not a zone classification that a
+  later definition version could change.
 - Detail and row reads run in nonisolated async helpers. Prompt lookup tries two
   nearby Gregorian day keys, then scans by ID; time-zone changes can need the scan.
   Loading a manual entry clears any previous prompt.

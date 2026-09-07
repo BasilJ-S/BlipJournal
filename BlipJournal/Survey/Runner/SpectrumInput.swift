@@ -10,12 +10,16 @@ struct SpectrumInput: View {
     let onChange: (Double) -> Void
 
     private var current: Double { value ?? 0.5 }
+    private var displayedLabel: String {
+        guard let value else { return "Not selected" }
+        return spectrum.zone(for: value)?.label ?? "Unavailable"
+    }
     private let trackHeight: CGFloat = 28
     private let thumbSize: CGFloat = 32
 
     var body: some View {
         VStack(spacing: 12) {
-            Text(spectrum.zone(for: current).label)
+            Text(displayedLabel)
                 .font(.headline)
                 .contentTransition(.opacity)
                 .animation(.easeInOut(duration: 0.2), value: spectrum.zoneIndex(for: current))
@@ -31,6 +35,7 @@ struct SpectrumInput: View {
                         .shadow(radius: 2, y: 1)
                         .frame(width: thumbSize, height: thumbSize)
                         .offset(x: current * width)
+                        .opacity(value == nil ? 0 : 1)
                         .animation(value == nil ? nil : .interactiveSpring(), value: current)
                 }
                 .frame(height: max(trackHeight, thumbSize))
@@ -42,8 +47,8 @@ struct SpectrumInput: View {
             }
             .frame(height: max(trackHeight, thumbSize))
             .accessibilityElement()
-            .accessibilityLabel("Spectrum")
-            .accessibilityValue(spectrum.zone(for: current).label)
+            .accessibilityLabel("Spectrum answer")
+            .accessibilityValue(displayedLabel)
             .accessibilityAdjustableAction { direction in
                 switch direction {
                 case .increment: onChange(min(current + 0.05, 1))
@@ -64,6 +69,9 @@ struct SpectrumInput: View {
     /// midpoint, plus the first and last zones' colours pinned to the track's ends, so
     /// the colour never blocks into discrete bands.
     private var gradient: LinearGradient {
+        guard spectrum.isValid else {
+            return LinearGradient(colors: [.secondary.opacity(0.3), .secondary.opacity(0.3)], startPoint: .leading, endPoint: .trailing)
+        }
         var stops: [Gradient.Stop] = []
         for (index, zone) in spectrum.zones.enumerated() {
             let lower = index == 0 ? 0 : spectrum.breakpoints[index - 1]

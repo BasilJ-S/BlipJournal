@@ -66,7 +66,7 @@ struct StoreNotificationPreviewTests {
 
         // A real pre-v2 database: only "v1" has ever run, exactly as an installed app's
         // database would be before this migration ships. `grdb_migrations` inside the
-        // file itself is what tells the v1+v2 migrator below that "v1" is already done.
+        // file itself is what tells the full migrator below that "v1" is already done.
         do {
             var v1Only = DatabaseMigrator()
             v1Only.registerMigration("v1", migrate: Schema.migrateV1)
@@ -83,7 +83,7 @@ struct StoreNotificationPreviewTests {
             }
         }
 
-        // Store.open runs the real v1+v2 migrator; only "v2" is still pending.
+        // Store.open runs the real migrator; "v2" and later migrations are pending.
         let store = try Store.open(at: directory)
         let survey = try #require(try store.survey("s1"))
         #expect(survey.name == "Old")

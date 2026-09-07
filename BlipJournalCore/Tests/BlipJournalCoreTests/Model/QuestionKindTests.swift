@@ -123,6 +123,15 @@ struct SpectrumConfigTests {
         #expect(!spectrum.isValid)
     }
 
+    @Test("isValid rejects blank and whitespace-only zone labels")
+    func rejectsBlankLabels() {
+        var spectrum = SpectrumConfig()
+        spectrum.zones[0].label = ""
+        #expect(!spectrum.isValid)
+        spectrum.zones[0].label = " \n "
+        #expect(!spectrum.isValid)
+    }
+
     @Test("zoneIndex(for:) picks the zone the value falls in, clamped to 0...1")
     func zoneIndexPicksTheRightBand() {
         let spectrum = SpectrumConfig()
@@ -139,7 +148,19 @@ struct SpectrumConfigTests {
     @Test("zone(for:) returns the zone at that index")
     func zoneReturnsTheZone() {
         let spectrum = SpectrumConfig()
-        #expect(spectrum.zone(for: 0.9).label == "Very pleasant")
+        #expect(spectrum.zone(for: 0.9)?.label == "Very pleasant")
+    }
+
+    @Test("zone lookup returns nil for an invalid configuration")
+    func invalidZoneLookup() {
+        let empty = SpectrumConfig(zones: [], breakpoints: [])
+        #expect(empty.zoneIndex(for: 0.5) == nil)
+        #expect(empty.zone(for: 0.5) == nil)
+
+        var malformed = SpectrumConfig()
+        malformed.breakpoints = []
+        #expect(malformed.zoneIndex(for: 0.5) == nil)
+        #expect(malformed.zone(for: 0.5) == nil)
     }
 
     @Test("round-trips through JSON")
