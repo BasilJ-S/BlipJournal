@@ -3,8 +3,9 @@
 The runner presents active questions in one scrollable screen. `EntryDraft` creates or
 resumes the entry immediately, preserves answer IDs and first timestamps, and writes
 through one ordered queue. Text edits debounce for 300ms and flush on close, completion,
-and backgrounding. Quick Note uses a locally focused `TextEditor` and owns its editing
-buffer so draft observation updates cannot replace the focused editor. Custom options are inserted before reloading the survey so their
+and backgrounding. Quick Note uses a locally focused `TextEditor`, explicitly requests
+focus from the first tap, and owns its editing buffer so draft observation updates cannot
+replace the focused editor. Custom options are inserted before reloading the survey so their
 creation order remains recoverable. Known limitations: no conditional questions, no
 undo, no completed-entry editing, and a brief text-loss window before debounce or forced
 termination; quick notes are limited to 500 Swift characters.
