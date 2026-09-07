@@ -190,7 +190,7 @@ struct EntryDetailView: View {
     // MARK: Rendering
 
     /// The answer as text, using the question's current labels.
-    static func render(_ value: AnswerValue, for question: Question) -> String {
+    nonisolated static func render(_ value: AnswerValue, for question: Question) -> String {
         switch value {
         case .scale(let value):
             if let scale = question.scale {
@@ -217,7 +217,7 @@ struct EntryDetailView: View {
         }
     }
 
-    private static func optionLabel(_ optionId: String, in question: Question) -> String {
+    nonisolated private static func optionLabel(_ optionId: String, in question: Question) -> String {
         question.options.first { $0.id == optionId }?.label ?? "Unknown option"
     }
 }

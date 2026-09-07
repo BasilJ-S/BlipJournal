@@ -1,8 +1,33 @@
 import Testing
+import BlipJournalCore
 @testable import BlipJournal
 
 @MainActor
 struct JournalRowSummaryTests {
+    @Test func rendersTwoConfiguredAnswersInOrderAndOmitsAnUnansweredChoice() {
+        let mood = Question(
+            id: "mood", kind: .scale, label: "Mood", position: 0,
+            scale: ScaleConfig(min: 1, max: 7, minLabel: "Low", maxLabel: "High"))
+        let activity = Question(
+            id: "activity", kind: .singleChoice, label: "Activity", position: 1,
+            options: [ChoiceOption(id: "work", label: "Working", position: 0)])
+        let survey = Survey(
+            name: "Check-in", journalSummaryQuestionIds: [activity.id, mood.id],
+            questions: [mood, activity])
+        let answers = [
+            Answer(
+                entryId: "entry", questionId: mood.id, questionVersionId: "mv",
+                value: .scale(5)),
+            Answer(
+                entryId: "entry", questionId: activity.id, questionVersionId: "av",
+                value: .single(optionId: "work")),
+        ]
+
+        #expect(JournalRowSummary.text(answers: answers, survey: survey) == "Working · 5 of 7")
+        #expect(JournalRowSummary.text(answers: [answers[0]], survey: survey) == "5 of 7")
+        #expect(JournalRowSummary.text(answers: [], survey: survey) == nil)
+    }
+
     @Test func cancelledOlderLoadCannotOverwriteNewerSummary() async {
         let summary = JournalRowSummary()
         let oldRead = ControlledRead()

@@ -1,8 +1,9 @@
 # Journal
 
 `JournalView` lists every entry newest first, grouped by local day, with relative
-date headers. Rows show time, survey, first answered scale in question order, and
-text badges for source and draft status. Badges wrap at large Dynamic Type.
+date headers. Rows show time, survey, up to two answered values chosen per survey, and
+text badges for source and draft status. The values keep their configured order and
+unanswered choices are omitted. Badges wrap at large Dynamic Type.
 
 - `AppModel.entries` is the list source; its refresh revision reloads answer
   summaries and detail even when entry metadata is unchanged.

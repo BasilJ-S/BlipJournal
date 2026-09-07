@@ -74,7 +74,9 @@ struct StoreNotificationPreviewTests {
             try v1Only.migrate(v1Queue)
             try v1Queue.write { db in
                 try SurveyRow(id: "s1", createdAt: t(0)).insert(db)
-                try SurveyVersionRow(id: "sv1", surveyId: "s1", name: "Old", isArchived: false, createdAt: t(0)).insert(db)
+                try db.execute(
+                    sql: "INSERT INTO surveyVersion (id, surveyId, name, isArchived, createdAt) VALUES (?, ?, ?, ?, ?)",
+                    arguments: ["sv1", "s1", "Old", false, t(0)])
                 try SurveySamplingRow(
                     id: "ss1", surveyId: "s1", promptsPerDay: 3, windowStartMinutes: 540,
                     windowEndMinutes: 1380, minGapMinutes: 60, expiryMinutes: 20, isEnabled: true,
@@ -128,6 +130,24 @@ struct StoreNotificationPreviewTests {
 
         let decoded = try BackupExporter.decode(data)
         #expect(decoded.surveyNotificationPreviews.isEmpty)
+    }
+
+    @Test("a pre-v3 backup decodes survey versions without Journal summary fields")
+    func decodesHistoricalSurveyVersions() throws {
+        let (store, _) = try Fixture.seeded()
+        var json = try JSONSerialization.jsonObject(
+            with: try BackupExporter.json(store.backup(now: t(1)))) as! [String: Any]
+        json["surveyVersions"] = (json["surveyVersions"] as! [[String: Any]]).map { row in
+            var oldRow = row
+            oldRow.removeValue(forKey: "journalSummaryIsConfigured")
+            oldRow.removeValue(forKey: "primarySummaryQuestionId")
+            oldRow.removeValue(forKey: "secondarySummaryQuestionId")
+            return oldRow
+        }
+
+        let decoded = try BackupExporter.decode(
+            try JSONSerialization.data(withJSONObject: json))
+        #expect(decoded.surveyVersions.allSatisfy { !$0.journalSummaryIsConfigured })
     }
 
     @Test("hard-deleting a survey removes its notification preview rows and counts them")

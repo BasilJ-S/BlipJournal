@@ -51,6 +51,30 @@ struct EditorModelTests {
         #expect(try store.labelHistory(questionId: before.activeQuestions[0].id).count == 2)
     }
 
+    @Test func copyingPreservesJournalSummaryUsingTheNewQuestionIdentifiers() throws {
+        let store = try Store.inMemory()
+        let editor = model(store: store)
+        let source = try store.createSurvey(
+            name: "Source", sampling: .default,
+            questions: [
+                Question(kind: .scale, label: "Mood", position: 0),
+                Question(kind: .singleChoice, label: "Activity", position: 1),
+            ], now: now)
+        try editor.saveJournalSummary(
+            surveyId: source.id,
+            questionIds: [source.activeQuestions[1].id, source.activeQuestions[0].id],
+            now: now.addingTimeInterval(1))
+
+        let copy = try editor.copySurvey(
+            sourceId: source.id, name: "Copy", now: now.addingTimeInterval(2))
+
+        #expect(copy.journalSummaryQuestions.map(\.label) == ["Activity", "Mood"])
+        #expect(copy.journalSummaryQuestionIds.allSatisfy { id in
+            copy.questions.contains { $0.id == id }
+        })
+        #expect(Set(copy.journalSummaryQuestionIds).isDisjoint(with: source.journalSummaryQuestionIds))
+    }
+
     @Test func invalidSamplingAndCustomPreviewDoNotWrite() async throws {
         let store = try Store.inMemory()
         let editor = model(store: store)

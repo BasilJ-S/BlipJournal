@@ -19,11 +19,12 @@ Store+Export.swift      exportSnapshot, backup
 Backup.swift            Backup, BackupExporter
 ```
 
-## Schema (v2)
+## Schema (v3)
 
 ```
 survey(id, createdAt)
-surveyVersion(id, surveyId, name, isArchived, createdAt)
+surveyVersion(id, surveyId, name, isArchived, journalSummaryIsConfigured,
+              primarySummaryQuestionId, secondarySummaryQuestionId, createdAt)
 surveySampling(id, surveyId, promptsPerDay, windowStartMinutes, windowEndMinutes,
                minGapMinutes, expiryMinutes, isEnabled, createdAt)
 surveyNotificationPreview(id, surveyId, mode, message, createdAt)
@@ -43,6 +44,13 @@ answerOption(answerId, optionId)        PRIMARY KEY (answerId, optionId)
 is set only for `"custom"`. Added by migration `v2`; a survey with no row here (any
 survey created before v2 was applied) resolves to `.private`, the same way an absent
 `surveySampling` row resolves to `SamplingConfig.default`.
+
+Migration `v3` adds the Journal summary fields to `surveyVersion`. New surveys record
+their first active scale question by default. An upgraded row has
+`journalSummaryIsConfigured == false`, which preserves the former first-scale summary
+until a choice is saved. Saving even an empty choice sets it true. The question IDs have
+no foreign keys: hard-erasing an archived question must not rewrite immutable history;
+missing and archived questions are omitted from the resolved Journal summary.
 
 IDs are `TEXT PRIMARY KEY`. Timestamps are GRDB's default UTC string
 (`yyyy-MM-dd HH:mm:ss.SSS`), which sorts lexicographically; precision is one
@@ -76,6 +84,8 @@ delete removes is exactly what its code says. Indexes: every foreign key column 
   `surveyNotificationPreview`, `question`, `questionVersion`, `option` or
   `optionVersion`. `updateQuestion` and `updateOption`
   write a version carrying every field; the caller passes the full intended state.
+  Journal summary changes append a survey version containing up to two distinct active
+  question IDs, and later rename/archive versions carry those choices forward.
   Archiving touches only its own level: archiving a question writes nothing to its
   options, so unarchiving it restores exactly the option set that was visible.
 - **One answer per question per entry.** `answer(entryId, questionId)` is unique, so

@@ -2,7 +2,10 @@
 
 The editor is a small set of SwiftUI screens backed by `EditorModel`. The model is the
 only app-layer writer: definition edits append Store versions, sampling changes validate
-before saving, and notification changes call the coordinator.
+before saving, notification changes call the coordinator, and Journal summary choices
+append a survey version. A survey can show zero, one, or two answer values on each Journal
+row. Tapping choices establishes their display order; with two already chosen, a new tap
+replaces the second while keeping the primary anchored.
 
 Active questions and options are reordered by removing the selected rows, inserting them
 at the requested destination, and renumbering the resulting active list from zero. Only
