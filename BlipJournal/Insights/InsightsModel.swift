@@ -188,16 +188,34 @@ final class InsightsModel {
     /// `Analytics.byOption`, restricted to the same entries `series` includes so every
     /// chart shares one set of bounds.
     var byOption: [BucketStat] {
-        guard let snapshot, let moodQuestion, let choiceQuestion else { return [] }
-        let includedEntryIds = Set(series.map(\.entryId))
-        let boundedSnapshot = ExportSnapshot(
-            survey: snapshot.survey,
-            entries: snapshot.entries.filter { includedEntryIds.contains($0.entry.id) },
-            questionLabelHistory: snapshot.questionLabelHistory,
-            optionLabelHistory: snapshot.optionLabelHistory,
-            questionVersionLabels: snapshot.questionVersionLabels)
+        guard let snapshot = boundedSnapshot, let moodQuestion, let choiceQuestion else { return [] }
         return Analytics.byOption(
-            moodQuestionId: moodQuestion.id, choiceQuestionId: choiceQuestion.id, snapshot: boundedSnapshot)
+            moodQuestionId: moodQuestion.id, choiceQuestionId: choiceQuestion.id, snapshot: snapshot)
+    }
+
+    private var boundedSnapshot: ExportSnapshot? {
+        guard var snapshot else { return nil }
+        let includedEntryIds = Set(series.map(\.entryId))
+        snapshot.entries = snapshot.entries.filter { includedEntryIds.contains($0.entry.id) }
+        return snapshot
+    }
+
+    var optionDistributions: [AnswerDistribution] {
+        guard let snapshot = boundedSnapshot, let moodQuestion, let choiceQuestion else { return [] }
+        return Analytics.optionDistributions(
+            moodQuestionId: moodQuestion.id, choiceQuestionId: choiceQuestion.id, snapshot: snapshot)
+    }
+
+    func comparison(optionId: String) -> [AnswerDistribution] {
+        guard let snapshot = boundedSnapshot, let moodQuestion, let choiceQuestion else { return [] }
+        return Analytics.optionComparison(moodQuestionId: moodQuestion.id,
+            choiceQuestionId: choiceQuestion.id, optionId: optionId, snapshot: snapshot)
+    }
+
+    func entries(in distribution: AnswerDistribution) -> [Entry] {
+        let ids = Set(distribution.points.map(\.entryId))
+        return (snapshot?.entries ?? []).filter { ids.contains($0.id) }.map(\.entry)
+            .sorted { ($0.startedAt, $0.id) > ($1.startedAt, $1.id) }
     }
 
     /// `Analytics.compliance` over `prompts` restricted to the selected range by

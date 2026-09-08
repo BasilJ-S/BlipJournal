@@ -63,7 +63,7 @@ private struct InsightsBody: View {
                         "End date", selection: $model.customEnd, in: ...Date.now, displayedComponents: .date)
                 }
                 if model.moodQuestions.count > 1 {
-                    Picker("Mood question", selection: $model.moodQuestion) {
+                    Picker("Measure", selection: $model.moodQuestion) {
                         ForEach(model.moodQuestions) { question in
                             Text(question.label).tag(Optional(question))
                         }
@@ -75,10 +75,16 @@ private struct InsightsBody: View {
 
             chartSection(title: sectionTitle("Over time"), emptyReason: moodEmptyReason) {
                 if let axis = model.moodAxis {
-                    MoodOverTimeChart(
-                        points: model.series, rolling: model.rolling, domain: axis.domain,
-                        minLabel: axis.minLabel, maxLabel: axis.maxLabel,
-                        accessibilitySummary: model.seriesAccessibilitySummary)
+                    // One row, so `blipCardRow` draws the caption and the chart as a
+                    // single card like every other chart section.
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Line: rolling average of up to 7 entries")
+                            .font(.caption).foregroundStyle(.secondary)
+                        MoodOverTimeChart(
+                            points: model.series, rolling: model.rolling, domain: axis.domain,
+                            minLabel: axis.minLabel, maxLabel: axis.maxLabel,
+                            accessibilitySummary: model.seriesAccessibilitySummary)
+                    }
                 }
             }
 
@@ -101,21 +107,15 @@ private struct InsightsBody: View {
             }
 
             Section {
-                if let axis = model.moodAxis {
-                    ByOptionChart(
-                        choiceQuestions: model.choiceQuestions,
-                        selectedChoiceQuestion: $model.choiceQuestion,
-                        buckets: model.byOption,
-                        valueDomain: axis.domain,
-                        accessibilitySummary: model.byOptionAccessibilitySummary,
-                        emptyReason: byOptionEmptyReason)
+                if model.moodAxis != nil {
+                    ByOptionChart(model: model)
                 } else {
                     ContentUnavailableView(
-                        "By option", systemImage: "chart.bar",
-                        description: Text("No mood question in this survey"))
+                        "Answer distributions", systemImage: "chart.bar",
+                        description: Text("No scale or spectrum question in this survey"))
                 }
             } header: {
-                Text("By option").blipMonoLabel()
+                Text("Explore by option").blipMonoLabel()
             }
             .blipCardRow()
 
@@ -185,12 +185,6 @@ private struct InsightsBody: View {
     private var moodEmptyReason: String? {
         if model.moodQuestions.isEmpty { return "No mood question in this survey" }
         if model.series.isEmpty { return "No entries in this range" }
-        return nil
-    }
-
-    private var byOptionEmptyReason: String? {
-        if model.choiceQuestions.isEmpty { return "No choice question in this survey" }
-        if model.byOption.allSatisfy({ $0.count == 0 }) { return "No entries in this range" }
         return nil
     }
 

@@ -686,3 +686,88 @@ struct EmptySnapshotTests {
         ])
     }
 }
+
+@Suite("Answer distributions")
+struct AnswerDistributionTests {
+    @Test("Interpolated quartiles preserve spread even when medians agree")
+    func quartiles() {
+        let date = at(2026, 3, 2)
+        let wide = AnswerDistribution(id: "wide", label: "Wide", points:
+            [100.0, 0, 50, 75, 25].enumerated().map { point("\($0.offset)", at: date, value: $0.element) })
+        #expect(wide.minimum == 0)
+        #expect(wide.lowerQuartile == 25)
+        #expect(wide.median == 50)
+        #expect(wide.upperQuartile == 75)
+        #expect(wide.maximum == 100)
+        #expect(wide.showsBox)
+        let even = AnswerDistribution(id: "even", label: "Even", points:
+            [0.0, 10, 20, 30].enumerated().map { point("\($0.offset)", at: date, value: $0.element) })
+        #expect(even.lowerQuartile == 7.5)
+        #expect(even.median == 15)
+        #expect(even.upperQuartile == 22.5)
+        #expect(!even.showsBox)
+        let repeated = AnswerDistribution(id: "same", label: "Same", points:
+            (0..<5).map { point("\($0)", at: date, value: 50) })
+        #expect(repeated.median == wide.median)
+        #expect(repeated.minimum == repeated.maximum)
+    }
+
+    @Test("Empty, singleton and non-finite answers")
+    func edges() {
+        let empty = AnswerDistribution(id: "e", label: "Empty", points: [])
+        #expect(empty.median == nil)
+        #expect(empty.lowerQuartile == nil)
+        #expect(!empty.showsBox)
+        let single = AnswerDistribution(id: "s", label: "Single", points: [
+            point("a", at: at(2026, 3, 2), value: -3),
+            point("b", at: at(2026, 3, 2), value: .nan)])
+        #expect(single.count == 1)
+        #expect(single.minimum == -3)
+        #expect(single.lowerQuartile == -3)
+        #expect(single.median == -3)
+        #expect(single.upperQuartile == -3)
+    }
+
+    @Test("Comparison partitions explicit answers and excludes missing, partial and invalid answers")
+    func comparison() {
+        let date = at(2026, 3, 2)
+        let data = snapshot(entries: [
+            entry("both", at: date, mood: 1, options: ["opt-a", "opt-a", "opt-b"]),
+            entry("other", at: date, mood: 5, options: ["opt-b"]),
+            entry("none", at: date, mood: 3, options: []),
+            entry("skipped", at: date, mood: 100),
+            entry("no-mood", at: date, options: ["opt-a"]),
+            entry("partial", at: date, completed: false, mood: 100, options: ["opt-a"]),
+            entry("unknown", at: date, mood: 100, options: ["missing"]),
+            entry("archived", at: date, mood: 2, options: ["opt-c"]),
+            entry("wrong-shape", at: date, answers: [(scaleQ, .scale(100), nil), (choiceQ, .text("opt-a"), nil)])
+        ])
+        let groups = Analytics.optionDistributions(moodQuestionId: scaleQ, choiceQuestionId: choiceQ, snapshot: data)
+        #expect(groups.map(\.id) == ["opt-a", "opt-b", "opt-c"])
+        #expect(groups.map(\.count) == [1, 2, 1])
+        let comparison = Analytics.optionComparison(moodQuestionId: scaleQ, choiceQuestionId: choiceQ,
+            optionId: "opt-a", snapshot: data)
+        #expect(comparison.map(\.count) == [1, 3])
+        #expect(comparison[0].points.map(\.entryId) == ["both"])
+        #expect(Set(comparison[1].points.map(\.entryId)) == ["other", "none", "archived"])
+        #expect(Analytics.optionComparison(moodQuestionId: scaleQ, choiceQuestionId: choiceQ,
+            optionId: "unknown", snapshot: data).isEmpty)
+    }
+
+    @Test("Spectrum conversion, single choice, duplicate answers, empty groups and stable order")
+    func spectrumAndDuplicates() {
+        let date = at(2026, 3, 2)
+        let data = snapshot(entries: [entry("spectrum", at: date, answers: [
+            (scaleQ, .spectrum(0.75), "a"), (scaleQ, .spectrum(0.25), "z"),
+            (choiceQ, .single(optionId: "opt-b"), "a-choice"),
+            (choiceQ, .single(optionId: "opt-a"), "z-choice")])])
+        let groups = Analytics.optionDistributions(moodQuestionId: scaleQ, choiceQuestionId: choiceQ, snapshot: data)
+        #expect(groups.map(\.id) == ["opt-a", "opt-b"])
+        #expect(groups[0].count == 0)
+        #expect(groups[1].median == 75)
+        let comparison = Analytics.optionComparison(moodQuestionId: scaleQ, choiceQuestionId: choiceQ,
+            optionId: "opt-b", snapshot: data)
+        #expect(comparison.map(\.count) == [1, 0])
+        #expect(Analytics.optionDistributions(moodQuestionId: scaleQ, choiceQuestionId: textQ, snapshot: data).isEmpty)
+    }
+}

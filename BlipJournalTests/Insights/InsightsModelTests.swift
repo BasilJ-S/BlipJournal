@@ -278,9 +278,21 @@ struct InsightsModelTests {
 
         #expect(model.byOption.first { $0.id == calm.id }?.count == 1)
         #expect(model.byOption.first { $0.id == happy.id }?.count == 0)
+        #expect(model.optionDistributions.first { $0.id == calm.id }?.median == 50)
+        #expect(model.comparison(optionId: calm.id).map(\.count) == [1, 0])
+        let selected = try #require(model.comparison(optionId: calm.id).first)
+        #expect(model.entries(in: selected).map(\.id) == selected.points.map(\.entryId))
 
         model.range = .all
         #expect(model.byOption.first { $0.id == happy.id }?.count == 1)
+        #expect(model.comparison(optionId: calm.id).map(\.count) == [1, 1])
+        try addEntry(store, survey: survey, at: now.addingTimeInterval(3600), options: [calm.id])
+        try model.load(now: now)
+        #expect(model.comparison(optionId: calm.id).map(\.count) == [1, 1])
+        try store.deleteEntry(try #require(selected.points.first).entryId)
+        try model.load(now: now)
+        #expect(model.comparison(optionId: calm.id).map(\.count) == [0, 1])
+        #expect(model.entries(in: selected).isEmpty)
     }
 
     @Test func byOptionAccessibilitySummaryDoesNotOvercountMultiChoiceEntries() throws {
