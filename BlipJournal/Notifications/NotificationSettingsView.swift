@@ -12,6 +12,9 @@ struct NotificationSettingsView: View {
     @State private var isRescheduling = false
     @State private var rescheduleMessage: String?
     @State private var upcoming: [UpcomingPrompt] = []
+    #if DEBUG
+    @State private var testMessage: String?
+    #endif
 
     private struct UpcomingPrompt: Identifiable {
         let id: String
@@ -37,6 +40,10 @@ struct NotificationSettingsView: View {
             @unknown default:
                 explanationSection
             }
+
+            #if DEBUG
+            testSection
+            #endif
         }
         .blipScreen("Notifications")
         .task { await loadUpcoming() }
@@ -132,6 +139,62 @@ struct NotificationSettingsView: View {
             }
         }
     }
+
+    #if DEBUG
+    /// Debug builds only: fires a real local notification a few seconds out so a tap can be
+    /// exercised on device without waiting for the sampler to pick a time. It borrows the
+    /// soonest pending prompt's identifier when there is one, so the tap routes into the
+    /// runner exactly as a scheduled prompt would; with no pending prompt it uses a
+    /// stand-in identifier and `PromptRouteView` shows its "no longer available" dead end.
+    ///
+    /// It writes straight to the notification centre rather than through the coordinator:
+    /// this is a test affordance, not part of the scheduling contract, and the next
+    /// refresh reconciles whatever it left behind.
+    private var testSection: some View {
+        Section("Debug") {
+            Button("Send a test prompt in 15 seconds") {
+                Task { await sendTestPrompt() }
+            }
+            .accessibilityLabel("Send a test prompt in 15 seconds")
+
+            Text("Tap this, then leave the app. Tap the banner when it arrives.")
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+
+            if let testMessage {
+                Text(testMessage)
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+            }
+        }
+    }
+
+    private func sendTestPrompt() async {
+        let prompts = (try? appModel.store.prompts(status: .pending)) ?? []
+        let soonest = prompts.sorted { $0.scheduledAt < $1.scheduledAt }.first
+        let identifier = soonest?.id ?? "debug-test-prompt"
+
+        let content = UNMutableNotificationContent()
+        content.title = "Blip Journal"
+        content.body = "Test prompt — tap me."
+        content.sound = .default
+        content.categoryIdentifier = NotificationCoordinator.categoryIdentifier
+        content.userInfo = ["promptId": identifier]
+        let request = UNNotificationRequest(
+            identifier: identifier,
+            content: content,
+            trigger: UNTimeIntervalNotificationTrigger(timeInterval: 15, repeats: false))
+
+        do {
+            try await UNUserNotificationCenter.current().add(request)
+            testMessage = soonest == nil
+                ? "Scheduled with a stand-in prompt; the tap should reach the dead-end screen."
+                : "Scheduled against your next real prompt; the tap should open its survey."
+        } catch {
+            testMessage = "Couldn't schedule: \(String(describing: error))"
+        }
+    }
+    #endif
 
     private func requestAuthorization() async {
         guard !isRequesting else { return }

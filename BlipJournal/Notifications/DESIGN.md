@@ -115,6 +115,16 @@ delegate; `NotificationCoordinator.attach(to:)`, called once from `AppModel.live
 claims it into `pendingRoute`. A tap arriving after attachment sets `pendingRoute`
 directly.
 
+Both delegate callbacks are written in the completion-handler form and resume on the
+main actor before calling the handler. UIKit does main-thread-only work synchronously
+inside those handlers (`-[UIApplication _updateSnapshotAndStateRestorationWithAction:
+windowScene:]`), and asserts if it is not on the main thread. The shorter `nonisolated
+async` form runs on the cooperative pool, so the compiler-synthesized `@objc` thunk calls
+the handler from a background thread and that assertion becomes an uncaught
+Objective-C exception: every tap killed the app with SIGABRT before any UI appeared,
+which read as the notification bouncing back to the Home Screen. Do not go back to the
+`async` form.
+
 ## Known limitations
 
 - No quick-reply or other notification actions in v0; the `PROMPT` category carries none.
