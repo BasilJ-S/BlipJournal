@@ -59,7 +59,8 @@ or Apple reads says `BlipJournal`, one word.
   with entries answering without it, and explore the underlying entries. Response rate
   shows prompt coverage.
 - **Glanceable Journal.** Pick up to two questions per survey whose answers appear on
-  each Journal row, such as mood and current activity.
+  each Journal row, such as mood and current activity. Filter the Journal by survey,
+  source, status or a choice answer, and sort it by date or by a scale answer.
 - **App Store compliant.** Privacy manifest, "Data Not Collected" privacy label, no
   medical claims, Apple-provided encryption only.
 
@@ -89,6 +90,7 @@ BlipJournalCore/    Swift package. No UIKit. Tested with `swift test` on macOS.
   Storage/           GRDB schema, migrations, insert-only versioning, queries
   Sampling/          Stratified random day sampler and multi-survey prompt planner
   Export/            CSV (wide, long) and JSON backup
+  Journal/           Journal filter and sort rules
 BlipJournal/        iOS app target. SwiftUI only.
   App/               Entry point, app model, biometric lock
   Journal/           Entries list and entry detail with delete

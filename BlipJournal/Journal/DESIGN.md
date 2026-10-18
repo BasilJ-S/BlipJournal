@@ -1,10 +1,21 @@
 # Journal
 
-`JournalView` lists every entry newest first, grouped by local day, with relative
+`JournalView` lists entries, by default every one newest first, grouped by local day, with relative
 date headers. Rows show time, survey, up to two answered values chosen per survey, and
 text badges for source and draft status. The values keep their configured order and
 unanswered choices are omitted. Badges wrap at large Dynamic Type.
 
+- Filter and sort: a toolbar button opens `JournalFilterView`, which edits a
+  `JournalFilter` and `JournalSort` (rules and tests in core `Journal/`) live. Survey,
+  source and status read entry metadata; an answer condition (choice option or yes/no)
+  and an answer sort (scale or spectrum) need a survey and read
+  `Store.answers(questionIds:)` off the main actor, keyed by revision, with a spinner
+  until the matching read lands. The query is normalised against `surveysById` each
+  render, so an erased survey, question or option silently drops out. Date order keeps
+  day sections (either direction); answer order is one flat list with dated rows. A
+  bar above the list shows "n of total" and Clear whenever anything differs from the
+  default; no matches shows its own empty state. State lives in the view and resets
+  on relaunch.
 - `AppModel.entries` is the list source; its refresh revision reloads answer
   summaries and detail even when entry metadata is unchanged.
 - `JournalRowSummary` owns row presentation state. It checks cancellation before

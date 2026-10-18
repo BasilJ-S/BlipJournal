@@ -87,6 +87,25 @@ extension Store {
         }
     }
 
+    /// Every answer to the given questions, across all entries, ordered by
+    /// `answeredAt`. Empty for unknown questions or an empty list. Meant for the
+    /// handful of questions a Journal filter or sort names, not for long lists: every
+    /// identifier is one bound parameter.
+    public func answers(questionIds: [String]) throws -> [Answer] {
+        guard !questionIds.isEmpty else { return [] }
+        return try dbQueue.read { db in
+            let placeholders = Array(repeating: "?", count: questionIds.count).joined(separator: ", ")
+            let arguments = StatementArguments(questionIds)
+            let rows = try AnswerRow.fetchAll(
+                db, sql: "SELECT * FROM answer WHERE questionId IN (\(placeholders)) ORDER BY answeredAt, rowid",
+                arguments: arguments)
+            let selections = try AnswerOptionRow.fetchAll(
+                db, sql: "SELECT * FROM answerOption WHERE answerId IN (SELECT id FROM answer WHERE questionId IN (\(placeholders))) ORDER BY rowid",
+                arguments: arguments)
+            return try Self.makeAnswers(rows, selections: selections)
+        }
+    }
+
     /// Deletes the entry, its answers and their selections. The prompt row and its
     /// status are left untouched. Throws `notFound` for an unknown entry. Ends with the
     /// checkpoint and vacuum step.

@@ -2,11 +2,15 @@ import BlipJournalCore
 import SwiftUI
 
 /// Every entry, newest first, sectioned by local day. Rows push `EntryDetailView`;
-/// the toolbar starts a new entry in the survey runner.
+/// the toolbar starts a new entry in the survey runner and opens filter and sort.
 struct JournalView: View {
     @Environment(AppModel.self) private var appModel
     @State private var runnerSurvey: Survey?
     @State private var errorMessage: String?
+    @State private var filter = JournalFilter()
+    @State private var sort = JournalSort.newestFirst
+    @State private var showingFilters = false
+    @State private var loadedAnswers: LoadedAnswers?
 
     var body: some View {
         Group {
@@ -15,10 +19,23 @@ struct JournalView: View {
                 if appModel.entries.isEmpty {
                     emptyState
                 } else {
-                    entryList
+                    if isNarrowedOrReordered {
+                        filterBar
+                    }
+                    if let entries = visibleEntries {
+                        if entries.isEmpty {
+                            noMatchesState
+                        } else {
+                            entryList(entries)
+                        }
+                    } else {
+                        ProgressView("Loading entries")
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    }
                 }
             }
         }
+        .task(id: answersKey) { await loadAnswers(for: answersKey) }
         // On the Group, not the List: deleting the last entry swaps in the empty state,
         // and a destination registered inside the List would vanish while the detail
         // view it pushed is still on the stack.
@@ -29,6 +46,18 @@ struct JournalView: View {
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
                 newEntryControl
+            }
+            if !appModel.entries.isEmpty {
+                ToolbarItem(placement: .primaryAction) {
+                    Button("Filter and sort", systemImage: isNarrowedOrReordered
+                        ? "line.3.horizontal.decrease.circle.fill"
+                        : "line.3.horizontal.decrease.circle"
+                    ) {
+                        showingFilters = true
+                    }
+                    .accessibilityLabel("Filter and sort")
+                    .accessibilityValue(isNarrowedOrReordered ? "On" : "Off")
+                }
             }
             #if DEBUG
             ToolbarItem(placement: .secondaryAction) {
@@ -48,6 +77,11 @@ struct JournalView: View {
                 }
             }
         }
+        .sheet(isPresented: $showingFilters) {
+            NavigationStack {
+                JournalFilterView(filter: $filter, sort: $sort, surveys: pickableSurveys)
+            }
+        }
         .alert("Something went wrong", isPresented: Binding(
             get: { errorMessage != nil },
             set: { if !$0 { errorMessage = nil } }
@@ -58,20 +92,151 @@ struct JournalView: View {
         }
     }
 
+    // MARK: Filter and sort
+
+    /// The filter and sort with anything that no longer resolves dropped, for example
+    /// a survey or option erased since it was chosen.
+    private var query: (filter: JournalFilter, sort: JournalSort) {
+        JournalQuery.normalized(filter: filter, sort: sort, surveys: appModel.surveysById)
+    }
+
+    private var isNarrowedOrReordered: Bool {
+        query.filter.isActive || query.sort != .newestFirst
+    }
+
+    /// What the answer read depends on. A write bumps `revision`, so answers edited in
+    /// the runner or removed by a delete are re-read.
+    private struct AnswersKey: Hashable {
+        let revision: UInt64
+        let questionIds: [String]
+    }
+
+    private struct LoadedAnswers {
+        let key: AnswersKey
+        let answers: [Answer]
+    }
+
+    private var answersKey: AnswersKey {
+        AnswersKey(
+            revision: appModel.revision,
+            questionIds: JournalQuery.questionIds(filter: query.filter, sort: query.sort))
+    }
+
+    /// The entries to list, or nil while the answers the query needs are loading.
+    private var visibleEntries: [Entry]? {
+        let key = answersKey
+        let answers: [Answer]
+        if key.questionIds.isEmpty {
+            answers = []
+        } else if let loadedAnswers, loadedAnswers.key == key {
+            answers = loadedAnswers.answers
+        } else {
+            return nil
+        }
+        return JournalQuery.apply(appModel.entries, filter: query.filter, sort: query.sort, answers: answers)
+    }
+
+    /// Active surveys in store order, then archived surveys that still have entries.
+    private var pickableSurveys: [Survey] {
+        let withEntries = Set(appModel.entries.map(\.surveyId))
+        let archived = appModel.surveysById.values
+            .filter { $0.isArchived && withEntries.contains($0.id) }
+            .sorted { ($0.name, $0.id) < ($1.name, $1.id) }
+        return appModel.surveys + archived
+    }
+
+    private func loadAnswers(for key: AnswersKey) async {
+        guard !key.questionIds.isEmpty else { return }
+        let result = await Self.answers(store: appModel.store, questionIds: key.questionIds)
+        guard !Task.isCancelled else { return }
+        switch result {
+        case .success(let answers):
+            loadedAnswers = LoadedAnswers(key: key, answers: answers)
+        case .failure(let error):
+            // Show the error rather than an endless spinner; the list then reads as
+            // having no matching answers until the next reload.
+            loadedAnswers = LoadedAnswers(key: key, answers: [])
+            errorMessage = String(describing: error)
+        }
+    }
+
+    /// Reads off the main actor, like the row summaries do.
+    private nonisolated static func answers(store: Store, questionIds: [String]) async -> Result<[Answer], any Error> {
+        Result { try store.answers(questionIds: questionIds) }
+    }
+
+    /// Shown above the list whenever the filter or sort differs from the default.
+    private var filterBar: some View {
+        HStack {
+            Text(filterSummary)
+                .font(BlipFont.body(15))
+                .foregroundStyle(BlipBrand.muted)
+            Spacer()
+            Button("Clear") { clearFilters() }
+                .accessibilityLabel("Clear filters and sort")
+        }
+        .padding(.horizontal)
+        .padding(.top, 8)
+    }
+
+    private var filterSummary: String {
+        let total = appModel.entries.count
+        guard let shown = visibleEntries?.count else { return "Filtering…" }
+        if !query.filter.isActive { return "Sorted: \(sortDescription)" }
+        let count = "\(shown) of \(total) \(total == 1 ? "entry" : "entries")"
+        return query.sort == .newestFirst ? count : "\(count) · \(sortDescription)"
+    }
+
+    private var sortDescription: String {
+        switch query.sort {
+        case .newestFirst:
+            return "newest first"
+        case .oldestFirst:
+            return "oldest first"
+        case .answer(let questionId, let descending):
+            let survey = query.filter.surveyId.flatMap { appModel.surveysById[$0] }
+            let question = survey?.questions.first(where: { $0.id == questionId })
+            let label = question?.label ?? "Answer"
+            return "\(label), \(descending ? "highest" : "lowest") first"
+        }
+    }
+
+    private func clearFilters() {
+        filter = JournalFilter()
+        sort = .newestFirst
+    }
+
+    private var noMatchesState: some View {
+        ContentUnavailableView {
+            Label("No matching entries", systemImage: "line.3.horizontal.decrease.circle")
+        } description: {
+            Text("No entries match these filters.")
+        } actions: {
+            Button("Clear filters") { clearFilters() }
+                .buttonStyle(.borderedProminent)
+        }
+    }
+
     // MARK: List
 
-    private var entryList: some View {
+    /// Day sections while the order is by date; one flat list, each row dated, when
+    /// sorted by an answer, since neighbouring rows can then be weeks apart.
+    @ViewBuilder
+    private func entryList(_ entries: [Entry]) -> some View {
         List {
-            ForEach(daySections, id: \.day) { section in
-                Section {
-                    ForEach(section.entries) { entry in
-                        NavigationLink(value: entry) {
-                            EntryRow(entry: entry, survey: appModel.surveysById[entry.surveyId])
+            if query.sort.isChronological {
+                ForEach(daySections(entries), id: \.day) { section in
+                    Section {
+                        ForEach(section.entries) { entry in
+                            entryLink(entry, showsDate: false)
                         }
-                        .blipCardRow()
+                    } header: {
+                        Text(Self.dayFormatter.string(from: section.day)).blipMonoLabel()
                     }
-                } header: {
-                    Text(Self.dayFormatter.string(from: section.day)).blipMonoLabel()
+                }
+            } else {
+                ForEach(entries) { entry in
+                    entryLink(entry, showsDate: true)
                 }
             }
         }
@@ -79,19 +244,26 @@ struct JournalView: View {
         .environment(\.defaultMinListRowHeight, 0)
     }
 
+    private func entryLink(_ entry: Entry, showsDate: Bool) -> some View {
+        NavigationLink(value: entry) {
+            EntryRow(entry: entry, survey: appModel.surveysById[entry.surveyId], showsDate: showsDate)
+        }
+        .blipCardRow()
+    }
+
     private struct DaySection {
         let day: Date
         let entries: [Entry]
     }
 
-    /// Entries grouped by local calendar day, newest day first; `appModel.entries` is
-    /// already newest first so each group keeps that order.
-    private var daySections: [DaySection] {
+    /// Consecutive entries grouped by local calendar day. `entries` is already in date
+    /// order, either direction, so sections and the entries within them keep it.
+    private func daySections(_ entries: [Entry]) -> [DaySection] {
         let calendar = Calendar.current
         var sections: [DaySection] = []
         var currentDay: Date?
         var currentEntries: [Entry] = []
-        for entry in appModel.entries {
+        for entry in entries {
             let day = calendar.startOfDay(for: entry.startedAt)
             if day != currentDay {
                 if let currentDay {
@@ -206,13 +378,21 @@ private struct EntryRow: View {
     @Environment(AppModel.self) private var appModel
     let entry: Entry
     let survey: Survey?
+    /// Whether to show the day as well as the time, for lists not sectioned by day.
+    var showsDate = false
     @State private var summary = JournalRowSummary()
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
             HStack(alignment: .firstTextBaseline) {
-                Text(entry.startedAt, style: .time)
-                    .font(BlipFont.qualifier(17))
+                Group {
+                    if showsDate {
+                        Text(entry.startedAt, format: .dateTime.month(.abbreviated).day().hour().minute())
+                    } else {
+                        Text(entry.startedAt, style: .time)
+                    }
+                }
+                .font(BlipFont.qualifier(17))
                 if let answerSummary = summary.value {
                     Text(answerSummary)
                         .font(BlipFont.qualifier(17))
