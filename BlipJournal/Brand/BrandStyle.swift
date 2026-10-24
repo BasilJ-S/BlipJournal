@@ -59,11 +59,48 @@ enum BlipFont {
     }
 }
 
+/// Which brand face and weight `blipFont(_:size:relativeTo:)` draws with.
+enum BlipFontRole {
+    case title, qualifier, body, mono
+
+    func font(_ size: CGFloat) -> Font {
+        switch self {
+        case .title: BlipFont.title(size)
+        case .qualifier: BlipFont.qualifier(size)
+        case .body: BlipFont.body(size)
+        case .mono: BlipFont.mono(size)
+        }
+    }
+}
+
+/// A brand font whose size follows Dynamic Type. `BlipFont` builds a `UIFont` at a fixed
+/// point size, which never scales; the size here is a `ScaledMetric`, so the font is
+/// rebuilt at the scaled size whenever the person's text size changes.
+private struct BlipScaledFont: ViewModifier {
+    let role: BlipFontRole
+    @ScaledMetric private var size: CGFloat
+
+    init(role: BlipFontRole, size: CGFloat, relativeTo textStyle: Font.TextStyle) {
+        self.role = role
+        _size = ScaledMetric(wrappedValue: size, relativeTo: textStyle)
+    }
+
+    func body(content: Content) -> some View {
+        content.font(role.font(size))
+    }
+}
+
 /// Uppercase, tracked JetBrains Mono, muted — the spec's voice for section headers,
-/// metadata and badges. Never above 12pt per the spec.
+/// metadata and badges. The spec caps it at 12pt; that holds at the default text size,
+/// and larger accessibility sizes scale past it on purpose.
 struct BlipMonoLabelStyle: ViewModifier {
-    var size: CGFloat = 11
-    var color: Color = BlipBrand.muted
+    var color: Color
+    @ScaledMetric private var size: CGFloat
+
+    init(size: CGFloat = 11, color: Color = BlipBrand.muted) {
+        self.color = color
+        _size = ScaledMetric(wrappedValue: size, relativeTo: .caption2)
+    }
 
     func body(content: Content) -> some View {
         content
@@ -105,7 +142,7 @@ private struct BlipScreenStyle: ViewModifier {
                     .navigationBarTitleDisplayMode(.inline)
                     .safeAreaInset(edge: .top, spacing: 0) {
                         Text(title)
-                            .font(BlipFont.title(34))
+                            .blipFont(.title, size: 34, relativeTo: .largeTitle)
                             .foregroundStyle(BlipBrand.ink)
                             .frame(maxWidth: .infinity, alignment: .leading)
                             .padding(.horizontal, 16)
@@ -124,6 +161,14 @@ private struct BlipScreenStyle: ViewModifier {
 }
 
 extension View {
+    /// The brand face for `role` at `size` points at the default text size, scaled with
+    /// Dynamic Type like `textStyle`. Use this in views rather than `BlipFont` directly.
+    func blipFont(
+        _ role: BlipFontRole, size: CGFloat, relativeTo textStyle: Font.TextStyle = .body
+    ) -> some View {
+        modifier(BlipScaledFont(role: role, size: size, relativeTo: textStyle))
+    }
+
     func blipMonoLabel(size: CGFloat = 11, color: Color = BlipBrand.muted) -> some View {
         modifier(BlipMonoLabelStyle(size: size, color: color))
     }

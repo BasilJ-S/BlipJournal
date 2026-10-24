@@ -31,6 +31,13 @@ Delete-all erases and reseeds in the store transaction, asks the notification co
 to remove pending and delivered prompts, clears its pending route, refreshes the app, and
 reports that notifications are paused. iOS notification authorization is not revoked.
 
+## About
+
+Shows the version and build from the bundle, the app's MIT licence, and
+acknowledgements: GRDB.swift's MIT notice, and the SIL Open Font License for Nunito and
+JetBrains Mono, read from the bundled `Brand/Fonts/OFL.txt` so it is not duplicated.
+Both licences require their notices to ship with the app.
+
 ## Known limitations
 
 - There is no import, and JSON backups cannot be date-filtered.

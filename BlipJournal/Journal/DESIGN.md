@@ -11,6 +11,8 @@ unanswered choices are omitted. Badges wrap at large Dynamic Type.
   clearing state and after awaiting a read, so a cancelled revision cannot overwrite
   a newer summary. Tests explicitly complete overlapping reads in reverse order.
 - New entry opens the fixed A3 runner signature; multiple surveys offer a menu.
+- The empty state links to Settings → Notifications ("Turn on prompts") while
+  notification permission is anything but allowed.
 - Unfinished entries offer Continue entry, resuming the same entry. Completed entries
   are read-only.
   Sheet dismissal reloads the model, including swipe dismissal.

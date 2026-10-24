@@ -16,6 +16,12 @@ Data Protection; this is filesystem encryption, not SQLCipher.
   `LAError.passcodeNotSet` error; all other errors offer retry.
 - The lock replaces the root so sheets cannot sit above it. Relocking discards
   navigation and sheets. The future runner must autosave before this happens.
+- `PrivacyShield` puts a separate window holding only the mark above everything when the
+  scene leaves `.active` while unlocked, and removes it on `.active`. That is what the
+  app-switcher snapshot captures. A window rather than an overlay so open sheets are
+  covered too; covering rather than locking keeps them, and any draft, in place. It also
+  shows briefly behind system alerts and Control Centre, which make the scene inactive.
+- `RootView` presents the one-time `WelcomeView` (Onboarding `DESIGN.md`).
 - Launch store errors remain fatal with their error text, as required by A1.
   DEBUG logs the directory protection class; verify encryption on a device.
 
@@ -30,5 +36,5 @@ Extension points (fixed signatures in the A1 handoff):
 | Settings/ExportView, DeleteAllDataView, AboutView | A6 |
 
 Known limits: refresh eagerly reads all entries on the main actor; no notification
-routing until A2/A3; the app-switcher snapshot is not obscured. Simulator storage
+routing until A2/A3. Simulator storage
 does not establish device Data Protection. Visible product name is Blip Journal.

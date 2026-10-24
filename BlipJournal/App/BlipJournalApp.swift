@@ -23,6 +23,7 @@ struct BlipJournalApp: App {
     @UIApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
     @Environment(\.scenePhase) private var scenePhase
     @State private var launch: Launch
+    @State private var privacyShield = PrivacyShield()
 
     /// Either a working model or the reason there is none. Store errors at launch are
     /// fatal in v0: there is no recovery path, and hiding them would be worse.
@@ -58,13 +59,17 @@ struct BlipJournalApp: App {
                 .environment(appModel)
                 .preferredColorScheme(.light)
                 .onChange(of: scenePhase) { _, phase in
+                    // The shield goes up on leaving `.active`, before the app-switcher
+                    // snapshot is taken. While locked, `LockView` shows nothing private.
                     switch phase {
                     case .background:
+                        if !appModel.isLocked { privacyShield.show() }
                         appModel.didEnterBackground(at: Date())
                     case .active:
+                        privacyShield.hide()
                         appModel.willEnterForeground(at: Date())
                     case .inactive:
-                        break
+                        if !appModel.isLocked { privacyShield.show() }
                     @unknown default:
                         break
                     }

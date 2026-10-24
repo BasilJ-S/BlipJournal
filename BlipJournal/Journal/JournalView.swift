@@ -1,5 +1,6 @@
 import BlipJournalCore
 import SwiftUI
+import UserNotifications
 
 /// Every entry, newest first, sectioned by local day. Rows push `EntryDetailView`;
 /// the toolbar starts a new entry in the survey runner.
@@ -149,6 +150,19 @@ struct JournalView: View {
         } actions: {
             newEntryButton("Log an entry now")
                 .buttonStyle(.borderedProminent)
+            if !notificationsAllowed {
+                NavigationLink("Turn on prompts") { NotificationSettingsView() }
+                    .accessibilityLabel("Turn on prompts")
+                    .accessibilityHint("Opens notification settings.")
+            }
+        }
+    }
+
+    private var notificationsAllowed: Bool {
+        switch appModel.notifications.authorizationStatus {
+        case .authorized, .provisional, .ephemeral: true
+        case .denied, .notDetermined: false
+        @unknown default: false
         }
     }
 
@@ -212,15 +226,15 @@ private struct EntryRow: View {
         VStack(alignment: .leading, spacing: 4) {
             HStack(alignment: .firstTextBaseline) {
                 Text(entry.startedAt, style: .time)
-                    .font(BlipFont.qualifier(17))
+                    .blipFont(.qualifier, size: 17)
                 if let answerSummary = summary.value {
                     Text(answerSummary)
-                        .font(BlipFont.qualifier(17))
+                        .blipFont(.qualifier, size: 17)
                         .foregroundStyle(BlipBrand.muted)
                 }
             }
             Text(survey?.name ?? "Unknown survey")
-                .font(BlipFont.body(15))
+                .blipFont(.body, size: 15, relativeTo: .subheadline)
                 .foregroundStyle(BlipBrand.muted)
             ViewThatFits(in: .horizontal) {
                 HStack(spacing: 8) { badges }

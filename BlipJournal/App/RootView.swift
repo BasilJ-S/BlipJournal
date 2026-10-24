@@ -8,6 +8,7 @@ import SwiftUI
 /// its sheet appears.
 struct RootView: View {
     @Environment(AppModel.self) private var appModel
+    @AppStorage("hasSeenWelcome") private var hasSeenWelcome = false
 
     var body: some View {
         TabView {
@@ -38,6 +39,14 @@ struct RootView: View {
                     appModel.notifications.pendingRoute = nil
                 }
             }
+        }
+        .fullScreenCover(isPresented: Binding(
+            get: { !hasSeenWelcome },
+            set: { isPresented in
+                if !isPresented { hasSeenWelcome = true }
+            }
+        )) {
+            WelcomeView { hasSeenWelcome = true }
         }
     }
 }
