@@ -296,6 +296,23 @@ struct NotificationCoordinatorTests {
         #expect(granted)
         #expect(client.requestAuthorizationCallCount == 1)
         #expect(coordinator.authorizationStatus == .authorized)
+        #expect(!coordinator.isRequestingAuthorization)
+        #expect(coordinator.canDeliverPrompts)
+    }
+
+    @Test func canDeliverPromptsOnlyWhenAuthorizedOrProvisional() async throws {
+        let store = try Store.inMemory()
+        let cases: [(UNAuthorizationStatus, Bool)] = [
+            (.authorized, true), (.provisional, true),
+            (.ephemeral, false), (.denied, false), (.notDetermined, false),
+        ]
+        for (status, expected) in cases {
+            let client = FakeNotificationCenterClient()
+            client.authorizationStatusToReturn = status
+            let coordinator = makeCoordinator(store: store, client: client)
+            await coordinator.refresh(now: now)
+            #expect(coordinator.canDeliverPrompts == expected, "status \(status.rawValue)")
+        }
     }
 
     // MARK: Delete-all style reset

@@ -36,9 +36,10 @@ Request-add errors propagate to that result; refresh can retry the persisted sch
    given calendar.
 3. Mark `plan.missedPromptIds` as `.missed`.
 4. Insert `plan.newPrompts`.
-5. If authorization is `.authorized` or `.provisional`, reconcile the request centre
-   (below). Otherwise stop here: the store stays consistent (prompts are planned and
-   marked missed on schedule) but nothing is requested until permission is granted.
+5. If `canDeliverPrompts` (authorization `.authorized` or `.provisional`, a protocol
+   extension so views share the rule), reconcile the request centre (below). Otherwise
+   stop here: the store stays consistent (prompts are planned and marked missed on
+   schedule) but nothing is requested until permission is granted.
 
 Refreshes are serialized through the coordinator. A later refresh waits for an earlier
 one to finish all of its notification-centre work, so a reset cannot reconcile against
@@ -83,8 +84,10 @@ Prompts are still planned and stored on every refresh regardless of authorizatio
 schedule stays correct the moment permission is granted. No request is added and nothing
 delivered is swept while permission is anything but `.authorized` or `.provisional`.
 `requestAuthorization()` is called only from an explicit "Enable notifications" button,
-in `NotificationSettingsView` or the one-time `WelcomeView` (Onboarding `DESIGN.md`); launch, foreground, `scheduleChanged`, `promptsDestroyed`
-and displaying the settings screen never call it. Manual journaling, survey editing,
+in `NotificationSettingsView` or the one-time `WelcomeView` (Onboarding `DESIGN.md`).
+`isRequestingAuthorization` is true while it awaits the system alert, so the privacy
+shield can stay down for it (App `DESIGN.md`). Launch, foreground, `scheduleChanged`,
+`promptsDestroyed` and displaying the settings screen never call it. Manual journaling, survey editing,
 Insights and export never check authorization.
 
 ## Routing states (`PromptRouteView`)

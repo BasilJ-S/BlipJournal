@@ -1,6 +1,5 @@
 import BlipJournalCore
 import SwiftUI
-import UserNotifications
 
 /// Every entry, newest first, sectioned by local day. Rows push `EntryDetailView`;
 /// the toolbar starts a new entry in the survey runner.
@@ -150,19 +149,11 @@ struct JournalView: View {
         } actions: {
             newEntryButton("Log an entry now")
                 .buttonStyle(.borderedProminent)
-            if !notificationsAllowed {
+            if !appModel.notifications.canDeliverPrompts {
                 NavigationLink("Turn on prompts") { NotificationSettingsView() }
                     .accessibilityLabel("Turn on prompts")
                     .accessibilityHint("Opens notification settings.")
             }
-        }
-    }
-
-    private var notificationsAllowed: Bool {
-        switch appModel.notifications.authorizationStatus {
-        case .authorized, .provisional, .ephemeral: true
-        case .denied, .notDetermined: false
-        @unknown default: false
         }
     }
 

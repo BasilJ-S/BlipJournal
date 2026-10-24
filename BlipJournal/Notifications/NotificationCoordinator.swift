@@ -8,6 +8,9 @@ import UserNotifications
 protocol NotificationCoordinating: AnyObject {
     /// The current system authorization, as last observed.
     var authorizationStatus: UNAuthorizationStatus { get }
+    /// True while `requestAuthorization()` is waiting on the system's permission alert.
+    /// The alert makes the scene inactive, and the privacy shield stays down for it.
+    var isRequestingAuthorization: Bool { get }
     /// Asks the system for permission. Returns whether it was granted.
     func requestAuthorization() async -> Bool
     /// Plan upcoming prompts, persist them, and reconcile the notification centre.
@@ -22,10 +25,19 @@ protocol NotificationCoordinating: AnyObject {
     var pendingRoute: String? { get set }
 }
 
+extension NotificationCoordinating {
+    /// Whether the system will deliver prompts: the one rule for "notifications are on",
+    /// used by the reconcile step and by any view that offers to turn them on.
+    var canDeliverPrompts: Bool {
+        authorizationStatus == .authorized || authorizationStatus == .provisional
+    }
+}
+
 /// Does nothing. Stands in until A2 replaces it in `AppModel.live()`.
 @MainActor
 final class NoopNotificationCoordinator: NotificationCoordinating {
     var authorizationStatus: UNAuthorizationStatus { .notDetermined }
+    var isRequestingAuthorization: Bool { false }
     var pendingRoute: String?
 
     init() {}
@@ -49,6 +61,7 @@ final class NotificationCoordinator: NotificationCoordinating {
     private let planner: PromptPlanner
 
     private(set) var authorizationStatus: UNAuthorizationStatus = .notDetermined
+    private(set) var isRequestingAuthorization = false
     var pendingRoute: String?
 
     /// Bumped at the start of every `refresh`. A run that is still awaiting the client
@@ -87,6 +100,8 @@ final class NotificationCoordinator: NotificationCoordinating {
     // MARK: NotificationCoordinating
 
     func requestAuthorization() async -> Bool {
+        isRequestingAuthorization = true
+        defer { isRequestingAuthorization = false }
         let granted = (try? await client.requestAuthorization()) ?? false
         authorizationStatus = await client.authorizationStatus()
         return granted
@@ -120,7 +135,7 @@ final class NotificationCoordinator: NotificationCoordinating {
             return false
         }
         guard myGeneration == generation else { return false }
-        guard authorizationStatus == .authorized || authorizationStatus == .provisional else { return false }
+        guard canDeliverPrompts else { return false }
 
         do {
             try await reconcile(now: now, generation: myGeneration)

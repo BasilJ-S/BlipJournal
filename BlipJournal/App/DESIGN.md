@@ -17,10 +17,16 @@ Data Protection; this is filesystem encryption, not SQLCipher.
 - The lock replaces the root so sheets cannot sit above it. Relocking discards
   navigation and sheets. The future runner must autosave before this happens.
 - `PrivacyShield` puts a separate window holding only the mark above everything when the
-  scene leaves `.active` while unlocked, and removes it on `.active`. That is what the
-  app-switcher snapshot captures. A window rather than an overlay so open sheets are
-  covered too; covering rather than locking keeps them, and any draft, in place. It also
-  shows briefly behind system alerts and Control Centre, which make the scene inactive.
+  scene leaves `.active` while unlocked; that is what the app-switcher snapshot captures.
+  A window rather than an overlay so open sheets are covered too; covering rather than
+  locking keeps them, and any draft, in place. Showing it also ends text editing, since
+  the keyboard's window sits above any app window and its suggestions come from typing.
+- It stays down while `notifications.isRequestingAuthorization`: the permission alert
+  makes the scene inactive, and covering the screen would hide the explanation the alert
+  follows. Control Centre and other system alerts still raise it briefly.
+- On `.active`, the lock policy runs first. Without a relock the shield comes down at
+  once; on a relock it comes down from `onChange(of: isLocked)`, together with
+  `LockView` replacing the root, so the old content never flashes.
 - `RootView` presents the one-time `WelcomeView` (Onboarding `DESIGN.md`).
 - Launch store errors remain fatal with their error text, as required by A1.
   DEBUG logs the directory protection class; verify encryption on a device.

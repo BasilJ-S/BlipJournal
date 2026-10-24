@@ -66,13 +66,23 @@ struct BlipJournalApp: App {
                         if !appModel.isLocked { privacyShield.show() }
                         appModel.didEnterBackground(at: Date())
                     case .active:
-                        privacyShield.hide()
+                        // Lock first: on a relock the shield stays up until the
+                        // `isLocked` change below, so the old content never shows.
                         appModel.willEnterForeground(at: Date())
+                        if !appModel.isLocked { privacyShield.hide() }
                     case .inactive:
-                        if !appModel.isLocked { privacyShield.show() }
+                        // The notification permission alert also makes the scene
+                        // inactive; covering the screen then would hide the
+                        // explanation the alert follows.
+                        if !appModel.isLocked && !appModel.notifications.isRequestingAuthorization {
+                            privacyShield.show()
+                        }
                     @unknown default:
                         break
                     }
+                }
+                .onChange(of: appModel.isLocked) { _, isLocked in
+                    if isLocked { privacyShield.hide() }
                 }
             case .failed(let message):
                 LaunchFailureView(message: message)

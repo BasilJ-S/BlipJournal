@@ -8,6 +8,10 @@ import UIKit
 /// view, so an overlay on the root would leave an open runner or editor sheet in the
 /// snapshot. Covering rather than locking keeps those sheets, and any half-written entry,
 /// in place for when the person comes straight back.
+///
+/// The keyboard lives in a system window above any level an app can use, and its
+/// suggestion bar is built from what was typed, so `show()` also ends editing. A text
+/// answer keeps its text; it only loses focus.
 @MainActor
 final class PrivacyShield {
     private var window: UIWindow?
@@ -20,6 +24,8 @@ final class PrivacyShield {
                 .compactMap({ $0 as? UIWindowScene })
                 .first(where: { $0.activationState != .unattached })
         else { return }
+        UIApplication.shared.sendAction(
+            #selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
         let window = UIWindow(windowScene: scene)
         window.windowLevel = .alert + 1
         window.rootViewController = UIHostingController(rootView: PrivacyCoverView())

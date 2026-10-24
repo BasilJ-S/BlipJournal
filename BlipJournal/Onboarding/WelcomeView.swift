@@ -1,4 +1,5 @@
 import SwiftUI
+import UserNotifications
 
 /// Shown once, the first time the app is unlocked: what Blip Journal does, and the only
 /// place outside Settings → Notifications that asks for notification permission. The
@@ -25,7 +26,7 @@ struct WelcomeView: View {
                     point("slider.horizontal.3", "Answering takes a few seconds. Change the questions and the schedule any time in Settings.")
                     point("lock", "Everything stays on this iPhone. Nothing is sent anywhere, and you can export or erase it whenever you like.")
                 }
-                Text("Prompts arrive as notifications, so Blip Journal needs permission to send them.")
+                Text(permissionText)
                     .foregroundStyle(.secondary)
             }
             .padding(24)
@@ -46,7 +47,43 @@ struct WelcomeView: View {
         }
     }
 
+    /// Someone updating from an earlier build may already have decided; asking again
+    /// would show a button that visibly does nothing.
+    private var permissionDecided: Bool {
+        appModel.notifications.canDeliverPrompts || appModel.notifications.authorizationStatus == .denied
+    }
+
+    private var permissionText: String {
+        if appModel.notifications.canDeliverPrompts {
+            "Notifications are on, so prompts will arrive on schedule."
+        } else if appModel.notifications.authorizationStatus == .denied {
+            "Notifications are off for Blip Journal. You can allow them any time in the Settings app; until then, log entries yourself from the Journal."
+        } else {
+            "Prompts arrive as notifications, so Blip Journal needs permission to send them."
+        }
+    }
+
+    @ViewBuilder
     private var buttons: some View {
+        // Keep the permission buttons up while a request is in flight, so granting does
+        // not swap them for Continue under the person's finger.
+        if permissionDecided && !isRequesting {
+            Button {
+                onFinish()
+            } label: {
+                Text("Continue")
+                    .frame(maxWidth: .infinity, minHeight: 44)
+            }
+            .buttonStyle(.borderedProminent)
+            .accessibilityLabel("Continue")
+            .padding(24)
+            .background(BlipBrand.paper)
+        } else {
+            permissionButtons
+        }
+    }
+
+    private var permissionButtons: some View {
         VStack(spacing: 12) {
             Button {
                 Task { await enable() }
