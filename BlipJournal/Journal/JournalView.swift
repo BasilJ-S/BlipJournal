@@ -29,8 +29,9 @@ struct JournalView: View {
                     emptyState
                 } else {
                     let visible = visibleEntries(query: query, key: key)
+                    let failed = visible == nil && failedKey == key
                     if isNarrowedOrReordered(query) {
-                        filterBar(query: query, shown: visible?.count)
+                        filterBar(query: query, shown: visible?.count, failed: failed)
                     }
                     if let visible {
                         if visible.isEmpty {
@@ -38,7 +39,7 @@ struct JournalView: View {
                         } else {
                             entryList(visible, query: query)
                         }
-                    } else if failedKey == key {
+                    } else if failed {
                         loadFailedState
                     } else {
                         ProgressView("Loading entries")
@@ -172,6 +173,9 @@ struct JournalView: View {
     }
 
     private func loadAnswers(for key: AnswersKey) async {
+        // A new key starts clean, so returning to a query that failed earlier shows the
+        // spinner while it re-reads, not the old failure.
+        failedKey = nil
         guard !key.questionIds.isEmpty else { return }
         let result = await Self.answers(store: appModel.store, questionIds: key.questionIds)
         guard !Task.isCancelled else { return }
@@ -196,9 +200,9 @@ struct JournalView: View {
     }
 
     /// Shown above the list whenever the filter or sort differs from the default.
-    private func filterBar(query: Query, shown: Int?) -> some View {
+    private func filterBar(query: Query, shown: Int?, failed: Bool) -> some View {
         HStack {
-            Text(filterSummary(query: query, shown: shown))
+            Text(filterSummary(query: query, shown: shown, failed: failed))
                 .font(BlipFont.body(15))
                 .foregroundStyle(BlipBrand.muted)
             Spacer()
@@ -211,8 +215,9 @@ struct JournalView: View {
 
     /// "n of total entries" while filtered, followed by the order when it is not newest
     /// first; "Sorted: …" alone when only the order changed.
-    private func filterSummary(query: Query, shown: Int?) -> String {
+    private func filterSummary(query: Query, shown: Int?, failed: Bool) -> String {
         let order = sortDescription(query)
+        if failed { return "Couldn't load answers" }
         guard query.filter.isActive else { return "Sorted: \(order)" }
         guard let shown else { return "Filtering…" }
         let total = appModel.entries.count

@@ -55,7 +55,6 @@ struct JournalFilterView: View {
             }
             ToolbarItem(placement: .confirmationAction) {
                 Button("Done") { dismiss() }
-                    .accessibilityLabel("Close filters")
             }
         }
     }
@@ -71,10 +70,9 @@ struct JournalFilterView: View {
         Binding(
             get: { filter.surveyId },
             set: { newValue in
-                guard newValue != filter.surveyId else { return }
-                filter.surveyId = newValue
-                filter.answer = nil
-                if !sort.isChronological { sort = .newestFirst }
+                let selected = JournalQuery.selectingSurvey(newValue, filter: filter, sort: sort)
+                filter = selected.filter
+                sort = selected.sort
             })
     }
 

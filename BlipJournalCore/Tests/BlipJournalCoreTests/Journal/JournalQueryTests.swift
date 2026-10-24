@@ -272,4 +272,35 @@ struct JournalQueryTests {
         let withSelection = JournalQuery.pickableSurveys(active: active, all: all, entries: entries, keeping: "d")
         #expect(withSelection.map(\.id) == ["b", "a", "d", "c"])
     }
+
+    @Test("selecting another survey clears the answer condition and an answer sort")
+    func selectingSurvey() {
+        let filter = JournalFilter(surveyId: "s1", source: .manual, answer: .yesNo(questionId: restedQ, value: true))
+        let answerSort = JournalSort.answer(questionId: moodQ, descending: true)
+
+        let other = JournalQuery.selectingSurvey("s2", filter: filter, sort: answerSort)
+        #expect(other.filter == JournalFilter(surveyId: "s2", source: .manual))
+        #expect(other.sort == .newestFirst)
+
+        let all = JournalQuery.selectingSurvey(nil, filter: filter, sort: .oldestFirst)
+        #expect(all.filter == JournalFilter(source: .manual))
+        #expect(all.sort == .oldestFirst)
+
+        let same = JournalQuery.selectingSurvey("s1", filter: filter, sort: answerSort)
+        #expect(same.filter == filter)
+        #expect(same.sort == answerSort)
+    }
+
+    @Test("a condition resolves only against its own question, kind and options")
+    func resolves() throws {
+        let doing = try #require(survey.questions.first { $0.id == doingQ })
+        let with = try #require(survey.questions.first { $0.id == withQ })
+        let rested = try #require(survey.questions.first { $0.id == restedQ })
+        #expect(JournalAnswerFilter.option(questionId: doingQ, optionId: "old").resolves(in: doing))
+        #expect(!JournalAnswerFilter.option(questionId: doingQ, optionId: "erased").resolves(in: doing))
+        #expect(JournalAnswerFilter.option(questionId: withQ, optionId: "alone").resolves(in: with))
+        #expect(JournalAnswerFilter.yesNo(questionId: restedQ, value: false).resolves(in: rested))
+        #expect(!JournalAnswerFilter.yesNo(questionId: doingQ, value: true).resolves(in: doing))
+        #expect(!JournalAnswerFilter.option(questionId: doingQ, optionId: "work").resolves(in: with))
+    }
 }

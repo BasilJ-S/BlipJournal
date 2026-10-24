@@ -6,7 +6,7 @@ text badges for source and draft status. The values keep their configured order 
 unanswered choices are omitted. Badges wrap at large Dynamic Type.
 
 - Filter and sort: a toolbar button opens `JournalFilterView`, which edits a
-  `JournalFilter` and `JournalSort` live. Rules, and which surveys, questions and
+  `JournalFilter` and `JournalSort` live. Rules (including what changing survey clears), and which surveys, questions and
   options to offer, live in core `JournalQuery` with tests; the sheet only lays them out.
   Survey, source and status read entry metadata; an answer condition (choice option or
   yes/no) and an answer sort (scale or spectrum) need a survey and read
@@ -14,8 +14,9 @@ unanswered choices are omitted. Badges wrap at large Dynamic Type.
 - The answer read is keyed by revision, retry attempt and question IDs. A spinner shows
   only when no read for the same questions exists yet; after a refresh the older read
   stays on screen until the new one lands, so scroll position survives. A failed read
-  caches nothing: with no earlier read the list offers Try again; with one, it stays
-  and an alert explains.
+  caches nothing: with no earlier read the list offers Try again and the bar says
+  "Couldn't load answers"; with one, it stays and an alert explains. Each new key
+  clears the failure first, so returning to a once-failed query shows the spinner.
 - The query is normalised against `surveysById` each render and written back into
   state on appear and on every revision, so the sheet never shows a survey, question or
   option the list has dropped. The filtered survey stays pickable even when archived

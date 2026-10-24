@@ -42,6 +42,20 @@ public enum JournalAnswerFilter: Sendable, Hashable {
         }
     }
 
+    /// Whether the condition fits `question`: the kind it reads, and for an option
+    /// condition an option the question has, archived included.
+    public func resolves(in question: Question) -> Bool {
+        guard question.id == questionId else { return false }
+        switch (self, question.kind) {
+        case (.option(_, let optionId), .singleChoice), (.option(_, let optionId), .multiChoice):
+            return question.options.contains { $0.id == optionId }
+        case (.yesNo, .yesNo):
+            return true
+        default:
+            return false
+        }
+    }
+
     /// The default condition for `question`: its first active option, or "Yes".
     /// Nil for a kind that cannot be filtered on, or a choice question with no options.
     public static func defaultCondition(for question: Question) -> JournalAnswerFilter? {
@@ -148,15 +162,7 @@ public enum JournalQuery {
 
         if let answer = filter.answer {
             let question = survey?.questions.first { $0.id == answer.questionId }
-            let valid: Bool
-            switch (answer, question?.kind) {
-            case (.option(_, let optionId), .singleChoice?), (.option(_, let optionId), .multiChoice?):
-                valid = question?.options.contains { $0.id == optionId } ?? false
-            case (.yesNo, .yesNo?):
-                valid = true
-            default:
-                valid = false
-            }
+            let valid = question.map { isFilterable($0.kind) && answer.resolves(in: $0) } ?? false
             if !valid { filter.answer = nil }
         }
 
@@ -165,6 +171,19 @@ public enum JournalQuery {
             if !(kind.map(isSortable) ?? false) { sort = .newestFirst }
         }
         return (filter, sort)
+    }
+
+    /// Picks a survey, or all surveys with nil. A different survey clears the answer
+    /// condition and turns an answer sort back to newest first, since both point at
+    /// the previous survey's questions. Picking the current survey changes nothing.
+    public static func selectingSurvey(
+        _ surveyId: String?, filter: JournalFilter, sort: JournalSort
+    ) -> (filter: JournalFilter, sort: JournalSort) {
+        guard surveyId != filter.surveyId else { return (filter, sort) }
+        var filter = filter
+        filter.surveyId = surveyId
+        filter.answer = nil
+        return (filter, sort.isChronological ? sort : .newestFirst)
     }
 
     // MARK: Choices to offer

@@ -60,7 +60,7 @@ or Apple reads says `BlipJournal`, one word.
   shows prompt coverage.
 - **Glanceable Journal.** Pick up to two questions per survey whose answers appear on
   each Journal row, such as mood and current activity. Filter the Journal by survey,
-  source, status or a choice answer, and sort it by date or by a scale answer.
+  source, status, or a choice or yes/no answer, and sort it by date or by a scale answer.
 - **App Store compliant.** Privacy manifest, "Data Not Collected" privacy label, no
   medical claims, Apple-provided encryption only.
 
