@@ -6,16 +6,25 @@ text badges for source and draft status. The values keep their configured order 
 unanswered choices are omitted. Badges wrap at large Dynamic Type.
 
 - Filter and sort: a toolbar button opens `JournalFilterView`, which edits a
-  `JournalFilter` and `JournalSort` (rules and tests in core `Journal/`) live. Survey,
-  source and status read entry metadata; an answer condition (choice option or yes/no)
-  and an answer sort (scale or spectrum) need a survey and read
-  `Store.answers(questionIds:)` off the main actor, keyed by revision, with a spinner
-  until the matching read lands. The query is normalised against `surveysById` each
-  render, so an erased survey, question or option silently drops out. Date order keeps
-  day sections (either direction); answer order is one flat list with dated rows. A
-  bar above the list shows "n of total" and Clear whenever anything differs from the
-  default; no matches shows its own empty state. State lives in the view and resets
-  on relaunch.
+  `JournalFilter` and `JournalSort` live. Rules, and which surveys, questions and
+  options to offer, live in core `JournalQuery` with tests; the sheet only lays them out.
+  Survey, source and status read entry metadata; an answer condition (choice option or
+  yes/no) and an answer sort (scale or spectrum) need a survey and read
+  `Store.answers(questionIds:)` off the main actor.
+- The answer read is keyed by revision, retry attempt and question IDs. A spinner shows
+  only when no read for the same questions exists yet; after a refresh the older read
+  stays on screen until the new one lands, so scroll position survives. A failed read
+  caches nothing: with no earlier read the list offers Try again; with one, it stays
+  and an alert explains.
+- The query is normalised against `surveysById` each render and written back into
+  state on appear and on every revision, so the sheet never shows a survey, question or
+  option the list has dropped. The filtered survey stays pickable even when archived
+  with no entries left. Each render computes the query and visible entries once.
+- Date order keeps day sections (either direction); answer order is one flat list
+  whose rows show date with year. While filtered, a bar above the list shows
+  "n of total entries", followed by the order when not newest first; with only the order
+  changed it shows "Sorted: …". Both carry Clear. No matches has its own empty state.
+  State lives in the view and resets on relaunch.
 - `AppModel.entries` is the list source; its refresh revision reloads answer
   summaries and detail even when entry metadata is unchanged.
 - `JournalRowSummary` owns row presentation state. It checks cancellation before

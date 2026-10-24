@@ -162,9 +162,76 @@ public enum JournalQuery {
 
         if let questionId = sort.questionId {
             let kind = survey?.questions.first { $0.id == questionId }?.kind
-            if kind != .scale && kind != .spectrum { sort = .newestFirst }
+            if !(kind.map(isSortable) ?? false) { sort = .newestFirst }
         }
         return (filter, sort)
+    }
+
+    // MARK: Choices to offer
+
+    /// Whether an answer sort can read questions of `kind`: scale and spectrum.
+    public static func isSortable(_ kind: QuestionKind) -> Bool {
+        kind == .scale || kind == .spectrum
+    }
+
+    /// Whether an answer condition can read questions of `kind`: choice and yes/no.
+    public static func isFilterable(_ kind: QuestionKind) -> Bool {
+        switch kind {
+        case .singleChoice, .multiChoice, .yesNo: true
+        case .scale, .spectrum, .text: false
+        }
+    }
+
+    /// The surveys to offer: `active` in the order given, then archived surveys that
+    /// still have entries, plus the `keeping` survey if it is archived, by (name, ID).
+    /// Keeping the current selection means a picker never loses what is filtering the list.
+    public static func pickableSurveys(
+        active: [Survey], all: [String: Survey], entries: [Entry], keeping surveyId: String?
+    ) -> [Survey] {
+        let withEntries = Set(entries.map(\.surveyId))
+        let activeIds = Set(active.map(\.id))
+        let archived = all.values
+            .filter { !activeIds.contains($0.id) && (withEntries.contains($0.id) || $0.id == surveyId) }
+            .sorted { ($0.name, $0.id) < ($1.name, $1.id) }
+        return active + archived
+    }
+
+    /// Active questions an answer condition can use, in display order, then the
+    /// `keeping` question if it is archived but still filterable.
+    public static func filterableQuestions(in survey: Survey, keeping questionId: String?) -> [Question] {
+        offered(
+            survey.activeQuestions.filter { JournalAnswerFilter.defaultCondition(for: $0) != nil },
+            in: survey, keeping: questionId, where: isFilterable)
+    }
+
+    /// Active scale and spectrum questions in display order, then the `keeping`
+    /// question if it is archived but still sortable.
+    public static func sortableQuestions(in survey: Survey, keeping questionId: String?) -> [Question] {
+        offered(
+            survey.activeQuestions.filter { isSortable($0.kind) },
+            in: survey, keeping: questionId, where: isSortable)
+    }
+
+    /// Active options in display order, then the `keeping` option if it is archived.
+    public static func pickableOptions(of question: Question, keeping optionId: String?) -> [ChoiceOption] {
+        var options = question.activeOptions
+        if let optionId, !options.contains(where: { $0.id == optionId }),
+           let kept = question.options.first(where: { $0.id == optionId }) {
+            options.append(kept)
+        }
+        return options
+    }
+
+    private static func offered(
+        _ questions: [Question], in survey: Survey, keeping questionId: String?,
+        where allowed: (QuestionKind) -> Bool
+    ) -> [Question] {
+        var questions = questions
+        if let questionId, !questions.contains(where: { $0.id == questionId }),
+           let kept = survey.questions.first(where: { $0.id == questionId }), allowed(kept.kind) {
+            questions.append(kept)
+        }
+        return questions
     }
 
     /// The entries that pass `filter`, in `sort` order.
@@ -199,11 +266,12 @@ public enum JournalQuery {
         case .oldestFirst:
             return kept.sorted { ($0.startedAt, $0.id) < ($1.startedAt, $1.id) }
         case .answer(let questionId, let descending):
-            let number: (Entry) -> Double? = { entry in
-                values[AnswerKey(entryId: entry.id, questionId: questionId)].flatMap(numericValue)
+            // Look each value up once, not on every comparison.
+            let decorated = kept.map { entry in
+                (entry: entry, number: values[AnswerKey(entryId: entry.id, questionId: questionId)].flatMap(numericValue))
             }
-            return kept.sorted { lhs, rhs in
-                switch (number(lhs), number(rhs)) {
+            return decorated.sorted { lhs, rhs in
+                switch (lhs.number, rhs.number) {
                 case let (left?, right?) where left != right:
                     return descending ? left > right : left < right
                 case (.some, nil):
@@ -211,9 +279,9 @@ public enum JournalQuery {
                 case (nil, .some):
                     return false
                 default:
-                    return newestFirst(lhs, rhs)
+                    return newestFirst(lhs.entry, rhs.entry)
                 }
-            }
+            }.map(\.entry)
         }
     }
 

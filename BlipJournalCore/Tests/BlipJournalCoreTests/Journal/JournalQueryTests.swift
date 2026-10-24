@@ -211,4 +211,65 @@ struct JournalQueryTests {
         #expect(JournalSort.oldestFirst.isChronological)
         #expect(!JournalSort.answer(questionId: moodQ, descending: true).isChronological)
     }
+
+    @Test("sortable and filterable kinds")
+    func kinds() {
+        #expect(QuestionKind.allCases.filter(JournalQuery.isSortable) == [.scale, .spectrum])
+        #expect(QuestionKind.allCases.filter(JournalQuery.isFilterable) == [.singleChoice, .multiChoice, .yesNo])
+    }
+
+    @Test("offered questions are active ones of the right kind, plus a kept archived one")
+    func offeredQuestions() {
+        var archivedSurvey = survey
+        archivedSurvey.questions.append(
+            Question(id: "q-old-mood", kind: .scale, label: "Old mood", position: 9, isArchived: true, scale: ScaleConfig()))
+        archivedSurvey.questions.append(Question(id: "q-old-yes", kind: .yesNo, label: "Old", position: 10, isArchived: true))
+
+        #expect(JournalQuery.filterableQuestions(in: archivedSurvey, keeping: nil).map(\.id) == [doingQ, withQ, restedQ])
+        #expect(JournalQuery.filterableQuestions(in: archivedSurvey, keeping: "q-old-yes").map(\.id)
+            == [doingQ, withQ, restedQ, "q-old-yes"])
+        // A kept question of the wrong kind or already offered is not added.
+        #expect(JournalQuery.filterableQuestions(in: archivedSurvey, keeping: "q-old-mood").map(\.id) == [doingQ, withQ, restedQ])
+        #expect(JournalQuery.filterableQuestions(in: archivedSurvey, keeping: doingQ).map(\.id) == [doingQ, withQ, restedQ])
+
+        #expect(JournalQuery.sortableQuestions(in: archivedSurvey, keeping: nil).map(\.id) == [moodQ, spectrumQ])
+        #expect(JournalQuery.sortableQuestions(in: archivedSurvey, keeping: "q-old-mood").map(\.id)
+            == [moodQ, spectrumQ, "q-old-mood"])
+        #expect(JournalQuery.sortableQuestions(in: archivedSurvey, keeping: "q-old-yes").map(\.id) == [moodQ, spectrumQ])
+    }
+
+    @Test("a choice question with no active options is not offered for filtering")
+    func noActiveOptions() {
+        let bare = Survey(id: "s3", name: "Bare", questions: [
+            Question(id: "q-bare", kind: .singleChoice, label: "Bare", position: 0, options: [
+                ChoiceOption(id: "gone", label: "Gone", position: 0, isArchived: true),
+            ]),
+        ])
+        #expect(JournalQuery.filterableQuestions(in: bare, keeping: nil).isEmpty)
+    }
+
+    @Test("pickable options keep an archived selection at the end")
+    func pickableOptions() throws {
+        let doing = try #require(survey.questions.first { $0.id == doingQ })
+        #expect(JournalQuery.pickableOptions(of: doing, keeping: nil).map(\.id) == ["work", "rest"])
+        #expect(JournalQuery.pickableOptions(of: doing, keeping: "rest").map(\.id) == ["work", "rest"])
+        #expect(JournalQuery.pickableOptions(of: doing, keeping: "old").map(\.id) == ["work", "rest", "old"])
+        #expect(JournalQuery.pickableOptions(of: doing, keeping: "erased").map(\.id) == ["work", "rest"])
+    }
+
+    @Test("pickable surveys: active in order, then archived with entries or selected, by name")
+    func pickableSurveys() {
+        let active = [Survey(id: "b", name: "Zed"), Survey(id: "a", name: "Alpha")]
+        let withEntries = Survey(id: "c", name: "Morning", isArchived: true)
+        let selected = Survey(id: "d", name: "Evening", isArchived: true)
+        let neither = Survey(id: "e", name: "Unused", isArchived: true)
+        var all = Dictionary(uniqueKeysWithValues: active.map { ($0.id, $0) })
+        for archived in [withEntries, selected, neither] { all[archived.id] = archived }
+        let entries = [entry("x", 1, survey: "c"), entry("y", 2, survey: "b")]
+
+        let withoutSelection = JournalQuery.pickableSurveys(active: active, all: all, entries: entries, keeping: nil)
+        #expect(withoutSelection.map(\.id) == ["b", "a", "c"])
+        let withSelection = JournalQuery.pickableSurveys(active: active, all: all, entries: entries, keeping: "d")
+        #expect(withSelection.map(\.id) == ["b", "a", "d", "c"])
+    }
 }

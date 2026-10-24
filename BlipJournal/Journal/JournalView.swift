@@ -11,23 +11,35 @@ struct JournalView: View {
     @State private var sort = JournalSort.newestFirst
     @State private var showingFilters = false
     @State private var loadedAnswers: LoadedAnswers?
+    /// The key whose read last failed, so the list can offer a retry instead of a
+    /// spinner or a false "no matches".
+    @State private var failedKey: AnswersKey?
+    /// Bumped by Retry so the same query reads again.
+    @State private var attempt = 0
 
     var body: some View {
+        // Computed once per render and passed down: filtering and sorting every entry
+        // is the expensive part of this screen.
+        let query = self.query
+        let key = answersKey(for: query)
         Group {
             VStack(spacing: 0) {
                 openSurveyBanner
                 if appModel.entries.isEmpty {
                     emptyState
                 } else {
-                    if isNarrowedOrReordered {
-                        filterBar
+                    let visible = visibleEntries(query: query, key: key)
+                    if isNarrowedOrReordered(query) {
+                        filterBar(query: query, shown: visible?.count)
                     }
-                    if let entries = visibleEntries {
-                        if entries.isEmpty {
+                    if let visible {
+                        if visible.isEmpty {
                             noMatchesState
                         } else {
-                            entryList(entries)
+                            entryList(visible, query: query)
                         }
+                    } else if failedKey == key {
+                        loadFailedState
                     } else {
                         ProgressView("Loading entries")
                             .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -35,7 +47,11 @@ struct JournalView: View {
                 }
             }
         }
-        .task(id: answersKey) { await loadAnswers(for: answersKey) }
+        .task(id: key) { await loadAnswers(for: key) }
+        // Write the cleaned-up query back, so the sheet never shows a choice the list
+        // has already dropped (an erased survey, question or option).
+        .onAppear(perform: normalizeState)
+        .onChange(of: appModel.revision) { normalizeState() }
         // On the Group, not the List: deleting the last entry swaps in the empty state,
         // and a destination registered inside the List would vanish while the detail
         // view it pushed is still on the stack.
@@ -49,14 +65,15 @@ struct JournalView: View {
             }
             if !appModel.entries.isEmpty {
                 ToolbarItem(placement: .primaryAction) {
-                    Button("Filter and sort", systemImage: isNarrowedOrReordered
+                    let isOn = isNarrowedOrReordered(query)
+                    Button("Filter and sort", systemImage: isOn
                         ? "line.3.horizontal.decrease.circle.fill"
                         : "line.3.horizontal.decrease.circle"
                     ) {
                         showingFilters = true
                     }
                     .accessibilityLabel("Filter and sort")
-                    .accessibilityValue(isNarrowedOrReordered ? "On" : "Off")
+                    .accessibilityValue(isOn ? "On" : "Off")
                 }
             }
             #if DEBUG
@@ -94,20 +111,29 @@ struct JournalView: View {
 
     // MARK: Filter and sort
 
+    private typealias Query = (filter: JournalFilter, sort: JournalSort)
+
     /// The filter and sort with anything that no longer resolves dropped, for example
     /// a survey or option erased since it was chosen.
-    private var query: (filter: JournalFilter, sort: JournalSort) {
+    private var query: Query {
         JournalQuery.normalized(filter: filter, sort: sort, surveys: appModel.surveysById)
     }
 
-    private var isNarrowedOrReordered: Bool {
+    private func isNarrowedOrReordered(_ query: Query) -> Bool {
         query.filter.isActive || query.sort != .newestFirst
     }
 
+    private func normalizeState() {
+        let query = self.query
+        if query.filter != filter { filter = query.filter }
+        if query.sort != sort { sort = query.sort }
+    }
+
     /// What the answer read depends on. A write bumps `revision`, so answers edited in
-    /// the runner or removed by a delete are re-read.
+    /// the runner or removed by a delete are re-read; Retry bumps `attempt`.
     private struct AnswersKey: Hashable {
         let revision: UInt64
+        let attempt: Int
         let questionIds: [String]
     }
 
@@ -116,19 +142,22 @@ struct JournalView: View {
         let answers: [Answer]
     }
 
-    private var answersKey: AnswersKey {
+    private func answersKey(for query: Query) -> AnswersKey {
         AnswersKey(
-            revision: appModel.revision,
+            revision: appModel.revision, attempt: attempt,
             questionIds: JournalQuery.questionIds(filter: query.filter, sort: query.sort))
     }
 
-    /// The entries to list, or nil while the answers the query needs are loading.
-    private var visibleEntries: [Entry]? {
-        let key = answersKey
+    /// The entries to list, or nil while the answers the query needs have never been
+    /// read. Answers read for the same questions at an older revision stay in use
+    /// while the re-read runs, so a refresh does not tear the list down to a spinner
+    /// and lose the scroll position. Entries are always current; at worst a just-saved
+    /// answer joins the filter a moment late.
+    private func visibleEntries(query: Query, key: AnswersKey) -> [Entry]? {
         let answers: [Answer]
         if key.questionIds.isEmpty {
             answers = []
-        } else if let loadedAnswers, loadedAnswers.key == key {
+        } else if let loadedAnswers, loadedAnswers.key.questionIds == key.questionIds {
             answers = loadedAnswers.answers
         } else {
             return nil
@@ -136,13 +165,10 @@ struct JournalView: View {
         return JournalQuery.apply(appModel.entries, filter: query.filter, sort: query.sort, answers: answers)
     }
 
-    /// Active surveys in store order, then archived surveys that still have entries.
     private var pickableSurveys: [Survey] {
-        let withEntries = Set(appModel.entries.map(\.surveyId))
-        let archived = appModel.surveysById.values
-            .filter { $0.isArchived && withEntries.contains($0.id) }
-            .sorted { ($0.name, $0.id) < ($1.name, $1.id) }
-        return appModel.surveys + archived
+        JournalQuery.pickableSurveys(
+            active: appModel.surveys, all: appModel.surveysById, entries: appModel.entries,
+            keeping: filter.surveyId)
     }
 
     private func loadAnswers(for key: AnswersKey) async {
@@ -152,11 +178,15 @@ struct JournalView: View {
         switch result {
         case .success(let answers):
             loadedAnswers = LoadedAnswers(key: key, answers: answers)
+            failedKey = nil
         case .failure(let error):
-            // Show the error rather than an endless spinner; the list then reads as
-            // having no matching answers until the next reload.
-            loadedAnswers = LoadedAnswers(key: key, answers: [])
-            errorMessage = String(describing: error)
+            // Nothing is cached for this key. With no usable earlier read the list
+            // shows a retry state; with one, it stays on screen and the alert says why
+            // it did not refresh.
+            failedKey = key
+            if loadedAnswers?.key.questionIds == key.questionIds {
+                errorMessage = String(describing: error)
+            }
         }
     }
 
@@ -166,9 +196,9 @@ struct JournalView: View {
     }
 
     /// Shown above the list whenever the filter or sort differs from the default.
-    private var filterBar: some View {
+    private func filterBar(query: Query, shown: Int?) -> some View {
         HStack {
-            Text(filterSummary)
+            Text(filterSummary(query: query, shown: shown))
                 .font(BlipFont.body(15))
                 .foregroundStyle(BlipBrand.muted)
             Spacer()
@@ -179,15 +209,18 @@ struct JournalView: View {
         .padding(.top, 8)
     }
 
-    private var filterSummary: String {
+    /// "n of total entries" while filtered, followed by the order when it is not newest
+    /// first; "Sorted: …" alone when only the order changed.
+    private func filterSummary(query: Query, shown: Int?) -> String {
+        let order = sortDescription(query)
+        guard query.filter.isActive else { return "Sorted: \(order)" }
+        guard let shown else { return "Filtering…" }
         let total = appModel.entries.count
-        guard let shown = visibleEntries?.count else { return "Filtering…" }
-        if !query.filter.isActive { return "Sorted: \(sortDescription)" }
         let count = "\(shown) of \(total) \(total == 1 ? "entry" : "entries")"
-        return query.sort == .newestFirst ? count : "\(count) · \(sortDescription)"
+        return query.sort == .newestFirst ? count : "\(count) · \(order)"
     }
 
-    private var sortDescription: String {
+    private func sortDescription(_ query: Query) -> String {
         switch query.sort {
         case .newestFirst:
             return "newest first"
@@ -206,6 +239,18 @@ struct JournalView: View {
         sort = .newestFirst
     }
 
+    private var loadFailedState: some View {
+        ContentUnavailableView {
+            Label("Couldn't load answers", systemImage: "exclamationmark.triangle")
+        } description: {
+            Text("The answers this filter needs could not be read.")
+        } actions: {
+            Button("Try again") { attempt += 1 }
+                .buttonStyle(.borderedProminent)
+            Button("Clear filters") { clearFilters() }
+        }
+    }
+
     private var noMatchesState: some View {
         ContentUnavailableView {
             Label("No matching entries", systemImage: "line.3.horizontal.decrease.circle")
@@ -222,7 +267,7 @@ struct JournalView: View {
     /// Day sections while the order is by date; one flat list, each row dated, when
     /// sorted by an answer, since neighbouring rows can then be weeks apart.
     @ViewBuilder
-    private func entryList(_ entries: [Entry]) -> some View {
+    private func entryList(_ entries: [Entry], query: Query) -> some View {
         List {
             if query.sort.isChronological {
                 ForEach(daySections(entries), id: \.day) { section in
@@ -387,7 +432,8 @@ private struct EntryRow: View {
             HStack(alignment: .firstTextBaseline) {
                 Group {
                     if showsDate {
-                        Text(entry.startedAt, format: .dateTime.month(.abbreviated).day().hour().minute())
+                        // With the year: an answer-sorted list can span several.
+                        Text(entry.startedAt, format: .dateTime.year().month(.abbreviated).day().hour().minute())
                     } else {
                         Text(entry.startedAt, style: .time)
                     }

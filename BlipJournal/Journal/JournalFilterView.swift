@@ -83,7 +83,7 @@ struct JournalFilterView: View {
     @ViewBuilder
     private var answerSection: some View {
         if let survey = selectedSurvey {
-            let questions = filterableQuestions(in: survey)
+            let questions = JournalQuery.filterableQuestions(in: survey, keeping: filter.answer?.questionId)
             Section {
                 Picker("Question", selection: answerQuestionId(in: survey)) {
                     Text("Any answer").tag(String?.none)
@@ -108,17 +108,6 @@ struct JournalFilterView: View {
         }
     }
 
-    /// Active choice and yes/no questions, plus the filtered question if it has since
-    /// been archived, so the picker can still show the current selection.
-    private func filterableQuestions(in survey: Survey) -> [Question] {
-        var questions = survey.activeQuestions.filter { JournalAnswerFilter.defaultCondition(for: $0) != nil }
-        if let id = filter.answer?.questionId, !questions.contains(where: { $0.id == id }),
-           let archived = survey.questions.first(where: { $0.id == id }) {
-            questions.append(archived)
-        }
-        return questions
-    }
-
     private func answerQuestionId(in survey: Survey) -> Binding<String?> {
         Binding(
             get: { filter.answer?.questionId },
@@ -135,16 +124,18 @@ struct JournalFilterView: View {
         switch filter.answer {
         case .option(let questionId, let optionId)?:
             if let question = survey.questions.first(where: { $0.id == questionId }) {
-                Picker("Is", selection: Binding(
+                // Multi-choice matches membership, so say so on screen as well.
+                let title = question.kind == .multiChoice ? "Includes" : "Is"
+                Picker(title, selection: Binding(
                     get: { optionId },
                     set: { filter.answer = .option(questionId: questionId, optionId: $0) }
                 )) {
-                    ForEach(pickableOptions(of: question, selected: optionId)) { option in
+                    ForEach(JournalQuery.pickableOptions(of: question, keeping: optionId)) { option in
                         Text(option.label).tag(option.id)
                     }
                 }
                 .pickerStyle(.menu)
-                .accessibilityLabel(question.kind == .multiChoice ? "Includes" : "Is")
+                .accessibilityLabel(title)
             }
         case .yesNo(let questionId, let value)?:
             Picker("Is", selection: Binding(
@@ -161,16 +152,6 @@ struct JournalFilterView: View {
         }
     }
 
-    /// Active options in order, plus the selected one if it has since been archived.
-    private func pickableOptions(of question: Question, selected: String) -> [ChoiceOption] {
-        var options = question.activeOptions
-        if !options.contains(where: { $0.id == selected }),
-           let archived = question.options.first(where: { $0.id == selected }) {
-            options.append(archived)
-        }
-        return options
-    }
-
     // MARK: Sort
 
     private var sortSection: some View {
@@ -179,7 +160,7 @@ struct JournalFilterView: View {
                 Text("Newest first").tag(JournalSort.newestFirst)
                 Text("Oldest first").tag(JournalSort.oldestFirst)
                 if let survey = selectedSurvey {
-                    ForEach(sortableQuestions(in: survey)) { question in
+                    ForEach(JournalQuery.sortableQuestions(in: survey, keeping: sort.questionId)) { question in
                         Text("\(question.label): highest first")
                             .tag(JournalSort.answer(questionId: question.id, descending: true))
                         Text("\(question.label): lowest first")
@@ -189,16 +170,5 @@ struct JournalFilterView: View {
             }
             .pickerStyle(.menu)
         }
-    }
-
-    /// Active scale and spectrum questions, plus the sorted question if archived since.
-    private func sortableQuestions(in survey: Survey) -> [Question] {
-        let isNumeric: (Question) -> Bool = { $0.kind == .scale || $0.kind == .spectrum }
-        var questions = survey.activeQuestions.filter(isNumeric)
-        if let id = sort.questionId, !questions.contains(where: { $0.id == id }),
-           let archived = survey.questions.first(where: { $0.id == id && isNumeric($0) }) {
-            questions.append(archived)
-        }
-        return questions
     }
 }
