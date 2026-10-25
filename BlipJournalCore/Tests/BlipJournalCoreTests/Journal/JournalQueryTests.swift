@@ -1,0 +1,306 @@
+import Foundation
+import Testing
+import BlipJournalCore
+
+// MARK: - Fixtures
+
+private func at(_ seconds: TimeInterval) -> Date {
+    Date(timeIntervalSinceReferenceDate: 800_000_000 + seconds)
+}
+
+private let moodQ = "q-mood"
+private let spectrumQ = "q-spectrum"
+private let doingQ = "q-doing"
+private let withQ = "q-with"
+private let restedQ = "q-rested"
+private let notesQ = "q-notes"
+
+private let survey = Survey(id: "s1", name: "Daily", questions: [
+    Question(id: moodQ, kind: .scale, label: "Mood", position: 0, scale: ScaleConfig()),
+    Question(id: spectrumQ, kind: .spectrum, label: "Energy", position: 1, spectrum: SpectrumConfig()),
+    Question(id: doingQ, kind: .singleChoice, label: "Doing", position: 2, options: [
+        ChoiceOption(id: "work", label: "Working", position: 0),
+        ChoiceOption(id: "rest", label: "Resting", position: 1),
+        ChoiceOption(id: "old", label: "Old", position: 2, isArchived: true),
+    ]),
+    Question(id: withQ, kind: .multiChoice, label: "With", position: 3, options: [
+        ChoiceOption(id: "alone", label: "Alone", position: 0),
+        ChoiceOption(id: "friends", label: "Friends", position: 1),
+    ]),
+    Question(id: restedQ, kind: .yesNo, label: "Rested", position: 4),
+    Question(id: notesQ, kind: .text, label: "Notes", position: 5),
+])
+private let other = Survey(id: "s2", name: "Evening")
+private let surveys = [survey.id: survey, other.id: other]
+
+private func entry(
+    _ id: String, _ seconds: TimeInterval, survey: String = "s1",
+    prompted: Bool = false, completed: Bool = true
+) -> Entry {
+    Entry(
+        id: id, surveyId: survey, promptId: prompted ? "p-\(id)" : nil, startedAt: at(seconds),
+        completedAt: completed ? at(seconds + 60) : nil)
+}
+
+private func answer(_ entryId: String, _ questionId: String, _ value: AnswerValue) -> Answer {
+    Answer(
+        id: "a-\(entryId)-\(questionId)", entryId: entryId, questionId: questionId,
+        questionVersionId: "v-\(questionId)", answeredAt: at(0), value: value)
+}
+
+private func ids(_ entries: [Entry]) -> [String] { entries.map(\.id) }
+
+// MARK: - Tests
+
+@Suite("Journal query")
+struct JournalQueryTests {
+    private let entries = [
+        entry("a", 100, prompted: true),
+        entry("b", 300),
+        entry("c", 200, completed: false),
+        entry("d", 400, survey: "s2", prompted: true),
+    ]
+
+    @Test("the default filter keeps everything, newest first, and is inactive")
+    func defaults() {
+        let filter = JournalFilter()
+        #expect(!filter.isActive)
+        #expect(ids(JournalQuery.apply(entries, filter: filter, sort: .newestFirst, answers: [])) == ["d", "b", "c", "a"])
+        #expect(ids(JournalQuery.apply(entries, filter: filter, sort: .oldestFirst, answers: [])) == ["a", "c", "b", "d"])
+    }
+
+    @Test("equal start times break by identifier, both directions")
+    func dateTies() {
+        let tied = [entry("y", 100), entry("x", 100), entry("z", 100)]
+        #expect(ids(JournalQuery.apply(tied, filter: JournalFilter(), sort: .newestFirst, answers: [])) == ["z", "y", "x"])
+        #expect(ids(JournalQuery.apply(tied, filter: JournalFilter(), sort: .oldestFirst, answers: [])) == ["x", "y", "z"])
+    }
+
+    @Test("survey, source and status narrow on entry metadata", arguments: [
+        (JournalFilter(surveyId: "s1"), ["b", "c", "a"]),
+        (JournalFilter(source: .prompted), ["d", "a"]),
+        (JournalFilter(source: .manual), ["b", "c"]),
+        (JournalFilter(status: .completed), ["d", "b", "a"]),
+        (JournalFilter(status: .draft), ["c"]),
+        (JournalFilter(surveyId: "s1", source: .prompted, status: .completed), ["a"]),
+    ])
+    func metadata(filter: JournalFilter, expected: [String]) {
+        #expect(filter.isActive)
+        #expect(ids(JournalQuery.apply(entries, filter: filter, sort: .newestFirst, answers: [])) == expected)
+    }
+
+    @Test("an option condition matches single choice and multi-choice membership")
+    func optionCondition() {
+        let answers = [
+            answer("a", doingQ, .single(optionId: "work")),
+            answer("b", doingQ, .single(optionId: "rest")),
+            answer("a", withQ, .multi(optionIds: ["alone"])),
+            answer("b", withQ, .multi(optionIds: ["friends", "alone"])),
+            answer("c", withQ, .multi(optionIds: [])),
+        ]
+        let working = JournalFilter(surveyId: "s1", answer: .option(questionId: doingQ, optionId: "work"))
+        #expect(ids(JournalQuery.apply(entries, filter: working, sort: .newestFirst, answers: answers)) == ["a"])
+        let alone = JournalFilter(surveyId: "s1", answer: .option(questionId: withQ, optionId: "alone"))
+        #expect(ids(JournalQuery.apply(entries, filter: alone, sort: .newestFirst, answers: answers)) == ["b", "a"])
+    }
+
+    @Test("a yes/no condition matches only that value; unanswered entries never match")
+    func yesNoCondition() {
+        let answers = [answer("a", restedQ, .yesNo(true)), answer("b", restedQ, .yesNo(false))]
+        let yes = JournalFilter(surveyId: "s1", answer: .yesNo(questionId: restedQ, value: true))
+        let no = JournalFilter(surveyId: "s1", answer: .yesNo(questionId: restedQ, value: false))
+        #expect(ids(JournalQuery.apply(entries, filter: yes, sort: .newestFirst, answers: answers)) == ["a"])
+        #expect(ids(JournalQuery.apply(entries, filter: no, sort: .newestFirst, answers: answers)) == ["b"])
+    }
+
+    @Test("a condition never matches a value of another kind")
+    func kindMismatch() {
+        #expect(!JournalAnswerFilter.yesNo(questionId: restedQ, value: true).matches(.scale(1)))
+        #expect(!JournalAnswerFilter.option(questionId: doingQ, optionId: "work").matches(.text("work")))
+    }
+
+    @Test("answer sort orders by value, puts unanswered last newest first, and breaks ties newest first")
+    func answerSort() {
+        let many = [entry("a", 100), entry("b", 200), entry("c", 300), entry("d", 400), entry("e", 500)]
+        let answers = [
+            answer("a", moodQ, .scale(5)),
+            answer("b", moodQ, .scale(2)),
+            answer("c", moodQ, .scale(5)),
+            answer("d", restedQ, .yesNo(true)),
+        ]
+        let high = JournalQuery.apply(
+            many, filter: JournalFilter(), sort: .answer(questionId: moodQ, descending: true), answers: answers)
+        #expect(ids(high) == ["c", "a", "b", "e", "d"])
+        let low = JournalQuery.apply(
+            many, filter: JournalFilter(), sort: .answer(questionId: moodQ, descending: false), answers: answers)
+        #expect(ids(low) == ["b", "c", "a", "e", "d"])
+    }
+
+    @Test("spectrum answers sort by position and non-finite positions count as unanswered")
+    func spectrumSort() {
+        let many = [entry("a", 100), entry("b", 200), entry("c", 300)]
+        let answers = [
+            answer("a", spectrumQ, .spectrum(0.25)),
+            answer("b", spectrumQ, .spectrum(.nan)),
+            answer("c", spectrumQ, .spectrum(0.75)),
+        ]
+        let sorted = JournalQuery.apply(
+            many, filter: JournalFilter(), sort: .answer(questionId: spectrumQ, descending: true), answers: answers)
+        #expect(ids(sorted) == ["c", "a", "b"])
+    }
+
+    @Test("questionIds lists the filter question then the sort question, without repeats")
+    func questionIds() {
+        let filter = JournalFilter(surveyId: "s1", answer: .yesNo(questionId: restedQ, value: true))
+        #expect(JournalQuery.questionIds(filter: JournalFilter(), sort: .newestFirst).isEmpty)
+        #expect(JournalQuery.questionIds(filter: filter, sort: .answer(questionId: moodQ, descending: true)) == [restedQ, moodQ])
+        #expect(JournalQuery.questionIds(filter: filter, sort: .answer(questionId: restedQ, descending: true)) == [restedQ])
+    }
+
+    @Test("normalized keeps a valid query untouched")
+    func normalizedValid() {
+        let filter = JournalFilter(surveyId: "s1", answer: .option(questionId: doingQ, optionId: "old"))
+        let sort = JournalSort.answer(questionId: spectrumQ, descending: false)
+        let result = JournalQuery.normalized(filter: filter, sort: sort, surveys: surveys)
+        #expect(result.filter == filter)
+        #expect(result.sort == sort)
+    }
+
+    @Test("normalized drops references that no longer resolve")
+    func normalizedDrops() {
+        let unknownSurvey = JournalQuery.normalized(
+            filter: JournalFilter(surveyId: "gone", source: .manual, answer: .yesNo(questionId: restedQ, value: true)),
+            sort: .answer(questionId: moodQ, descending: true), surveys: surveys)
+        #expect(unknownSurvey.filter == JournalFilter(source: .manual))
+        #expect(unknownSurvey.sort == .newestFirst)
+
+        let wrongSurvey = JournalQuery.normalized(
+            filter: JournalFilter(surveyId: "s2", answer: .yesNo(questionId: restedQ, value: true)),
+            sort: .answer(questionId: moodQ, descending: true), surveys: surveys)
+        #expect(wrongSurvey.filter == JournalFilter(surveyId: "s2"))
+        #expect(wrongSurvey.sort == .newestFirst)
+
+        let unknownOption = JournalQuery.normalized(
+            filter: JournalFilter(surveyId: "s1", answer: .option(questionId: doingQ, optionId: "erased")),
+            sort: .oldestFirst, surveys: surveys)
+        #expect(unknownOption.filter.answer == nil)
+        #expect(unknownOption.sort == .oldestFirst)
+
+        let wrongKinds = JournalQuery.normalized(
+            filter: JournalFilter(surveyId: "s1", answer: .yesNo(questionId: doingQ, value: true)),
+            sort: .answer(questionId: notesQ, descending: true), surveys: surveys)
+        #expect(wrongKinds.filter.answer == nil)
+        #expect(wrongKinds.sort == .newestFirst)
+    }
+
+    @Test("defaultCondition picks the first active option, Yes, or nothing")
+    func defaultCondition() throws {
+        let doing = try #require(survey.questions.first { $0.id == doingQ })
+        let rested = try #require(survey.questions.first { $0.id == restedQ })
+        let mood = try #require(survey.questions.first { $0.id == moodQ })
+        #expect(JournalAnswerFilter.defaultCondition(for: doing) == .option(questionId: doingQ, optionId: "work"))
+        #expect(JournalAnswerFilter.defaultCondition(for: rested) == .yesNo(questionId: restedQ, value: true))
+        #expect(JournalAnswerFilter.defaultCondition(for: mood) == nil)
+        let empty = Question(id: "q-empty", kind: .multiChoice, label: "Empty", position: 0)
+        #expect(JournalAnswerFilter.defaultCondition(for: empty) == nil)
+    }
+
+    @Test("sort is chronological only by date")
+    func chronological() {
+        #expect(JournalSort.newestFirst.isChronological)
+        #expect(JournalSort.oldestFirst.isChronological)
+        #expect(!JournalSort.answer(questionId: moodQ, descending: true).isChronological)
+    }
+
+    @Test("sortable and filterable kinds")
+    func kinds() {
+        #expect(QuestionKind.allCases.filter(JournalQuery.isSortable) == [.scale, .spectrum])
+        #expect(QuestionKind.allCases.filter(JournalQuery.isFilterable) == [.singleChoice, .multiChoice, .yesNo])
+    }
+
+    @Test("offered questions are active ones of the right kind, plus a kept archived one")
+    func offeredQuestions() {
+        var archivedSurvey = survey
+        archivedSurvey.questions.append(
+            Question(id: "q-old-mood", kind: .scale, label: "Old mood", position: 9, isArchived: true, scale: ScaleConfig()))
+        archivedSurvey.questions.append(Question(id: "q-old-yes", kind: .yesNo, label: "Old", position: 10, isArchived: true))
+
+        #expect(JournalQuery.filterableQuestions(in: archivedSurvey, keeping: nil).map(\.id) == [doingQ, withQ, restedQ])
+        #expect(JournalQuery.filterableQuestions(in: archivedSurvey, keeping: "q-old-yes").map(\.id)
+            == [doingQ, withQ, restedQ, "q-old-yes"])
+        // A kept question of the wrong kind or already offered is not added.
+        #expect(JournalQuery.filterableQuestions(in: archivedSurvey, keeping: "q-old-mood").map(\.id) == [doingQ, withQ, restedQ])
+        #expect(JournalQuery.filterableQuestions(in: archivedSurvey, keeping: doingQ).map(\.id) == [doingQ, withQ, restedQ])
+
+        #expect(JournalQuery.sortableQuestions(in: archivedSurvey, keeping: nil).map(\.id) == [moodQ, spectrumQ])
+        #expect(JournalQuery.sortableQuestions(in: archivedSurvey, keeping: "q-old-mood").map(\.id)
+            == [moodQ, spectrumQ, "q-old-mood"])
+        #expect(JournalQuery.sortableQuestions(in: archivedSurvey, keeping: "q-old-yes").map(\.id) == [moodQ, spectrumQ])
+    }
+
+    @Test("a choice question with no active options is not offered for filtering")
+    func noActiveOptions() {
+        let bare = Survey(id: "s3", name: "Bare", questions: [
+            Question(id: "q-bare", kind: .singleChoice, label: "Bare", position: 0, options: [
+                ChoiceOption(id: "gone", label: "Gone", position: 0, isArchived: true),
+            ]),
+        ])
+        #expect(JournalQuery.filterableQuestions(in: bare, keeping: nil).isEmpty)
+    }
+
+    @Test("pickable options keep an archived selection at the end")
+    func pickableOptions() throws {
+        let doing = try #require(survey.questions.first { $0.id == doingQ })
+        #expect(JournalQuery.pickableOptions(of: doing, keeping: nil).map(\.id) == ["work", "rest"])
+        #expect(JournalQuery.pickableOptions(of: doing, keeping: "rest").map(\.id) == ["work", "rest"])
+        #expect(JournalQuery.pickableOptions(of: doing, keeping: "old").map(\.id) == ["work", "rest", "old"])
+        #expect(JournalQuery.pickableOptions(of: doing, keeping: "erased").map(\.id) == ["work", "rest"])
+    }
+
+    @Test("pickable surveys: active in order, then archived with entries or selected, by name")
+    func pickableSurveys() {
+        let active = [Survey(id: "b", name: "Zed"), Survey(id: "a", name: "Alpha")]
+        let withEntries = Survey(id: "c", name: "Morning", isArchived: true)
+        let selected = Survey(id: "d", name: "Evening", isArchived: true)
+        let neither = Survey(id: "e", name: "Unused", isArchived: true)
+        var all = Dictionary(uniqueKeysWithValues: active.map { ($0.id, $0) })
+        for archived in [withEntries, selected, neither] { all[archived.id] = archived }
+        let entries = [entry("x", 1, survey: "c"), entry("y", 2, survey: "b")]
+
+        let withoutSelection = JournalQuery.pickableSurveys(active: active, all: all, entries: entries, keeping: nil)
+        #expect(withoutSelection.map(\.id) == ["b", "a", "c"])
+        let withSelection = JournalQuery.pickableSurveys(active: active, all: all, entries: entries, keeping: "d")
+        #expect(withSelection.map(\.id) == ["b", "a", "d", "c"])
+    }
+
+    @Test("selecting another survey clears the answer condition and an answer sort")
+    func selectingSurvey() {
+        let filter = JournalFilter(surveyId: "s1", source: .manual, answer: .yesNo(questionId: restedQ, value: true))
+        let answerSort = JournalSort.answer(questionId: moodQ, descending: true)
+
+        let other = JournalQuery.selectingSurvey("s2", filter: filter, sort: answerSort)
+        #expect(other.filter == JournalFilter(surveyId: "s2", source: .manual))
+        #expect(other.sort == .newestFirst)
+
+        let all = JournalQuery.selectingSurvey(nil, filter: filter, sort: .oldestFirst)
+        #expect(all.filter == JournalFilter(source: .manual))
+        #expect(all.sort == .oldestFirst)
+
+        let same = JournalQuery.selectingSurvey("s1", filter: filter, sort: answerSort)
+        #expect(same.filter == filter)
+        #expect(same.sort == answerSort)
+    }
+
+    @Test("a condition resolves only against its own question, kind and options")
+    func resolves() throws {
+        let doing = try #require(survey.questions.first { $0.id == doingQ })
+        let with = try #require(survey.questions.first { $0.id == withQ })
+        let rested = try #require(survey.questions.first { $0.id == restedQ })
+        #expect(JournalAnswerFilter.option(questionId: doingQ, optionId: "old").resolves(in: doing))
+        #expect(!JournalAnswerFilter.option(questionId: doingQ, optionId: "erased").resolves(in: doing))
+        #expect(JournalAnswerFilter.option(questionId: withQ, optionId: "alone").resolves(in: with))
+        #expect(JournalAnswerFilter.yesNo(questionId: restedQ, value: false).resolves(in: rested))
+        #expect(!JournalAnswerFilter.yesNo(questionId: doingQ, value: true).resolves(in: doing))
+        #expect(!JournalAnswerFilter.option(questionId: doingQ, optionId: "work").resolves(in: with))
+    }
+}

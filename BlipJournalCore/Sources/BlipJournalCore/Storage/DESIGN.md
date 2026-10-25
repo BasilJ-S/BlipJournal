@@ -13,7 +13,7 @@ Rows.swift              one GRDB record struct per table, no logic
 Store.swift             open/inMemory, configuration, StoreError, current-view resolution
 Store+Definitions.swift insert-only edits, surveys(), survey(), label histories
 Store+Prompts.swift     prompt reads, insert, status, deleteFuturePendingPrompts
-Store+Entries.swift     saveEntry upsert, entries(), answers(), deleteEntry
+Store+Entries.swift     saveEntry upsert, entries(), answers(entryId:/questionIds:), deleteEntry
 Store+HardDelete.swift  deletionImpact, hardDelete*, eraseEverything, DeletionImpact
 Store+Export.swift      exportSnapshot, backup
 Backup.swift            Backup, BackupExporter

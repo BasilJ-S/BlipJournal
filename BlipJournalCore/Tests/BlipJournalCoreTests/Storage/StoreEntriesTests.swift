@@ -172,4 +172,26 @@ struct StoreEntriesTests {
         #expect(backup.rowCounts["answerOption"] == 0)
         #expect(throws: StoreError.notFound) { try store.deleteEntry(deleted.id) }
     }
+
+    @Test("answers(questionIds:) returns every answer to those questions across entries, with selections")
+    func answersByQuestion() throws {
+        let (store, survey) = try Fixture.seeded()
+        let feeling = try survey.question(labelled: "How are you feeling right now?")
+        let with = try survey.question(labelled: "Who are you with?")
+        let anything = try survey.question(labelled: "Anything else?")
+        let alone = try with.option(labelled: "Alone")
+        let friends = try with.option(labelled: "Friends")
+        let (_, first) = try store.record(in: survey, startedAt: t(100), answers: [
+            (feeling, .scale(2)), (with, .multi(optionIds: [friends.id, alone.id])), (anything, .text("x")),
+        ])
+        let (_, second) = try store.record(in: survey, startedAt: t(200), answers: [
+            (feeling, .scale(5)), (with, .multi(optionIds: [])),
+        ])
+
+        let loaded = try store.answers(questionIds: [feeling.id, with.id])
+        #expect(Set(loaded) == Set(first.prefix(2) + second))
+        #expect(loaded.first { $0.id == first[1].id }?.value == .multi(optionIds: [friends.id, alone.id]))
+        #expect(try store.answers(questionIds: []).isEmpty)
+        #expect(try store.answers(questionIds: ["unknown"]).isEmpty)
+    }
 }
