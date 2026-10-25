@@ -69,7 +69,7 @@ whose rendered content actually changed — nothing else is touched.
 ## Notification content
 
 `Survey.notificationPreview.content(surveyName:)` (`BlipJournalCore`) is the only source
-of a notification's title and body. Never anything from inside the survey beyond its name
+of a notification's title and body, plus the running-out line below. Never anything from inside the survey beyond its name
 in `.surveyName` mode. Sound is the default; interruption level is left at its default
 (`.active`) rather than `.timeSensitive`, gated by
 `LiveNotificationCenterClient.useTimeSensitiveInterruption` (currently `false`), since
@@ -77,6 +77,17 @@ letting prompts through Focus needs the
 `com.apple.developer.usernotifications.time-sensitive` entitlement, which isn't available
 under Personal Team signing; `categoryIdentifier` is `"PROMPT"`, registered with no actions
 at launch.
+
+**Running out.** New prompts are only planned when the app opens, so the queue can run
+dry. On every reconcile, `RunningOutWarning.remainingCounts(scheduled:)` (Sampling) picks
+the last 3 target prompts by fire time, across all surveys, and their body gets a second
+line: "3 check-ins left. Open Blip Journal to schedule more.", then 2, then "Last check-in
+scheduled. Open Blip Journal to schedule more." Fewer than 3 targets means all of them.
+Because it is recomputed every time, a refresh that schedules more restores the plain text
+on prompts that are no longer last (a content change, so the request is replaced). The
+title is never touched, so the preview's privacy choice holds. The delivered sweep treats
+a warned body as current (`RunningOutWarning.matches`), so a fired warning is not removed
+when the app next opens.
 
 ## Denied or undetermined permission
 
@@ -135,7 +146,8 @@ which read as the notification bouncing back to the Home Screen. Do not go back 
   leaves headroom, shared across every survey, so a person running several
   high-frequency surveys sees a shorter horizon on each (see Sampling `DESIGN.md`).
 - No background refresh: the schedule is only as fresh as the last foreground or
-  schedule-affecting write.
+  schedule-affecting write. The running-out warning is what tells the person; opening
+  the app, or any of the warned notifications, schedules more.
 - Unarchiving a survey (`Store.unarchiveSurvey`, from the editor's Archived screen)
   restores its scheduling when the saved configuration is enabled: an unarchived, enabled
   survey is eligible the same as any other. No coordinator test exercises that path yet.

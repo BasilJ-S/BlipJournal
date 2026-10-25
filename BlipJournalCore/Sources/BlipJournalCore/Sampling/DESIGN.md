@@ -17,6 +17,8 @@ SeededRandomNumberGenerator(seed:)      SplitMix64, for tests and reproducible s
 DaySampler.sample(day:config:calendar:using:)  -> [Date], ascending, whole minutes
 PromptPlanner.plan(now:surveys:existing:calendar:using:) -> PromptPlan
 PromptPlan                              newPrompts (pending, ascending) + missedPromptIds
+RunningOutWarning.remainingCounts(scheduled:) -> [promptId: remaining], last 3 only
+RunningOutWarning.content(_:remaining:) / matches(_:base:)  warning text on a notification
 ```
 
 ## Stratified sampling
@@ -60,6 +62,17 @@ day's quota after its window closes. Today keeps only times later than
 dropped first. `newPrompts` is ascending by `scheduledAt`, ties by survey ID, then by
 generation order. The planner never proposes deletions; the app clears a survey's future
 pending prompts itself when its schedule changes.
+
+## Running out
+
+Prompts are only planned when the app opens, so the last scheduled prompts warn that the
+queue is ending. `remainingCounts` takes every prompt that will be delivered, across all
+surveys (the caller filters), orders by `scheduledAt` then identifier, and maps the last
+`promptCount` (3) to how many remain counting itself: 3, 2, 1. Fewer than 3 means all of
+them. The rule is stateless; the app re-applies it on every reconcile, which is what
+moves the warning when more prompts are scheduled. The warning is a second body line
+under the preview's own title and body, never mentioning the survey, so every preview
+mode stays as private as it was.
 
 ## DST handling
 
