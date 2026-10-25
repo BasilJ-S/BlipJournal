@@ -107,7 +107,11 @@ offers that question's answers as notification actions (`NotificationAnswers` in
   the lock as before.
 - **Saving.** `answerFromNotification` reads the question ID back out of the category and
   calls `Store.saveNotificationAnswer`, which owns every rule (Storage `DESIGN.md`). Then
-  `onEntrySaved` lets `AppModel` reload, and an expired outcome triggers a refresh.
+  `onEntrySaved` lets `AppModel` reload. A saved or expired outcome is followed by a
+  refresh, because someone who only answers from notifications never opens the app and
+  this background wake is the only chance to plan more prompts. The answer carries
+  `answeredAt`, taken when the action arrived, which is the `now` for both, so an answer
+  stashed before attach keeps its own time.
 - **Continuing (R3).** The entry stays open until the prompt expires. Tapping the
   notification, or the Journal's "survey open" banner, routes as for any unfinished
   entry and resumes it in the runner. iOS removes a notification once one of its actions
@@ -171,8 +175,9 @@ which read as the notification bouncing back to the Home Screen. Do not go back 
   to five values; a spectrum (the default survey's first question) offers none.
 - An answer action shows no question text: with the default `.private` preview the
   notification says only "Time for a check-in." above the buttons.
-- An answer picked while the runner is open on the same entry is overwritten by the
-  runner's next autosave (Storage `DESIGN.md`).
+- A prompt whose entry was started in the app refuses notification answers
+  (`unavailable`); the runner owns that entry. A runner open on an entry that is closed
+  at expiry cannot reopen it: its next save fails with `.completed` (Storage `DESIGN.md`).
 - A failed save is silent: the action has no UI to report it in. The prompt stays
   pending and can still be answered in the app.
 - A delivered notification whose survey's first question changed keeps its old category,

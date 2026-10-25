@@ -86,22 +86,55 @@ struct StoreNotificationAnswersTests {
         #expect(try store.answers(entryId: saved.id).map(\.value) == [.yesNo(false), .scale(6)])
     }
 
-    @Test("an entry opened in the app first takes the notification answer and keeps its other answers")
-    func joinsAppEntry() throws {
+    @Test("an entry opened in the app first is left to the runner: nothing is saved")
+    func leavesAppEntryAlone() throws {
         let (store, survey, first, second) = try seeded()
         let p = Fixture.prompt(survey, scheduledAt: t(100))
         try store.insertPrompts([p])
-        let (appEntry, _) = try store.record(
-            in: survey, promptId: p.id, startedAt: t(110), answers: [(second, .scale(3))])
+        try store.record(in: survey, promptId: p.id, startedAt: t(110), answers: [(second, .scale(3))])
+        let before = try store.backup(now: t(0))
 
         let outcome = try store.saveNotificationAnswer(
             promptId: p.id, questionId: first.id, actionIdentifier: try action(survey, .yesNo(true)), now: t(150))
 
-        #expect(outcome == .saved(entryId: appEntry.id))
-        let saved = try #require(try entry(store, promptId: p.id))
-        #expect(saved.startedAt == t(110))
-        #expect(saved.answeredFromNotification)
-        #expect(Set(try store.answers(entryId: saved.id).map(\.value)) == [.scale(3), .yesNo(true)])
+        #expect(outcome == .unavailable)
+        #expect(try store.backup(now: t(0)) == before)
+    }
+
+    @Test("a save from a copy taken before the notification answer keeps the flag")
+    func flagIsSticky() throws {
+        let (store, survey, first, _) = try seeded()
+        let p = Fixture.prompt(survey, scheduledAt: t(100))
+        try store.insertPrompts([p])
+        _ = try store.saveNotificationAnswer(
+            promptId: p.id, questionId: first.id, actionIdentifier: try action(survey, .yesNo(true)), now: t(150))
+        var stale = try #require(try entry(store, promptId: p.id))
+        stale.answeredFromNotification = false
+
+        try store.saveEntry(stale, answers: try store.answers(entryId: stale.id))
+
+        #expect(try entry(store, promptId: p.id)?.answeredFromNotification == true)
+    }
+
+    @Test("saving an incomplete copy over a completed entry throws and changes nothing")
+    func completedEntryIsNotReopened() throws {
+        let (store, survey, first, _) = try seeded()
+        let p = Fixture.prompt(survey, scheduledAt: t(100))
+        try store.insertPrompts([p])
+        _ = try store.saveNotificationAnswer(
+            promptId: p.id, questionId: first.id, actionIdentifier: try action(survey, .yesNo(true)), now: t(150))
+        let copy = try #require(try entry(store, promptId: p.id))   // what an open runner holds
+        try store.settleExpiredPrompts([p.id], now: t(2000))
+        let before = try store.backup(now: t(0))
+
+        #expect(throws: StoreError.entryCompleted) { try store.saveEntry(copy, answers: []) }
+        #expect(try store.backup(now: t(0)) == before)
+
+        // Completing over a completed entry, as the runner's Done does, is still allowed.
+        var done = copy
+        done.completedAt = t(2100)
+        try store.saveEntry(done, answers: try store.answers(entryId: copy.id))
+        #expect(try entry(store, promptId: p.id)?.completedAt == t(2100))
     }
 
     @Test("answering twice replaces the value and keeps the first answer's identity and time")
@@ -208,10 +241,13 @@ struct StoreNotificationAnswersTests {
             answeredAt: t(400), value: .scale(2)))
         try store.saveEntry(open, answers: answers)
 
+        let answersBefore = try store.answers(entryId: open.id)
         try store.settleExpiredPrompts([p.id], now: t(2000))
 
         open = try #require(try entry(store, promptId: p.id))
         #expect(open.completedAt == t(400))
+        #expect(open.answeredFromNotification)
+        #expect(try store.answers(entryId: open.id) == answersBefore)
         let settled = try #require(try prompt(store, p.id))
         #expect(settled.status == .answered)
         #expect(settled.respondedAt == t(400))

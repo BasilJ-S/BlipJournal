@@ -148,7 +148,7 @@ BlipJournal/        iOS app target. SwiftUI only.
 - **Answers from the notification.** A prompt whose survey opens with a yes/no question
   or a scale of at most five values offers those answers as notification actions. Each
   action requires the device to be unlocked (the database is `NSFileProtectionComplete`)
-  and opens nothing, so no stored data is shown. The answer starts the prompt's entry,
+  and opens nothing, so no stored data is shown. The answer starts the prompt's entry (a prompt already opened in the app is left to the app),
   which stays open for the rest of the survey until the prompt expires; at expiry it is
   completed if every required question has an answer, otherwise the prompt is missed as
   usual. An answer that arrives after expiry is not saved and the prompt is recorded as

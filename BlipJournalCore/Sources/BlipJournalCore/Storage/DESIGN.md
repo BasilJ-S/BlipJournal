@@ -120,8 +120,11 @@ delete removes is exactly what its code says. Indexes: every foreign key column 
 
 ## `saveEntry` upsert rules
 
-One transaction. The entry row is replaced by value. Answers are reconciled by identifier
-against the entry's stored answers:
+One transaction. The entry row is replaced by value, with two guards against a stale
+copy (the runner holds one for as long as it is open): a stored
+`answeredFromNotification` stays true, and saving an incomplete entry over a completed
+one throws `StoreError.entryCompleted` and changes nothing. `EntryDraft` reports that as
+`.completed`. Answers are reconciled by identifier against the entry's stored answers:
 
 | Stored answer | In `answers`? | Result |
 |---|---|---|
@@ -147,19 +150,20 @@ returns what it did (`NotificationAnswerOutcome`):
 | answered | none | `alreadyAnswered` (entry was deleted) |
 | missed / dismissed | none or open | `expired` |
 | pending, expired at `now` | none or open | settled as below, `expired` |
-| pending, open | none or open | `unavailable` unless `questionId` is still the first active question and `NotificationAnswers` still offers the action; otherwise `saved` |
+| pending, open | open, started in the app | `unavailable`: the runner owns it |
+| pending, open | none, or open from a notification | `unavailable` unless `questionId` is still the first active question and `NotificationAnswers` still offers the action; otherwise `saved` |
 
 Saving creates the entry (`startedAt` = `answeredAt` = `now`, the runner's stamps) or
-adds the answer to the open one, replacing a previous answer to that question under the
-same identifier and first `answeredAt`, as the runner does. The entry is marked
+adds the answer to the open notification entry, replacing a previous answer to that
+question under the same identifier and first `answeredAt`, as the runner does. The entry is marked
 `answeredFromNotification` and left open; the prompt stays pending, so the rest can be
 answered in the app until expiry.
 
 `settleExpiredPrompts(_:now:)` replaces "mark every expired pending prompt missed" in the
 coordinator's refresh. A prompt whose open entry is `answeredFromNotification` and holds
-an answer to every active required question is closed instead: the entry completes at
-its latest `answeredAt` and the prompt is marked answered at that moment, so latency runs
-to the last answer the person gave. Everything else is marked missed at `now`, as before.
+an answer to every active required question is closed instead: one `UPDATE` sets the
+entry's `completedAt` to its latest `answeredAt`, answers untouched, and the prompt is
+marked answered at that moment, so latency runs to the last answer the person gave. Everything else is marked missed at `now`, as before.
 
 ## Hard delete
 
@@ -301,10 +305,11 @@ README promises no more than that.
   identifier already used by another entry fails its primary key.
 - The byte-erasure test proves the outcome, not each safeguard: `secure_delete` alone or
   `VACUUM` alone would also pass it. `SchemaTests` pins the pragmas separately.
-- A runner open on an entry holds its own copy of it. A notification answer saved into
-  that entry meanwhile, or the entry being closed at expiry, is overwritten by the
-  runner's next autosave. Both need the app in the foreground with the runner open while
-  the person also uses the notification, so v0 accepts it.
+- A runner open on a notification entry still holds its own copy, so a second
+  notification answer to the same entry while it is open would be dropped by the next
+  autosave. iOS removes a notification once an action is used, so there is no second
+  action to pick; the flag survives either way, and an entry closed at expiry is never
+  reopened (see `saveEntry`).
 - Single-connection `DatabaseQueue`: readers wait for writers. Fine for one person and one
   screen; a later switch to `DatabasePool` would need WAL, which the vacuum helper already
   anticipates.

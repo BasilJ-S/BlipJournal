@@ -442,8 +442,7 @@ struct NotificationCoordinatorTests {
             NotificationAnswerResponse(
                 promptId: prompt.id,
                 categoryIdentifier: NotificationCoordinator.answerCategoryIdentifier(for: offered),
-                actionIdentifier: offered.choices[0].actionIdentifier),
-            now: now)
+                actionIdentifier: offered.choices[0].actionIdentifier, answeredAt: now))
 
         let entry = try #require(try store.entries(surveyId: survey.id, from: nil, to: nil).first)
         #expect(entry.promptId == prompt.id)
@@ -451,6 +450,8 @@ struct NotificationCoordinatorTests {
         #expect(entry.completedAt == nil)
         #expect(try store.answers(entryId: entry.id).map(\.questionId) == [question.id])
         #expect(reloads.count == 1)
+        // The save is followed by a refresh, which plans the prompts still to come.
+        #expect(try store.prompts(status: .pending).contains { $0.scheduledAt > now })
         #expect(coordinator.pendingRoute == nil)
     }
 
@@ -466,8 +467,7 @@ struct NotificationCoordinatorTests {
         await coordinator.answerFromNotification(
             NotificationAnswerResponse(
                 promptId: prompt.id, categoryIdentifier: NotificationCoordinator.categoryIdentifier,
-                actionIdentifier: "answer.yes"),
-            now: now)
+                actionIdentifier: "answer.yes", answeredAt: now))
 
         #expect(try store.entries(surveyId: nil, from: nil, to: nil).isEmpty)
     }

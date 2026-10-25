@@ -15,6 +15,10 @@ extension Store {
     ///   reinserted;
     /// - a new answer is inserted with the `answeredAt` the caller supplied.
     ///
+    /// Two rules protect writes from a copy that went stale while the runner held it: a
+    /// stored `answeredFromNotification` stays true, and saving an incomplete entry over a
+    /// completed one throws `StoreError.entryCompleted` and changes nothing.
+    ///
     /// Every answer's `entryId` must equal `entry.id` and no two answers may share an
     /// identifier; anything else is a programming error and traps.
     public func saveEntry(_ entry: Entry, answers: [Answer]) throws {
@@ -31,7 +35,14 @@ extension Store {
     /// so another write (a notification answer) can save an entry and set its prompt's
     /// status atomically. The caller has checked the preconditions.
     func saveEntry(_ db: Database, _ entry: Entry, answers: [Answer]) throws {
-        try EntryRow(entry).save(db)
+        var row = EntryRow(entry)
+        if let storedRow = try EntryRow.fetchOne(db, key: entry.id) {
+            // A save from a copy taken before completion must not reopen the entry.
+            if storedRow.completedAt != nil, entry.completedAt == nil { throw StoreError.entryCompleted }
+            // Once an answer came from the notification, the entry says so for good.
+            if storedRow.answeredFromNotification { row.answeredFromNotification = true }
+        }
+        try row.save(db)
         let stored = try AnswerRow.fetchAll(
             db, sql: "SELECT * FROM answer WHERE entryId = ?", arguments: [entry.id])
         let storedById = Dictionary(stored.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })

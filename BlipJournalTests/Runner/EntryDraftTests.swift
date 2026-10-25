@@ -124,4 +124,32 @@ struct EntryDraftTests {
         try store.insertPrompts([prompt])
         #expect(throws: EntryDraft.Error.expiredPrompt) { try EntryDraft(store: store, survey: survey, promptId: prompt.id, now: now.addingTimeInterval(1)) }
     }
+
+    @Test func draftDoesNotReopenAnEntryClosedAtExpiry() async throws {
+        let store = try Store.inMemory()
+        let survey = try store.createSurvey(
+            name: "Sleep", sampling: .default,
+            questions: [
+                Question(kind: .yesNo, label: "Slept well?", position: 0, isRequired: true),
+                Question(kind: .text, label: "Anything else?", position: 1),
+            ],
+            now: now)
+        let prompt = Prompt(surveyId: survey.id, day: "2026-01-01", scheduledAt: now, expiresAt: now.addingTimeInterval(1200))
+        try store.insertPrompts([prompt])
+        let offered = try #require(NotificationAnswers(survey: survey))
+        _ = try store.saveNotificationAnswer(
+            promptId: prompt.id, questionId: offered.questionId,
+            actionIdentifier: offered.choices[0].actionIdentifier, now: now.addingTimeInterval(60))
+        let draft = try EntryDraft(store: store, survey: survey, promptId: prompt.id, now: now.addingTimeInterval(120))
+        try store.settleExpiredPrompts([prompt.id], now: now.addingTimeInterval(1300))
+
+        let text = try firstQuestion(survey, .text)
+        await #expect(throws: EntryDraft.Error.completed) {
+            try await draft.set(.text("late"), for: text.id, now: now.addingTimeInterval(1400))
+        }
+        let stored = try #require(try store.entries(surveyId: survey.id, from: nil, to: nil).first)
+        #expect(stored.completedAt == now.addingTimeInterval(60))
+        #expect(stored.answeredFromNotification)
+        #expect(try store.answers(entryId: stored.id).count == 1)
+    }
 }

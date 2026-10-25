@@ -14,9 +14,9 @@ public enum NotificationAnswerOutcome: Sendable, Equatable {
     /// The prompt is already answered: its entry is complete, or it was answered and the
     /// entry since deleted. Nothing was saved.
     case alreadyAnswered
-    /// The prompt or its survey no longer exists, or the survey's first question is no
-    /// longer the one the notification offered, or no longer offers that answer. Nothing
-    /// was saved.
+    /// The prompt or its survey no longer exists, the survey's first question is no longer
+    /// the one the notification offered or no longer offers that answer, or the prompt's
+    /// entry was started in the app. Nothing was saved.
     case unavailable
 }
 
@@ -32,10 +32,10 @@ extension Store {
     ///
     /// - A pending, unexpired prompt with no entry gets a new entry, `startedAt` and the
     ///   answer's `answeredAt` both `now`, exactly as the runner would have stamped them.
-    /// - A pending, unexpired prompt with an unfinished entry (opened in the app first, or
-    ///   answered from a notification before) gets the answer added to that entry, or
-    ///   replacing that question's answer while keeping its identifier and first
-    ///   `answeredAt`, as the runner does.
+    /// - A pending, unexpired prompt whose unfinished entry was itself started from a
+    ///   notification gets the answer added to that entry, or replacing that question's
+    ///   answer while keeping its identifier and first `answeredAt`, as the runner does.
+    /// - An entry started in the app is left to the runner: the outcome is `unavailable`.
     /// - Either way the entry is marked `answeredFromNotification`, stays incomplete, and
     ///   the prompt stays pending, so the rest of the survey can be answered in the app
     ///   until the prompt expires.
@@ -67,6 +67,9 @@ extension Store {
                 return .expired
             }
 
+            // An entry started in the app belongs to the runner, which holds its own copy and
+            // would overwrite this answer on its next autosave.
+            if let existing, !existing.answeredFromNotification { return .unavailable }
             guard let offered = NotificationAnswers(survey: survey), offered.questionId == questionId,
                   let value = offered.value(forActionIdentifier: actionIdentifier),
                   let versionId = rows.questionVersions[questionId]?.last?.id
@@ -108,15 +111,15 @@ extension Store {
     /// Closes or misses one expired, pending prompt inside the caller's transaction. See
     /// `settleExpiredPrompts`.
     private func settleExpiredPrompt(_ db: Database, _ prompt: Prompt, now: Date) throws {
-        if var entry = try self.entry(db, promptId: prompt.id), entry.answeredFromNotification, entry.completedAt == nil {
+        if let entry = try self.entry(db, promptId: prompt.id), entry.answeredFromNotification, entry.completedAt == nil {
             let rows = try DefinitionRows.load(db, surveyId: prompt.surveyId)
             let stored = try self.answers(db, entryId: entry.id)
             let answered = Set(stored.map(\.questionId))
             if let surveyRow = rows.surveys.first, let survey = rows.survey(for: surveyRow),
                survey.activeQuestions.allSatisfy({ !$0.isRequired || answered.contains($0.id) }),
                let lastAnswer = stored.map(\.answeredAt).max() {
-                entry.completedAt = lastAnswer
-                try saveEntry(db, entry, answers: stored)
+                try db.execute(
+                    sql: "UPDATE entry SET completedAt = ? WHERE id = ?", arguments: [lastAnswer, entry.id])
                 try setPromptStatus(db, prompt.id, .answered, respondedAt: lastAnswer)
                 return
             }

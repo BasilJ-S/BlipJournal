@@ -103,6 +103,11 @@ final class EntryDraft {
             try await queue.save(store, entry, answers)
             isStored = true
             if revision == revisionAtStart { dirty = false; lastError = nil }
+        } catch StoreError.entryCompleted {
+            // Closed at expiry from its notification answers while open here: keep the
+            // stored, completed entry rather than reopening it.
+            lastError = String(describing: Error.completed)
+            throw Error.completed
         } catch {
             if !isStored { isSaved = false }
             lastError = String(describing: error)

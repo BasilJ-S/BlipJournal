@@ -25,7 +25,7 @@ protocol NotificationCoordinating: AnyObject {
     var pendingRoute: String? { get set }
     /// Saves an answer picked from a prompt notification's actions. The caller has checked
     /// that protected data is available.
-    func answerFromNotification(_ answer: NotificationAnswerResponse, now: Date) async
+    func answerFromNotification(_ answer: NotificationAnswerResponse) async
 }
 
 /// An answer action picked on a prompt's notification, as much of the non-`Sendable`
@@ -35,6 +35,9 @@ struct NotificationAnswerResponse: Sendable, Equatable {
     /// The notification's category, which names the question it offered answers for.
     var categoryIdentifier: String
     var actionIdentifier: String
+    /// When the action arrived. Saving uses it as `now`, so an answer held until a
+    /// coordinator attaches keeps its own time for expiry and latency.
+    var answeredAt: Date
 }
 
 extension NotificationCoordinating {
@@ -59,7 +62,7 @@ final class NoopNotificationCoordinator: NotificationCoordinating {
     func reschedule(now: Date) async -> Bool { false }
     func scheduleChanged(surveyId: String, now: Date) async {}
     func promptsDestroyed(now: Date) async {}
-    func answerFromNotification(_ answer: NotificationAnswerResponse, now: Date) async {}
+    func answerFromNotification(_ answer: NotificationAnswerResponse) async {}
 }
 
 /// Turns the planner's output into real local notifications and routes a tapped
@@ -113,7 +116,7 @@ final class NotificationCoordinator: NotificationCoordinating {
             pendingRoute = claimed
         }
         if let answer = delegate.claimAnswerBeforeAttach() {
-            Task { await answerFromNotification(answer, now: Date()) }
+            Task { await answerFromNotification(answer) }
         }
     }
 
@@ -208,17 +211,23 @@ final class NotificationCoordinator: NotificationCoordinating {
     /// (expiry, an entry already complete, a question edited since scheduling), then lets
     /// the app reload. Shows nothing: whatever the outcome, no stored data is put on
     /// screen, so this cannot bypass the app lock.
-    func answerFromNotification(_ answer: NotificationAnswerResponse, now: Date) async {
+    ///
+    /// A saved or expired outcome is followed by a refresh: someone who only ever answers
+    /// from the notification never opens the app, and this background wake is the only
+    /// chance to plan more prompts and settle the expired one.
+    func answerFromNotification(_ answer: NotificationAnswerResponse) async {
         guard answer.categoryIdentifier.hasPrefix(Self.answerCategoryPrefix) else { return }
         let questionId = String(answer.categoryIdentifier.dropFirst(Self.answerCategoryPrefix.count))
         let outcome = try? store.saveNotificationAnswer(
             promptId: answer.promptId, questionId: questionId,
-            actionIdentifier: answer.actionIdentifier, now: now)
+            actionIdentifier: answer.actionIdentifier, now: answer.answeredAt)
         guard let outcome else { return }
         onEntrySaved?()
-        if case .expired = outcome {
-            // Settling an expired prompt changes what should be pending.
-            await refresh(now: now)
+        switch outcome {
+        case .saved, .expired:
+            await refresh(now: answer.answeredAt)
+        case .alreadyAnswered, .unavailable:
+            break
         }
     }
 

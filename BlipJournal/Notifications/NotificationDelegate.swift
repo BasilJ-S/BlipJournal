@@ -79,6 +79,7 @@ final class NotificationDelegate: NSObject, UNUserNotificationCenterDelegate {
         let promptId = response.notification.request.content.userInfo["promptId"] as? String
         let actionIdentifier = response.actionIdentifier
         let categoryIdentifier = response.notification.request.content.categoryIdentifier
+        let answeredAt = Date()
         Task { @MainActor in
             defer { completionHandler() }
             guard let promptId else { return }
@@ -95,9 +96,9 @@ final class NotificationDelegate: NSObject, UNUserNotificationCenterDelegate {
                 guard UIApplication.shared.isProtectedDataAvailable else { return }
                 let answer = NotificationAnswerResponse(
                     promptId: promptId, categoryIdentifier: categoryIdentifier,
-                    actionIdentifier: actionIdentifier)
+                    actionIdentifier: actionIdentifier, answeredAt: answeredAt)
                 if let coordinator = self.coordinator {
-                    await coordinator.answerFromNotification(answer, now: Date())
+                    await coordinator.answerFromNotification(answer)
                 } else {
                     self.pendingAnswerBeforeAttach = answer
                 }
