@@ -8,7 +8,11 @@ import StoreKit
 final class TipJarModel {
     /// Every In-App Purchase the app offers. `TipJar.storekit` and App Store Connect use
     /// the same IDs.
-    nonisolated static let productIDs = ["small", "medium", "large"].map { "io.github.basilj-s.BlipJournal.tip.\($0)" }
+    nonisolated static let productIDs = [
+        "io.github.basilj-s.BlipJournal.tip.small",
+        "io.github.basilj-s.BlipJournal.tip.medium",
+        "io.github.basilj-s.BlipJournal.tip.large",
+    ]
 
     enum Phase: Equatable {
         case loading, unavailable, ready
@@ -54,7 +58,10 @@ final class TipJarModel {
         do {
             switch try await buy(product) {
             case .success(let verification):
-                outcome = await Self.finish(verification) ? .thanked : .failed
+                // Thanked even if unverified: the App Store has charged them, and a tip
+                // unlocks nothing that verification would protect.
+                await Self.finish(verification)
+                outcome = .thanked
             case .userCancelled:
                 outcome = .cancelled
             case .pending:
@@ -69,14 +76,11 @@ final class TipJarModel {
         }
     }
 
-    /// Finishes a transaction, verified or not, and returns whether it verified. Tips are
-    /// consumables that unlock nothing (R1, R2), so an unverified one has nothing to
-    /// withhold, and leaving it unfinished would only redeliver it at every launch.
-    @discardableResult
-    nonisolated static func finish(_ result: VerificationResult<Transaction>) async -> Bool {
+    /// Finishes a transaction, verified or not. Tips are consumables that unlock nothing
+    /// (R1, R2), so an unverified one has nothing to withhold, and leaving it unfinished
+    /// would only redeliver it at every launch.
+    nonisolated static func finish(_ result: VerificationResult<Transaction>) async {
         await result.unsafePayloadValue.finish()
-        if case .verified = result { return true }
-        return false
     }
 
     /// Finishes transactions that complete outside a purchase call: Ask to Buy approvals,

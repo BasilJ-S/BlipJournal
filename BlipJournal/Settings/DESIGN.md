@@ -18,7 +18,8 @@ files, not this list.
 | Tip jar | `Settings/TipJarView` | #37 |
 | About | `Settings/AboutView` | A6 |
 
-Every destination takes `init()` and reads `AppModel` from the environment.
+Every destination takes `init()` and reads `AppModel` from the environment when it needs
+app state.
 All Settings destinations hide the system List/Form canvas so the shared paper background
 continues below the navigation bar.
 
@@ -58,17 +59,18 @@ move, never words, which its tests check.
 ## Tip jar
 
 Three consumable In-App Purchases, `io.github.basilj-s.BlipJournal.tip.small|medium|large`,
-listed in `TipJarModel.productIDs` and mirrored in `TipJar.storekit`, which the Run scheme
-uses for local testing and no target bundles. They are the app's only purchases, and a tip
-unlocks, stores and logs nothing, so the privacy manifest is unchanged.
+listed in `TipJarModel.productIDs` and mirrored in `TipJar.storekit`. The Run scheme uses
+that file for local testing, and only the test target bundles it, for the `SKTestSession`
+tests; the app never ships it. They are the app's only purchases, and a tip unlocks,
+stores and logs nothing, so the privacy manifest is unchanged.
 
 - The screen loads products with StoreKit 2 each time it appears and shows Apple's
   `displayPrice`, never a hard-coded price. No products or a load error shows "Tips are
   unavailable right now."; nothing else in the app depends on StoreKit.
 - Purchases go through SwiftUI's `PurchaseAction`. Success shows a thank-you; pending
   (Ask to Buy) and failure show a short note; a cancellation shows nothing.
-- Every transaction is finished, verified or not: there is nothing to withhold, and an
-  unfinished one would come back at every launch. Only a verified one gets the thank-you.
+- Every transaction is finished and thanked, verified or not: the person has paid, there
+  is nothing to withhold, and an unfinished one would come back at every launch.
 - `AppDelegate` starts `TipJarModel.listenForTransactions()` at launch, which finishes
   Ask to Buy approvals and anything left unfinished.
 - Nothing else in the app mentions tips: no prompts, badges or banners.

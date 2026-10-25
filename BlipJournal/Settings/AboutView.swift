@@ -19,7 +19,7 @@ struct AboutView: View {
                 .accessibilityElement(children: .combine)
                 Text("A private, simple way to notice patterns in your days by recording brief check-ins.")
             }
-            Section("Privacy") { Text("Blip Journal makes no network requests and collects no data.") }
+            Section("Privacy") { Text("Blip Journal collects no data. Its only network use is Apple's In-App Purchase, for optional tips.") }
             Section("Licence") { DisclosureGroup("MIT Licence") { Text(mitLicence).font(.footnote).textSelection(.enabled) } }
             Section("Acknowledgements") {
                 DisclosureGroup("GRDB.swift") { Text(grdbLicence).font(.footnote).textSelection(.enabled) }

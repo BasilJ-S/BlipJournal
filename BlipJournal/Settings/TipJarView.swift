@@ -43,15 +43,15 @@ struct TipJarView: View {
         }
         .blipScreen("Tip jar")
         .task { await model.load() }
-        .onChange(of: model.outcome) { _, outcome in
-            // The payment sheet has just closed, so VoiceOver hears how it went.
-            if let message = outcome?.message { AccessibilityNotification.Announcement(message).post() }
-        }
     }
 
     private func tipButton(_ product: Product) -> some View {
         Button {
-            Task { await model.purchase(product) { try await purchase($0) } }
+            Task {
+                await model.purchase(product) { try await purchase($0) }
+                // The payment sheet has just closed, so VoiceOver hears how it went.
+                if let message = model.outcome?.message { AccessibilityNotification.Announcement(message).post() }
+            }
         } label: {
             HStack {
                 Text(product.displayName)
