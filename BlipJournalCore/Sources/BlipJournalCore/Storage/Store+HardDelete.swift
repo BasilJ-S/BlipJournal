@@ -94,10 +94,7 @@ extension Store {
     /// reseeded survey is never briefly enabled. Returns the new survey.
     @discardableResult
     public func eraseEverything(now: Date = Date()) throws -> Survey {
-        let survey = try dbQueue.write { db in
-            for table in Schema.tablesChildrenFirst {
-                try db.execute(sql: "DELETE FROM \(table)")
-            }
+        try replacingAllRows { db in
             let template = SurveyTemplate.makeDefault(now: now)
             var pausedSampling = template.sampling
             pausedSampling.isEnabled = false
@@ -105,29 +102,18 @@ extension Store {
                 db, name: template.name, sampling: pausedSampling,
                 questions: template.questions, now: now)
         }
-        try checkpointAndVacuum()
-        return survey
     }
 
-    /// Replaces the whole database with the rows of `backup`: deletes every row of every
-    /// table, children first as `eraseEverything` does, then inserts every row of the
-    /// backup, parents first, all in one transaction. If any step throws (a dangling
-    /// foreign key, a duplicate key) the transaction rolls back and the database is
-    /// exactly as it was. After it commits, `checkpointAndVacuum()` erases the replaced
-    /// rows from the file the same way a delete does.
-    ///
-    /// Nothing is reseeded: afterwards `backup(now:)` equals `backup` apart from
-    /// `exportedAt`. Throws `RestoreError.newerSchema` before touching anything when the
-    /// backup came from a newer schema than `CoreSchema.version`.
+    /// Replaces the whole database with the rows of `backup`, rolling back and changing
+    /// nothing if any row fails. See Storage `DESIGN.md`, "Restore replaces". Throws
+    /// `RestoreError.newerSchema` before touching anything for a newer backup.
     public func restore(_ backup: Backup) throws {
         guard backup.schemaVersion <= CoreSchema.version else {
             throw RestoreError.newerSchema(found: backup.schemaVersion, supported: CoreSchema.version)
         }
-        try dbQueue.write { db in
-            for table in Schema.tablesChildrenFirst {
-                try db.execute(sql: "DELETE FROM \(table)")
-            }
-            // The reverse of `tablesChildrenFirst`, and the order of `Backup`'s arrays.
+        try replacingAllRows { db in
+            // The reverse of `Schema.tablesChildrenFirst`; `StoreRestoreTests` fails if a
+            // table is missing here.
             for row in backup.surveys { try row.insert(db) }
             for row in backup.surveyVersions { try row.insert(db) }
             for row in backup.surveySamplings { try row.insert(db) }
@@ -141,7 +127,19 @@ extension Store {
             for row in backup.answers { try row.insert(db) }
             for row in backup.answerOptions { try row.insert(db) }
         }
+    }
+
+    /// Deletes every row of every table, children first, runs `insert` in the same
+    /// transaction, then `checkpointAndVacuum()` so the replaced rows leave the file.
+    private func replacingAllRows<T: Sendable>(_ insert: @Sendable (Database) throws -> T) throws -> T {
+        let result = try dbQueue.write { db in
+            for table in Schema.tablesChildrenFirst {
+                try db.execute(sql: "DELETE FROM \(table)")
+            }
+            return try insert(db)
+        }
         try checkpointAndVacuum()
+        return result
     }
 
     // MARK: The rows a delete removes

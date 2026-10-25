@@ -50,11 +50,15 @@ final class RestoreBackupModel {
 
     /// The JSON backup of current data, for the share sheet.
     func makeCurrentBackupFile() throws -> URL {
-        exporter.format = .jsonBackup
-        return try exporter.makeFile()
+        try exporter.makeFile()
     }
 
     func markSavedCurrentData() { savedCurrentData = true }
+
+    /// Replacing without having saved current data needs a second confirmation.
+    var needsLossConfirmation: Bool { !savedCurrentData }
+
+    func acknowledgeRestore() { didRestore = false }
 
     func cleanUp() { exporter.cleanUp() }
 
@@ -62,16 +66,26 @@ final class RestoreBackupModel {
     /// refreshes the app, as delete-all does.
     func restore() async throws {
         guard let backup else { return }
-        try await DeleteAllDataModel.reset(appModel: appModel) { try self.appModel.store.restore(backup) }
+        try await DeleteAllDataModel.reset(appModel: appModel) {
+            do { try self.appModel.store.restore(backup) }
+            catch let error as RestoreError { throw error }
+            catch { throw RestoreFailure.damagedBackup }   // a database error: rolled back
+        }
         self.backup = nil
         savedCurrentData = false
         didRestore = true
         current = Self.currentSummary(appModel.store)
     }
 
+    /// A well-formed backup whose rows the database rejected (a restore that rolled back).
+    enum RestoreFailure: Error { case damagedBackup }
+
     static func message(for error: Error) -> String {
+        if error is RestoreFailure {
+            return "This backup is damaged or inconsistent. Nothing was changed."
+        }
         guard let restoreError = error as? RestoreError else {
-            return "Blip Journal could not restore from that file. \(error.localizedDescription)"
+            return "Something went wrong while refreshing Blip Journal. Close and reopen the app."
         }
         switch restoreError {
         case .newerSchema:

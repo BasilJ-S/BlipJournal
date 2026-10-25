@@ -1,6 +1,6 @@
 import Foundation
 import Testing
-import BlipJournalCore
+@testable import BlipJournalCore
 
 @Suite("Store restore")
 struct StoreRestoreTests {
@@ -107,13 +107,48 @@ struct StoreRestoreTests {
         }
     }
 
-    @Test("a backup from an older schema still restores")
-    func olderSchema() throws {
+    @Test("the round-trip fixture has a row in every table, so a table missing from restore fails")
+    func coversEveryTable() throws {
         let store = try Store.inMemory()
         try populated(store)
-        var old = try store.backup(now: t(300))
-        old.schemaVersion = 1
-        try store.restore(old)
-        #expect(try store.backup(now: t(300)).surveys.count == 2)
+        let original = try store.backup(now: t(300))
+        #expect(Set(original.rowCounts.keys) == Set(Schema.tablesChildrenFirst))
+        for (table, count) in original.rowCounts { #expect(count > 0, "no \(table) rows in the fixture") }
+
+        try store.eraseEverything(now: t(310))
+        try store.restore(original)
+        for (table, count) in original.rowCounts {
+            #expect(try store.backup(now: t(300)).rowCounts[table] == count, "\(table) not restored")
+        }
+    }
+
+    @Test("restore keeps save order: selections, same-time answers and same-time entries")
+    func preservesSaveOrder() throws {
+        let store = try Store.inMemory()
+        let survey = try Fixture.seed(store, now: t(0))
+        let feeling = try survey.question(labelled: "How are you feeling right now?")
+        let describes = try survey.question(labelled: "What best describes this feeling?")
+        // Selections saved in descending ID order, the reverse of a sort by ID; entries
+        // sharing a start time saved in descending ID order too.
+        let optionIds = try describes.options.prefix(4).map(\.id).sorted(by: >)
+        for id in ["zzz", "mmm", "aaa"] {
+            try store.record(
+                in: survey, id: id, startedAt: t(100),
+                answers: [(feeling, .scale(3)), (describes, .multi(optionIds: optionIds))])
+        }
+        let entriesBefore = try store.entries(surveyId: nil, from: nil, to: nil)
+        let answersBefore = try entriesBefore.map { try store.answers(entryId: $0.id) }
+        let snapshotBefore = try store.exportSnapshot(surveyId: survey.id)
+        #expect(entriesBefore.map(\.id) == ["zzz", "mmm", "aaa"])
+
+        let backup = try BackupExporter.decodeForRestore(BackupExporter.json(store.backup(now: t(300))))
+        try store.eraseEverything(now: t(310))
+        try store.restore(backup)
+
+        #expect(try store.entries(surveyId: nil, from: nil, to: nil) == entriesBefore)
+        #expect(try entriesBefore.map { try store.answers(entryId: $0.id) } == answersBefore)
+        #expect(try store.exportSnapshot(surveyId: survey.id) == snapshotBefore)
+        let restored = try store.answers(entryId: "zzz").first { $0.questionId == describes.id }
+        #expect(restored?.value == .multi(optionIds: optionIds))
     }
 }

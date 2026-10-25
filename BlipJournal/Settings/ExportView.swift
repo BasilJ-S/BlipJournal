@@ -1,5 +1,4 @@
 import SwiftUI
-import UIKit
 
 struct ExportView: View {
     init() {}
@@ -27,30 +26,9 @@ struct ExportView: View {
             }
         }
         .blipScreen("Export")
-        .sheet(isPresented: Binding(get: { shareURL != nil }, set: { if !$0 { shareURL = nil; model?.cleanUp() } })) { if let url = shareURL { ActivityView(url: url) { self.model?.cleanUp(); shareURL = nil } } }
+        .shareSheet(url: $shareURL) { _ in model?.cleanUp() }
         .alert("Export failed", isPresented: Binding(get: { errorMessage != nil }, set: { if !$0 { errorMessage = nil } })) { Button("OK") {} } message: { Text(errorMessage ?? "") }
         .task { if model == nil { model = ExportModel(store: appModel.store) } }
         .onDisappear { model?.cleanUp() }
-    }
-}
-
-/// The system share sheet for one file. Shared with the restore screen's "Save a backup
-/// of current data" step. `completion` runs once when the sheet ends, however it ends;
-/// `onSaved` runs first, and only when the person completed an action such as saving.
-struct ActivityView: UIViewControllerRepresentable {
-    let url: URL; let completion: () -> Void
-    var onSaved: (() -> Void)? = nil
-    func makeCoordinator() -> Coordinator { Coordinator(completion: completion, onSaved: onSaved) }
-    func makeUIViewController(context: Context) -> UIActivityViewController { let controller = UIActivityViewController(activityItems: [url], applicationActivities: nil); controller.completionWithItemsHandler = { _, completed, _, _ in if completed { context.coordinator.saved() }; context.coordinator.finish() }; return controller }
-    func updateUIViewController(_ controller: UIActivityViewController, context: Context) {}
-    static func dismantleUIViewController(_ controller: UIActivityViewController, coordinator: Coordinator) { coordinator.finish(); controller.completionWithItemsHandler = nil }
-
-    final class Coordinator {
-        private let completion: () -> Void
-        private let onSaved: (() -> Void)?
-        private var didFinish = false
-        init(completion: @escaping () -> Void, onSaved: (() -> Void)?) { self.completion = completion; self.onSaved = onSaved }
-        func saved() { onSaved?() }
-        func finish() { guard !didFinish else { return }; didFinish = true; completion() }
     }
 }

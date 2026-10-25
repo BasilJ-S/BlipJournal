@@ -21,8 +21,8 @@ struct RestoreBackupView: View {
             }
             if let model, let backup = model.backupSummary {
                 Section("Backup and this phone") {
-                    summaryRow("Backup", backup, date: backup.exportedAt)
-                    summaryRow("On this phone now", model.current, date: nil)
+                    summaryRow("Backup", backup)
+                    summaryRow("On this phone now", model.current)
                 }
                 Section {
                     Text("Everything on this phone will be replaced by the backup. Anything added since the backup was made will be lost.")
@@ -39,7 +39,7 @@ struct RestoreBackupView: View {
                 }
                 Section {
                     Button("Replace data on this phone", role: .destructive) {
-                        if model.savedCurrentData { Task { await performRestore() } } else { confirmingLoss = true }
+                        if model.needsLossConfirmation { confirmingLoss = true } else { Task { await performRestore() } }
                     }
                     .accessibilityLabel("Replace data on this phone")
                 }
@@ -49,21 +49,22 @@ struct RestoreBackupView: View {
         .task { if model == nil { model = RestoreBackupModel(appModel: appModel) } }
         .onDisappear { model?.cleanUp() }
         .fileImporter(isPresented: $showingPicker, allowedContentTypes: [.json]) { model?.load($0) }
-        .sheet(isPresented: Binding(get: { shareURL != nil }, set: { if !$0 { shareURL = nil; model?.cleanUp() } })) {
-            if let url = shareURL { ActivityView(url: url, completion: { model?.cleanUp(); shareURL = nil }, onSaved: { model?.markSavedCurrentData() }) }
+        .shareSheet(url: $shareURL) { completed in
+            model?.cleanUp()
+            if completed { model?.markSavedCurrentData() }
         }
         .alert("Are you sure?", isPresented: $confirmingLoss) {
             Button("Replace and lose current data", role: .destructive) { Task { await performRestore() } }
             Button("Cancel", role: .cancel) {}
         } message: { Text("You have not saved a backup of current data. It will be lost and cannot be recovered.") }
         .alert("Could not restore", isPresented: Binding(get: { model?.errorMessage != nil }, set: { if !$0 { model?.errorMessage = nil } })) { Button("OK") {} } message: { Text(model?.errorMessage ?? "") }
-        .alert("Backup restored", isPresented: Binding(get: { model?.didRestore ?? false }, set: { _ in })) { Button("OK") { dismiss() } } message: { Text("Blip Journal now matches the backup. Notifications were rescheduled from its surveys.") }
+        .alert("Backup restored", isPresented: Binding(get: { model?.didRestore ?? false }, set: { if !$0 { model?.acknowledgeRestore() } })) { Button("OK") { dismiss() } } message: { Text("Blip Journal now matches the backup. Notifications were rescheduled from its surveys.") }
     }
 
-    private func summaryRow(_ title: String, _ summary: BackupSummary, date: Date?) -> some View {
+    private func summaryRow(_ title: String, _ summary: BackupSummary) -> some View {
         VStack(alignment: .leading, spacing: 2) {
             Text(title).font(.headline)
-            if let date { Text("Made \(date.formatted(date: .abbreviated, time: .shortened))") }
+            if let date = summary.exportedAt { Text("Made \(date.formatted(date: .abbreviated, time: .shortened))") }
             Text("\(summary.surveys) surveys, \(summary.entries) entries")
         }
         .accessibilityElement(children: .combine)

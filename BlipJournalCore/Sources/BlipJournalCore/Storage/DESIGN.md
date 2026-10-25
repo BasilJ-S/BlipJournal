@@ -204,21 +204,27 @@ README promises no more than that.
   place beats correlated subqueries in five.
 - **Backups are reproducible.** `BackupExporter.json` uses sorted keys, pretty printing
   and ISO 8601 dates with millisecond fractions (the database's precision); versioned
-  tables are listed in `(createdAt, rowid)` order, the rest in primary-key order.
+  tables are listed in `(createdAt, rowid)` order, the other definition tables in
+  primary-key order, and `prompt`, `entry`, `answer` and `answerOption` in `rowid` (save)
+  order, because live reads tie-break on rowid (same-time entries and answers, and the
+  order of a multi-choice answer's selections) and a restore must keep that. Backups
+  taken before this change listed those four by ID, so they cannot recover selection
+  order or save order; they restore with those tables in ID order.
   `BackupExporter.decode` is the exact inverse: it builds every `Date` through GRDB's own
   parser, the path a row takes out of SQLite, and `backup(now:)` rounds `exportedAt` the
   same way, so `decode(json(b)) == b`. `Store.restore(_:)` writes a decoded
   backup back (see below); it needs no new row initialisers because a backup is
   decoded, never built by hand.
-- **Restore replaces, in `Store+HardDelete.swift`.** `restore(_:)` runs the same
-  children-first deletes as `eraseEverything`, inserts every backup row parents first,
-  all in one transaction, then `checkpointAndVacuum()`. Any failure (dangling foreign
-  key, duplicate key) rolls back and leaves the database as it was; a newer
-  `schemaVersion` is refused before anything is touched. Nothing is reseeded, so
-  `backup(now:)` afterwards equals the restored backup apart from `exportedAt`. There is
-  no merge. `BackupExporter.decodeForRestore` reads a chosen file and throws a typed
-  `RestoreError` (`unreadable`, `newerSchema`); `Backup.summary` and `Store.summary()`
-  give the counts the restore screen compares.
+- **Restore replaces, in `Store+HardDelete.swift`.** `restore(_:)` and `eraseEverything`
+  share one helper: delete every row children-first, insert in the same transaction, then
+  `checkpointAndVacuum()`. `restore` inserts every backup row parents-first; any failure
+  (dangling foreign key, duplicate key) rolls back and leaves the database as it was, and
+  a newer `schemaVersion` is refused before anything is touched. Nothing is reseeded, so
+  `backup(now:)` afterwards equals the restored backup apart from `exportedAt`. No merge.
+  `BackupExporter.decodeForRestore` reads a chosen file and throws a typed `RestoreError`
+  (`unreadable`, `newerSchema`); `Backup.summary` and `Store.summary()` give the counts
+  the restore screen compares. A new table must be added to `restore` as well as to
+  `Schema.tablesChildrenFirst`; `StoreRestoreTests` fails if it is not.
 - **No `ON DELETE CASCADE`.** Cascades would hide the counts `DeletionImpact` promises.
 
 ## Deviations from the C2 handoff

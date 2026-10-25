@@ -34,19 +34,12 @@ reports that notifications are paused. iOS notification authorization is not rev
 
 ## Restore from backup
 
-Replaces the database with a JSON backup. Flow: pick a file (`fileImporter`, JSON), core
-decodes and checks it (`BackupExporter.decodeForRestore`; unreadable or newer-schema files
-are refused with a plain message and nothing changes), the screen shows the backup's date
-and survey and entry counts beside the phone's and says everything will be replaced, then
-the person may "Save a backup of current data" (recommended, primary) or replace. Nothing
-is written until Replace. If they replace without having completed the share sheet on this
-screen, a second "Are you sure?" alert says current data will be lost.
-
-The save step is `ExportModel` in JSON backup mode and the shared `ActivityView`, so the
-file, its protection and its temporary-file clean-up are the Export screen's, not copies.
-After a restore, `DeleteAllDataModel.reset` (shared with delete-all) removes pending and
-delivered prompt notifications, reschedules from the restored surveys, clears the
-notification route and refreshes every screen. The app keeps no safety copy of its own.
+Pick a JSON file, compare it with the phone (date, survey and entry counts), optionally
+"Save a backup of current data", then Replace. Nothing is written until Replace; skipping
+the save asks a second "Are you sure?" (`RestoreBackupModel.needsLossConfirmation`). The
+save step is `ExportModel` in JSON backup mode behind the shared `shareSheet` modifier;
+the reset after a restore is `DeleteAllDataModel.reset`, shared with delete-all. How the
+restore itself works is in Storage `DESIGN.md`.
 
 ## About
 
