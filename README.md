@@ -1,7 +1,7 @@
 # Blip Journal
 
-**A personal research tool for iOS. Your memory lies about your days; Blip asks you in the
-moment.**
+**A personal research tool for iOS. Your memory lies about your days; Blip asks you in
+the moment.**
 
 Blip Journal asks *your own* questions at *random moments* during the day, and keeps the
 answers private on your phone. Asked at the end of the day, you remember the peaks and
@@ -39,8 +39,8 @@ shipped yet, so there was no cost to lining the plumbing up with the product nam
 "Open" as a prefix reads as "open weights" or "open standard" (OpenAI, OpenCV), which is
 not what this is. The open source signal lives in the App Store keyword field and the
 first lines of the description instead, where it is searchable in a way a prefix never
-was. Subtitle: "Random check-ins, your survey" (29 characters; the App Store limit is 30).
-The full listing copy is in [docs/app-store-listing.md](docs/app-store-listing.md).
+was. The subtitle, keywords and description are in
+[docs/app-store-listing.md](docs/app-store-listing.md).
 
 Any string a person reads says **Blip Journal**, two words. Anything a compiler, a path,
 or Apple reads says `BlipJournal`, one word.

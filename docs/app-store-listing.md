@@ -32,7 +32,8 @@ experience sampling,ESM,EMA,self-experiment,quantified self,mood,private,open so
 
 - "journal", "random", "check-ins" and "survey" are left out: the App Store already
   indexes words in the name and subtitle, so repeating them wastes characters. Searches
-  for "random check-in" and "private journal" still match by combining fields.
+  for "random check-in" and "private journal" should still match by combining fields;
+  check in App Store Connect search once the app is live.
 - "mood" stays so mood searches still find Blip.
 - "diary" and "offline" fill the remaining room with terms people use for the same need.
 
@@ -56,8 +57,9 @@ Description (4000 max, about 2,100 used):
 > text answers. Run several surveys, each with its own schedule.
 >
 > No network, no account, open source. Blip Journal makes no network requests, has no
-> sign-up and no server. Your answers stay on your iPhone, encrypted at rest, behind
-> Face ID or your passcode. The code is MIT licensed and public, so you can check.
+> sign-up and no server: it never sends your answers anywhere. They live on your iPhone,
+> encrypted at rest, behind Face ID or your passcode. The code is MIT licensed and
+> public, so you can check.
 >
 > CSV and JSON export. Take your data to Numbers, Excel, R or Python at any time, in wide
 > or long CSV, or as a complete JSON backup.
@@ -70,14 +72,15 @@ Description (4000 max, about 2,100 used):
 > • Pick how many prompts a day, the hours they may arrive, the minimum gap between
 >   them and how long each stays open.
 > • Prompts arrive at unpredictable times inside that window, never clumped together.
-> • Answer in a few seconds on one screen. Answers save as you go.
+> • Answer on one scrolling screen. Answers save as you go.
 > • Log an entry yourself any time.
 >
 > SEE YOUR OWN PATTERNS
 > • Any scale question over time, by hour of day and by day of week.
-> • Compare answers by activity, company or any other choice question, and open the
->   entries behind each comparison.
-> • Filter and sort the Journal by survey, answer or source.
+> • Compare a scale question across the options of any choice question, such as
+>   activity or company, and open the entries behind each comparison.
+> • Filter the Journal by survey, source or answer, and sort it by date or by a scale
+>   answer.
 >
 > YOURS TO KEEP OR ERASE
 > • Edit questions without losing what past answers meant: earlier wording is kept.
@@ -91,8 +94,7 @@ The first five paragraphs follow the order issue #40 requires (R3): random promp
 memory; you write the questions; no network, no account, open source (MIT); CSV and JSON
 export; missed prompts are counted.
 
-The closing disclaimer is there because the default survey asks about feelings; it
-keeps the listing clear of health claims without making any.
+The closing disclaimer is there because the default survey asks about feelings.
 
 ### Lines to add when the sub-issues ship
 
@@ -104,8 +106,9 @@ Not in the live listing yet. Add each one when its issue merges.
 - #41: "Share a survey as a file, so friends or a small study can ask the same
   questions." (after the export paragraph)
 - #43: "Blip reminds you to open the app before your scheduled prompts run out."
-  (HOW IT WORKS). Until then prompts are only scheduled up to 7 days ahead, so the
-  listing does not promise they keep arriving without opening the app.
+  (HOW IT WORKS). Until then prompts are scheduled at most 7 days ahead (less with many
+  prompts a day), so the listing does not promise they keep arriving without opening
+  the app.
 - #45: HealthKit (placeholder). No copy until the scope is defined.
 
 ## Screenshots
@@ -117,13 +120,13 @@ Order for the 6.9" iPhone set. Each caption is one short line over the screensho
    then, the notification with the survey runner behind it.
 2. **"You write the questions."** The survey editor with a non-mood survey (for example
    focus or energy). Best showing the template gallery from #42; until then, the editor.
-3. **"Answer in seconds."** The survey runner, one screen, a spectrum and choice chips.
+3. **"One screen, then done."** The survey runner with a spectrum and choice chips.
 4. **"See your own patterns."** Insights: a scale over time and by hour of day.
 5. **"Missed prompts count."** Insights with the response rate tile, answered and missed
    counts visible.
 6. **"No network. No account. Open source."** A privacy screen. The app has no single
-   privacy panel today: use the welcome screen with its "Everything stays on this iPhone" line
-   or About's Privacy and Licence sections, or add a dedicated panel first.
+   privacy panel today: use the welcome screen with its "Everything stays on this
+   iPhone" line or About's Privacy and Licence sections, or add a dedicated panel first.
 
 Shots 1 and 2 are blocked on #44 and #42 for their best version (R4). Use sample data
 with a non-mood survey in at least two shots, so mood reads as one example.
