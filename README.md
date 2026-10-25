@@ -1,8 +1,22 @@
 # Blip Journal
 
-An open source Experience Sampling Method (ESM) journal for iOS. Blip Journal pings you
-at random moments during the day and asks a short, fully customisable survey. Every
-answer stays on your phone, encrypted at rest, and can be exported to CSV at any time.
+**A personal research tool for iOS. Your memory lies about your days; Blip asks you in the
+moment.**
+
+Blip Journal asks *your own* questions at *random moments* during the day, and keeps the
+answers private on your phone. Asked at the end of the day, you remember the peaks and
+the last few hours. A random prompt catches the ordinary hour you would have forgotten.
+Researchers call this the Experience Sampling Method (ESM); Blip makes it a tool for one
+person studying their own life.
+
+- **Random prompts.** Each survey gets its own schedule, and prompts land at
+  unpredictable times inside your daily window.
+- **Your questions.** Write any survey you like: scales, choices, yes/no, short text.
+  The default survey asks how you feel, but mood is one example, not the point.
+- **Honest data.** Prompts you miss are counted, so the response rate shows how much of
+  your day the answers really cover.
+- **Private and open.** No network access, no account, no server. Answers are encrypted
+  at rest, export to CSV or JSON whenever you like, and the code is MIT licensed.
 
 <p align="center">
   <img src="brand/blip-mark.svg" width="96" alt="Blip stacked-card mark" />
@@ -16,9 +30,6 @@ uses warm paper (`#FBF7F2`), sand (`#F6EFE5`), ink (`#1F1A17`), and one violet a
 on the front card. The source artwork is [`brand/blip-mark.svg`](brand/blip-mark.svg),
 and the app recreates the mark in SwiftUI for flexible sizing.
 
-Think of Apple's State of Mind logging, but with random sampling, surveys you define
-yourself, and no cloud.
-
 ## Name
 
 The app is **Blip Journal**. The repository, the Swift package, the Xcode target, the
@@ -26,9 +37,10 @@ module and the bundle identifier are all `BlipJournal`, one word, no space: noth
 shipped yet, so there was no cost to lining the plumbing up with the product name.
 
 "Open" as a prefix reads as "open weights" or "open standard" (OpenAI, OpenCV), which is
-not what this is. The App Store subtitle carries the open source signal explicitly, and
-it is searchable in a way a prefix never was. Subtitle: "Open source experience sampler"
-(30 characters, the App Store limit exactly).
+not what this is. The open source signal lives in the App Store keyword field and the
+first lines of the description instead, where it is searchable in a way a prefix never
+was. Subtitle: "Random check-ins, your survey" (29 characters; the App Store limit is 30).
+The full listing copy is in [docs/app-store-listing.md](docs/app-store-listing.md).
 
 Any string a person reads says **Blip Journal**, two words. Anything a compiler, a path,
 or Apple reads says `BlipJournal`, one word.
