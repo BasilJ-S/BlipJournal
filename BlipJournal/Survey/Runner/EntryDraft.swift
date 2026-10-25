@@ -27,8 +27,10 @@ final class EntryDraft {
     private var pendingText = false
     private var dirty = false
     private var revision = 0
-    /// False only for a new manual check-in until its first non-empty answer is saved.
+    /// False only for a new manual check-in until its first non-empty answer is queued.
     private var isSaved = true
+    /// Whether the entry row is known to be in the store; undoes `isSaved` if the first write fails.
+    private var isStored = true
     private var debounce: Task<Void, Never>?
     private(set) var survey: Survey
     private(set) var entry: Entry
@@ -47,7 +49,7 @@ final class EntryDraft {
             if let promptId, let prompt = try store.prompts(status: nil).first(where: { $0.id == promptId }), prompt.isExpired(at: now) { throw Error.expiredPrompt }
             self.entry = Entry(surveyId: survey.id, promptId: promptId, startedAt: now); self.values = [:]
             // A prompt's entry is saved now so reopening the notification resumes it.
-            if promptId != nil { try store.saveEntry(entry, answers: []) } else { isSaved = false }
+            if promptId != nil { try store.saveEntry(entry, answers: []) } else { isSaved = false; isStored = false }
         }
     }
 
@@ -99,8 +101,10 @@ final class EntryDraft {
         isSaved = true // before the write, so a clear queued behind it is not skipped
         do {
             try await queue.save(store, entry, answers)
+            isStored = true
             if revision == revisionAtStart { dirty = false; lastError = nil }
         } catch {
+            if !isStored { isSaved = false }
             lastError = String(describing: error)
             throw error
         }

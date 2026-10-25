@@ -1,14 +1,14 @@
 # Survey/Runner
 
 The runner presents active questions in one scrollable screen. An entry exists only once
-a person has answered something: a new manual check-in holds its entry unsaved, with
-`startedAt` set at open, until the first non-empty answer, so closing without answering
-leaves nothing. A notification check-in saves its entry at open and reuses it on reopen.
-`EntryDraft` preserves answer IDs and first timestamps and writes through one ordered
-queue. The runner does not load while the app is locked: relocking tears the runner
-down, and a rebuild during that teardown must not open a second draft. Text edits
-debounce for 300ms and flush on close, completion, and backgrounding.
-Quick Note uses a locally focused `TextEditor`, explicitly requests
+a person has answered something: a new manual check-in is held unsaved (`startedAt` is
+when it opened) until its first non-empty answer, so closing, or tapping Done in a survey
+with no required questions, without answering leaves nothing. A notification check-in
+saves at open and reuses its entry on reopen. The runner does not load while locked, so
+a rebuild during relock teardown cannot open a second draft. `EntryDraft` preserves
+answer IDs and first timestamps, and writes through one ordered queue. Text edits debounce
+for 300ms and flush on close, completion, and backgrounding. Quick Note uses a locally
+focused `TextEditor`, explicitly requests
 focus from the first tap, and owns its editing buffer so draft observation updates cannot
 replace the focused editor. The runner keeps cards in an eager stack to avoid lazy height
 estimates shifting the scroll position during edits. Each text input has a stable scroll
