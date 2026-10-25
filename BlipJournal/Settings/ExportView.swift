@@ -23,7 +23,7 @@ struct ExportView: View {
                 }
                 Text("Exported files are not encrypted. Anyone with the file can read your answers.").font(.footnote).foregroundStyle(.orange)
                 Button { do { shareURL = try model.makeFile() } catch { errorMessage = error.localizedDescription } } label: { Label("Share", systemImage: "square.and.arrow.up") }.accessibilityLabel("Share export")
-                Text("JSON backups are reserved for a future import. CSV files open in Numbers and Excel.").font(.footnote).foregroundStyle(.secondary)
+                Text("A JSON backup can be restored from Settings, Restore from backup. CSV files open in Numbers and Excel.").font(.footnote).foregroundStyle(.secondary)
             }
         }
         .blipScreen("Export")
@@ -34,17 +34,23 @@ struct ExportView: View {
     }
 }
 
-private struct ActivityView: UIViewControllerRepresentable {
+/// The system share sheet for one file. Shared with the restore screen's "Save a backup
+/// of current data" step. `completion` runs once when the sheet ends, however it ends;
+/// `onSaved` runs first, and only when the person completed an action such as saving.
+struct ActivityView: UIViewControllerRepresentable {
     let url: URL; let completion: () -> Void
-    func makeCoordinator() -> Coordinator { Coordinator(completion: completion) }
-    func makeUIViewController(context: Context) -> UIActivityViewController { let controller = UIActivityViewController(activityItems: [url], applicationActivities: nil); controller.completionWithItemsHandler = { _, _, _, _ in context.coordinator.finish() }; return controller }
+    var onSaved: (() -> Void)? = nil
+    func makeCoordinator() -> Coordinator { Coordinator(completion: completion, onSaved: onSaved) }
+    func makeUIViewController(context: Context) -> UIActivityViewController { let controller = UIActivityViewController(activityItems: [url], applicationActivities: nil); controller.completionWithItemsHandler = { _, completed, _, _ in if completed { context.coordinator.saved() }; context.coordinator.finish() }; return controller }
     func updateUIViewController(_ controller: UIActivityViewController, context: Context) {}
     static func dismantleUIViewController(_ controller: UIActivityViewController, coordinator: Coordinator) { coordinator.finish(); controller.completionWithItemsHandler = nil }
 
     final class Coordinator {
         private let completion: () -> Void
+        private let onSaved: (() -> Void)?
         private var didFinish = false
-        init(completion: @escaping () -> Void) { self.completion = completion }
+        init(completion: @escaping () -> Void, onSaved: (() -> Void)?) { self.completion = completion; self.onSaved = onSaved }
+        func saved() { onSaved?() }
         func finish() { guard !didFinish else { return }; didFinish = true; completion() }
     }
 }

@@ -17,11 +17,19 @@ final class DeleteAllDataModel {
     }
 
     func deleteAll() async throws {
-        try await Self.performReset(
-            erase: { _ = try self.appModel.store.eraseEverything() },
-            refresh: { try self.appModel.refresh() },
-            promptsDestroyed: { await self.appModel.notifications.promptsDestroyed(now: $0) },
-            clearRoute: { self.appModel.notifications.pendingRoute = nil })
+        try await Self.reset(appModel: appModel) { _ = try self.appModel.store.eraseEverything() }
+    }
+
+    /// Runs `replaceData` against the store, then does what every whole-database change
+    /// needs: remove pending and delivered prompt notifications and reschedule from the
+    /// surveys now in the store, clear a pending notification route, and refresh every
+    /// screen. Shared by delete-all and restore.
+    static func reset(appModel: AppModel, replaceData: @escaping @MainActor () throws -> Void) async throws {
+        try await performReset(
+            erase: replaceData,
+            refresh: { try appModel.refresh() },
+            promptsDestroyed: { await appModel.notifications.promptsDestroyed(now: $0) },
+            clearRoute: { appModel.notifications.pendingRoute = nil })
     }
 
     static func performReset(

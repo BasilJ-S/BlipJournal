@@ -13,6 +13,7 @@ files, not this list.
 | Surveys | `Survey/Editor/SurveyListView` | A4 |
 | Notifications | `Notifications/NotificationSettingsView` | A2 |
 | Export | `Settings/ExportView` | A6 |
+| Restore from backup | `Settings/RestoreBackupView` | #38 |
 | Delete all data (destructive style) | `Settings/DeleteAllDataView` | A6 |
 | About | `Settings/AboutView` | A6 |
 
@@ -31,6 +32,22 @@ Delete-all erases and reseeds in the store transaction, asks the notification co
 to remove pending and delivered prompts, clears its pending route, refreshes the app, and
 reports that notifications are paused. iOS notification authorization is not revoked.
 
+## Restore from backup
+
+Replaces the database with a JSON backup. Flow: pick a file (`fileImporter`, JSON), core
+decodes and checks it (`BackupExporter.decodeForRestore`; unreadable or newer-schema files
+are refused with a plain message and nothing changes), the screen shows the backup's date
+and survey and entry counts beside the phone's and says everything will be replaced, then
+the person may "Save a backup of current data" (recommended, primary) or replace. Nothing
+is written until Replace. If they replace without having completed the share sheet on this
+screen, a second "Are you sure?" alert says current data will be lost.
+
+The save step is `ExportModel` in JSON backup mode and the shared `ActivityView`, so the
+file, its protection and its temporary-file clean-up are the Export screen's, not copies.
+After a restore, `DeleteAllDataModel.reset` (shared with delete-all) removes pending and
+delivered prompt notifications, reschedules from the restored surveys, clears the
+notification route and refreshes every screen. The app keeps no safety copy of its own.
+
 ## About
 
 Shows the version and build from the bundle, the app's MIT licence, and
@@ -46,4 +63,4 @@ move, never words, which its tests check.
 
 ## Known limitations
 
-- There is no import, and JSON backups cannot be date-filtered.
+- Restore replaces and never merges; JSON backups cannot be date-filtered. "Saved" means the share sheet reported a completed action, which includes sharing to an app, not only Save to Files.
