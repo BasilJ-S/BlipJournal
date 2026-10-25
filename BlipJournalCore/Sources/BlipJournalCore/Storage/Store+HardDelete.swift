@@ -126,6 +126,9 @@ extension Store {
             for row in backup.entries { try row.insert(db) }
             for row in backup.answers { try row.insert(db) }
             for row in backup.answerOptions { try row.insert(db) }
+            // Build every answer the way reads do, so rows that insert but cannot be read
+            // back (a value column missing for its kind) roll back.
+            _ = try Self.makeAnswers(backup.answers, selections: backup.answerOptions)
         }
     }
 

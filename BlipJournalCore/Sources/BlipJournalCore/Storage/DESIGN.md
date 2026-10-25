@@ -204,12 +204,12 @@ README promises no more than that.
   place beats correlated subqueries in five.
 - **Backups are reproducible.** `BackupExporter.json` uses sorted keys, pretty printing
   and ISO 8601 dates with millisecond fractions (the database's precision); versioned
-  tables are listed in `(createdAt, rowid)` order, the other definition tables in
-  primary-key order, and `prompt`, `entry`, `answer` and `answerOption` in `rowid` (save)
-  order, because live reads tie-break on rowid (same-time entries and answers, and the
-  order of a multi-choice answer's selections) and a restore must keep that. Backups
-  taken before this change listed those four by ID, so they cannot recover selection
-  order or save order; they restore with those tables in ID order.
+  tables are listed in `(createdAt, rowid)` order, `survey` in primary-key order, and
+  `question`, `option`, `prompt`, `entry`, `answer` and `answerOption` in `rowid` (save)
+  order, because live reads tie-break on rowid (questions and options of one survey,
+  same-time entries and answers, and the order of a multi-choice answer's selections)
+  and a restore must keep that. Backups taken before this change listed those tables by
+  ID, so they cannot recover save order; they restore with those tables in ID order.
   `BackupExporter.decode` is the exact inverse: it builds every `Date` through GRDB's own
   parser, the path a row takes out of SQLite, and `backup(now:)` rounds `exportedAt` the
   same way, so `decode(json(b)) == b`. `Store.restore(_:)` writes a decoded
@@ -218,7 +218,8 @@ README promises no more than that.
 - **Restore replaces, in `Store+HardDelete.swift`.** `restore(_:)` and `eraseEverything`
   share one helper: delete every row children-first, insert in the same transaction, then
   `checkpointAndVacuum()`. `restore` inserts every backup row parents-first; a failure
-  inside the transaction (dangling foreign key, duplicate key) rolls back, leaves the
+  inside the transaction (dangling foreign key, duplicate key, or an answer that
+  `makeAnswers` cannot read back because a value column is missing) rolls back, leaves the
   database as it was and throws `RestoreError.rejected`; an error from the vacuum after the
   commit propagates as itself, so a caller never claims "nothing changed" wrongly; and
   a newer `schemaVersion` is refused before anything is touched. Nothing is reseeded, so

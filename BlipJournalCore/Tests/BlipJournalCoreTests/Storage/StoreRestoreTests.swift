@@ -81,6 +81,14 @@ struct StoreRestoreTests {
         duplicate.entries.append(duplicate.entries[0])
         #expect(throws: RestoreError.rejected) { try store.restore(duplicate) }
         #expect(try store.backup(now: t(300)) == before)
+
+        // Inserts cleanly but cannot be read back, as when a file's key is misspelled.
+        var unreadable = before
+        let valued = try #require(unreadable.answers.firstIndex { $0.spectrumValue != nil || $0.numericValue != nil })
+        unreadable.answers[valued].spectrumValue = nil
+        unreadable.answers[valued].numericValue = nil
+        #expect(throws: RestoreError.rejected) { try store.restore(unreadable) }
+        #expect(try store.backup(now: t(300)) == before)
     }
 
     @Test("a newer schemaVersion is refused and changes nothing")

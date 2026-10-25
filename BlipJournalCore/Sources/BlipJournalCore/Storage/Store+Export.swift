@@ -71,10 +71,10 @@ extension Store {
         }
     }
 
-    /// Every row of every table. Versioned tables come in `(createdAt, rowid)` order, the
-    /// definition tables in primary-key order, and `prompt`, `entry`, `answer` and
-    /// `answerOption` in `rowid` (save) order, which live reads tie-break on and a restore
-    /// therefore preserves. Two backups of one database are equal.
+    /// Every row of every table. Versioned tables come in `(createdAt, rowid)` order,
+    /// `survey` in primary-key order, and the rest in `rowid` (save) order, which live
+    /// reads tie-break on and a restore therefore preserves. Two backups of one database
+    /// are equal.
     ///
     /// `now` becomes `Backup.exportedAt`, rounded to the millisecond like every stored
     /// timestamp; it is a parameter so the JSON can be byte-identical across calls.
@@ -89,9 +89,9 @@ extension Store {
                 surveySamplings: try SurveySamplingRow.fetchAll(db, sql: "SELECT * FROM surveySampling \(versioned)"),
                 surveyNotificationPreviews: try SurveyNotificationPreviewRow.fetchAll(
                     db, sql: "SELECT * FROM surveyNotificationPreview \(versioned)"),
-                questions: try QuestionRow.fetchAll(db, sql: "SELECT * FROM question ORDER BY id"),
+                questions: try QuestionRow.fetchAll(db, sql: "SELECT * FROM question ORDER BY rowid"),
                 questionVersions: try QuestionVersionRow.fetchAll(db, sql: "SELECT * FROM questionVersion \(versioned)"),
-                options: try OptionRow.fetchAll(db, sql: "SELECT * FROM option ORDER BY id"),
+                options: try OptionRow.fetchAll(db, sql: "SELECT * FROM option ORDER BY rowid"),
                 optionVersions: try OptionVersionRow.fetchAll(db, sql: "SELECT * FROM optionVersion \(versioned)"),
                 prompts: try PromptRow.fetchAll(db, sql: "SELECT * FROM prompt ORDER BY rowid"),
                 entries: try EntryRow.fetchAll(db, sql: "SELECT * FROM entry ORDER BY rowid"),
