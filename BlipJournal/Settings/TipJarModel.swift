@@ -39,7 +39,6 @@ final class TipJarModel {
             products = try await Product.products(for: Self.productIDs).sorted { $0.price < $1.price }
             phase = products.isEmpty ? .unavailable : .ready
         } catch {
-            products = []
             phase = .unavailable
         }
     }
@@ -84,7 +83,7 @@ final class TipJarModel {
     /// purchases interrupted by a crash, and anything left unfinished at the last launch,
     /// which `Transaction.updates` delivers once at startup. Start it once, at launch.
     nonisolated static func listenForTransactions() -> Task<Void, Never> {
-        Task.detached(priority: .background) {
+        Task.detached {
             for await result in Transaction.updates {
                 await TipJarModel.finish(result)
             }

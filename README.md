@@ -46,7 +46,8 @@ or Apple reads says `BlipJournal`, one word.
 - **Fast.** A prompt should take under 30 seconds to answer. One scrolling screen, big
   tap targets, autosave, no confirmation step.
 - **Local and encrypted.** SQLite on device, protected with iOS Data Protection
-  (`complete` class). Face ID or passcode to open the app. No network access at all.
+  (`complete` class). Face ID or passcode to open the app. No network access at all,
+  apart from Apple's StoreKit for optional tips (from 1.1).
 - **Exportable.** CSV in wide and long formats, plus a JSON backup that includes survey
   definitions.
 - **Honest data.** Unprompted (manual) entries are tagged as such. Expired prompts are
