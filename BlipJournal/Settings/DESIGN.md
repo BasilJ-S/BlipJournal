@@ -13,6 +13,7 @@ files, not this list.
 | Surveys | `Survey/Editor/SurveyListView` | A4 |
 | Notifications | `Notifications/NotificationSettingsView` | A2 |
 | Export | `Settings/ExportView` | A6 |
+| Restore from backup | `Settings/RestoreBackupView` | #38 |
 | Delete all data (destructive style) | `Settings/DeleteAllDataView` | A6 |
 | About | `Settings/AboutView` | A6 |
 
@@ -31,6 +32,15 @@ Delete-all erases and reseeds in the store transaction, asks the notification co
 to remove pending and delivered prompts, clears its pending route, refreshes the app, and
 reports that notifications are paused. iOS notification authorization is not revoked.
 
+## Restore from backup
+
+Pick a JSON file, compare it with the phone (date, survey and entry counts), optionally
+"Save a backup of current data", then Replace. Nothing is written until Replace; skipping
+the save asks a second "Are you sure?" (`RestoreBackupModel.needsLossConfirmation`). The
+save step is `ExportModel` in JSON backup mode behind the shared `shareSheet` modifier;
+the reset after a restore is `DeleteAllDataModel.reset`, shared with delete-all. How the
+restore itself works is in Storage `DESIGN.md`.
+
 ## About
 
 Shows the version and build from the bundle, the app's MIT licence, and
@@ -46,4 +56,4 @@ move, never words, which its tests check.
 
 ## Known limitations
 
-- There is no import, and JSON backups cannot be date-filtered.
+- Restore replaces and never merges; JSON backups cannot be date-filtered. "Saved" means the share sheet reported a completed action, which includes sharing to an app, not only Save to Files.

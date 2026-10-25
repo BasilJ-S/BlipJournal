@@ -1,7 +1,8 @@
 import Foundation
 import GRDB
 
-// The one place that deletes a definition row. Every method here refuses a target whose
+// The one place that deletes a definition row (`restore` replaces them all, as a
+// whole-database operation). Every hard-delete method here refuses a target whose
 // current version is not archived, runs in one transaction, and ends with the
 // checkpoint and vacuum step. `deletionImpact` collects exactly the rows the delete
 // would remove, so the counts shown to a person are the counts that go.
@@ -93,10 +94,7 @@ extension Store {
     /// reseeded survey is never briefly enabled. Returns the new survey.
     @discardableResult
     public func eraseEverything(now: Date = Date()) throws -> Survey {
-        let survey = try dbQueue.write { db in
-            for table in Schema.tablesChildrenFirst {
-                try db.execute(sql: "DELETE FROM \(table)")
-            }
+        try replacingAllRows { db in
             let template = SurveyTemplate.makeDefault(now: now)
             var pausedSampling = template.sampling
             pausedSampling.isEnabled = false
@@ -104,8 +102,57 @@ extension Store {
                 db, name: template.name, sampling: pausedSampling,
                 questions: template.questions, now: now)
         }
+    }
+
+    /// Replaces the whole database with the rows of `backup`, rolling back and changing
+    /// nothing if any row fails. See Storage `DESIGN.md`, "Restore replaces". Throws
+    /// `RestoreError.newerSchema` before touching anything for a newer backup.
+    public func restore(_ backup: Backup) throws {
+        guard backup.schemaVersion <= CoreSchema.version else {
+            throw RestoreError.newerSchema(found: backup.schemaVersion, supported: CoreSchema.version)
+        }
+        try replacingAllRows(onRollback: { _ in RestoreError.rejected }) { db in
+            // The reverse of `Schema.tablesChildrenFirst`; `StoreRestoreTests` fails if a
+            // table is missing here.
+            for row in backup.surveys { try row.insert(db) }
+            for row in backup.surveyVersions { try row.insert(db) }
+            for row in backup.surveySamplings { try row.insert(db) }
+            for row in backup.surveyNotificationPreviews { try row.insert(db) }
+            for row in backup.questions { try row.insert(db) }
+            for row in backup.questionVersions { try row.insert(db) }
+            for row in backup.options { try row.insert(db) }
+            for row in backup.optionVersions { try row.insert(db) }
+            for row in backup.prompts { try row.insert(db) }
+            for row in backup.entries { try row.insert(db) }
+            for row in backup.answers { try row.insert(db) }
+            for row in backup.answerOptions { try row.insert(db) }
+            // Build every answer the way reads do, so rows that insert but cannot be read
+            // back (a value column missing for its kind) roll back.
+            _ = try Self.makeAnswers(backup.answers, selections: backup.answerOptions)
+        }
+    }
+
+    /// Deletes every row of every table, children first, runs `insert` in the same
+    /// transaction, then `checkpointAndVacuum()` so the replaced rows leave the file. An
+    /// error inside the transaction (it rolled back) is passed through `onRollback`; an
+    /// error from the vacuum, after the commit, propagates unchanged.
+    private func replacingAllRows<T: Sendable>(
+        onRollback: @Sendable (Error) -> Error = { $0 },
+        _ insert: @Sendable (Database) throws -> T
+    ) throws -> T {
+        let result: T
+        do {
+            result = try dbQueue.write { db in
+                for table in Schema.tablesChildrenFirst {
+                    try db.execute(sql: "DELETE FROM \(table)")
+                }
+                return try insert(db)
+            }
+        } catch {
+            throw onRollback(error)
+        }
         try checkpointAndVacuum()
-        return survey
+        return result
     }
 
     // MARK: The rows a delete removes
