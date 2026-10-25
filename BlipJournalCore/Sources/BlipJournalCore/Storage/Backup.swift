@@ -1,3 +1,4 @@
+import CryptoKit
 import Foundation
 import GRDB
 
@@ -95,9 +96,27 @@ public struct Backup: Sendable, Equatable, Codable {
 /// same database are byte-identical and diffable. Decoding builds each `Date` through
 /// GRDB's own parser, the same path a row takes out of SQLite, so a decoded backup
 /// compares equal to the one that was encoded.
+///
+/// The file carries a SHA-256 checksum as its first key. It covers the canonical
+/// encoding: the exact bytes of the file with the checksum key, its value and the comma
+/// after it removed, which is `canonicalJSON(backup)`. The checksum is not part of
+/// `Backup`, so `decode(json(b)) == b`.
 public enum BackupExporter {
-    /// The backup as JSON.
+    /// The backup as JSON: `canonicalJSON(backup)` with `"checksum" : "<SHA-256 hex>",`
+    /// spliced in straight after the opening brace.
     public static func json(_ backup: Backup) throws -> Data {
+        let canonical = try canonicalJSON(backup)
+        precondition(canonical.first == UInt8(ascii: "{"), "a backup encodes as a JSON object")
+        var file = Data(checksumOpening)
+        file.append(contentsOf: checksum(of: canonical).utf8)
+        file.append(contentsOf: checksumClosing)
+        file.append(canonical.dropFirst())
+        return file
+    }
+
+    /// The bytes the checksum covers: the backup encoded with sorted keys, pretty
+    /// printing and millisecond dates, with no checksum key.
+    static func canonicalJSON(_ backup: Backup) throws -> Data {
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
         encoder.dateEncodingStrategy = .custom { date, encoder in
@@ -109,7 +128,7 @@ public enum BackupExporter {
 
     /// The inverse of `json`: reads a backup file back into a `Backup` value. Writing it
     /// into a store is `Store.restore(_:)`; `decodeForRestore` is the entry point for a
-    /// file a person chose.
+    /// file a person chose. It ignores the checksum; `decodeForRestore` checks it.
     public static func decode(_ data: Data) throws -> Backup {
         let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .custom { decoder in
@@ -127,15 +146,77 @@ public enum BackupExporter {
     /// Reads a backup file a person chose and refuses it with a typed `RestoreError`
     /// rather than a decoder error: `.newerSchema` when its `schemaVersion` is above
     /// `CoreSchema.version` (checked first, because a newer file may well not decode),
-    /// `.unreadable` for anything else that is not a backup.
+    /// `.unreadable` for anything else that is not a backup, including a file whose
+    /// checksum is malformed, misplaced or does not match its contents. The checksum is
+    /// checked before any row is decoded. A file with no `checksum` key, as written
+    /// before checksums existed, is read without one.
     public static func decodeForRestore(_ data: Data) throws -> Backup {
-        struct Header: Decodable { var schemaVersion: Int }
-        let header: Header
-        do { header = try JSONDecoder().decode(Header.self, from: data) } catch { throw RestoreError.unreadable }
+        let header: RestoreHeader
+        do { header = try JSONDecoder().decode(RestoreHeader.self, from: data) } catch { throw RestoreError.unreadable }
         guard header.schemaVersion <= CoreSchema.version else {
             throw RestoreError.newerSchema(found: header.schemaVersion, supported: CoreSchema.version)
         }
+        if header.hasChecksum {
+            guard let split = splitChecksum(data), split.checksum == checksum(of: split.canonical) else {
+                throw RestoreError.unreadable
+            }
+        }
         do { return try decode(data) } catch { throw RestoreError.unreadable }
+    }
+
+    /// The two top-level facts `decodeForRestore` needs before reading rows. Any
+    /// `checksum` key counts, whatever its value (even `null`), so a damaged one is
+    /// refused rather than read as a backup from before checksums.
+    private struct RestoreHeader: Decodable {
+        var schemaVersion: Int
+        var hasChecksum: Bool
+
+        private enum CodingKeys: String, CodingKey { case schemaVersion, checksum }
+
+        init(from decoder: Decoder) throws {
+            let container = try decoder.container(keyedBy: CodingKeys.self)
+            schemaVersion = try container.decode(Int.self, forKey: .schemaVersion)
+            hasChecksum = container.contains(.checksum)
+        }
+    }
+
+    /// Lowercase hex SHA-256 of `canonical`.
+    static func checksum(of canonical: Data) -> String {
+        let hexDigits = Array("0123456789abcdef".utf8)
+        var hex: [UInt8] = []
+        hex.reserveCapacity(checksumLength)
+        for byte in SHA256.hash(data: canonical) {
+            hex.append(hexDigits[Int(byte >> 4)])
+            hex.append(hexDigits[Int(byte & 0x0f)])
+        }
+        return String(decoding: hex, as: UTF8.self)
+    }
+
+    /// What `json` writes before the checksum's hex digits, and after them. The opening
+    /// starts with the brace that `canonicalJSON` starts with.
+    private static let checksumOpening = Array("{\n  \"checksum\" : \"".utf8)
+    private static let checksumClosing = Array("\",".utf8)
+    private static let checksumLength = 64
+
+    /// Splits a file `json` wrote into its stored checksum and the canonical bytes it
+    /// covers, by undoing the splice exactly. `nil` when the file does not start with
+    /// the checksum in that layout, or its value is not 64 lowercase hex digits.
+    static func splitChecksum(_ data: Data) -> (checksum: String, canonical: Data)? {
+        let bytes = [UInt8](data)
+        let hexStart = checksumOpening.count
+        let hexEnd = hexStart + checksumLength
+        let rest = hexEnd + checksumClosing.count
+        guard bytes.count > rest,
+              bytes.starts(with: checksumOpening),
+              bytes[hexEnd ..< rest].elementsEqual(checksumClosing)
+        else { return nil }
+        let hex = bytes[hexStart ..< hexEnd]
+        let digits = UInt8(ascii: "0")...UInt8(ascii: "9")
+        let letters = UInt8(ascii: "a")...UInt8(ascii: "f")
+        guard hex.allSatisfy({ digits.contains($0) || letters.contains($0) }) else { return nil }
+        var canonical = Data([UInt8(ascii: "{")])
+        canonical.append(contentsOf: bytes[rest...])
+        return (String(decoding: hex, as: UTF8.self), canonical)
     }
 
     /// `now` as the database would hand it back: rounded to the millisecond and built by

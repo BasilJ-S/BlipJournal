@@ -5,7 +5,8 @@
 `Store` is the only door to the SQLite database. It persists the C1 model over GRDB:
 insert-only versioning for definitions, mutable prompts and entries, hard delete as the
 single audited exception, an `ExportSnapshot` loader, and a JSON `Backup`. Every other
-subsystem reads and writes through it. Imports only `Foundation` and `GRDB`.
+subsystem reads and writes through it. Imports only `Foundation` and `GRDB`, plus
+`CryptoKit` in `Backup.swift` for the backup checksum.
 
 ```
 Schema.swift            DatabaseMigrator, migrations "v1"..."v4", tables children-first
@@ -16,7 +17,7 @@ Store+Prompts.swift     prompt reads, insert, status, deleteFuturePendingPrompts
 Store+Entries.swift     saveEntry upsert, entries(), answers(entryId:/questionIds:), deleteEntry
 Store+HardDelete.swift  deletionImpact, hardDelete*, eraseEverything, DeletionImpact
 Store+Export.swift      exportSnapshot, backup
-Backup.swift            Backup, BackupExporter
+Backup.swift            Backup, BackupExporter (JSON, checksum), RestoreError
 ```
 
 ## Schema (v4)
@@ -215,7 +216,16 @@ README promises no more than that.
   same way, so `decode(json(b)) == b`. `Store.restore(_:)` writes a decoded
   backup back (see below); it needs no new row initialisers because a backup is
   decoded, never built by hand.
-- **Restore replaces, in `Store+HardDelete.swift`.** `restore(_:)` and `eraseEverything`
+- **Backups carry a checksum (#47).** `json` writes `canonicalJSON(backup)` (the
+  encoding above, which is exactly what `json` wrote before checksums) with
+  `"checksum" : "<SHA-256, 64 lowercase hex>",` spliced in straight after the opening
+  brace, so it is the file's first key, the one exception to sorted keys. The checksum
+  covers exactly the file's bytes with that key, value and comma removed. It is not a
+  `Backup` field, so `decode(json(b)) == b` and repeat exports stay byte-identical.
+  Verification undoes the splice on the raw bytes rather than re-encoding the decoded
+  value, so a later Foundation that formats JSON differently cannot make an old,
+  intact backup fail. SHA-256 comes from CryptoKit, no new dependency. It detects
+  damage, not tampering: anyone can recompute it.- **Restore replaces, in `Store+HardDelete.swift`.** `restore(_:)` and `eraseEverything`
   share one helper: delete every row children-first, insert in the same transaction, then
   `checkpointAndVacuum()`. `restore` inserts every backup row parents-first; a failure
   inside the transaction (dangling foreign key, duplicate key, or an answer that
@@ -225,7 +235,13 @@ README promises no more than that.
   a newer `schemaVersion` is refused before anything is touched. Nothing is reseeded, so
   `backup(now:)` afterwards equals the restored backup apart from `exportedAt`. No merge.
   `BackupExporter.decodeForRestore` reads a chosen file and throws a typed `RestoreError`
-  (`unreadable`, `newerSchema`); `Backup.summary` and `Store.summary()` give the counts
+  (`unreadable`, `newerSchema`). After the schema check and before decoding any row it
+  verifies the checksum: a file with a `checksum` key (any value, even `null`) must
+  start with it in exactly the layout `json` writes, with a matching value, or it is
+  `unreadable`; the restore screen then says the file is damaged and nothing was
+  changed. A file with no `checksum` key (taken before #47) restores with only the
+  structural and read-back checks. A hand-edited backup, even one reformatted without
+  changing any value, now fails the check. `Backup.summary` and `Store.summary()` give the counts
   the restore screen compares. A new table must be added to `restore` as well as to
   `Schema.tablesChildrenFirst`; `StoreRestoreTests` fails if it is not.
 - **No `ON DELETE CASCADE`.** Cascades would hide the counts `DeletionImpact` promises.
@@ -269,6 +285,12 @@ README promises no more than that.
   identifier already used by another entry fails its primary key.
 - The byte-erasure test proves the outcome, not each safeguard: `secure_delete` alone or
   `VACUUM` alone would also pass it. `SchemaTests` pins the pragmas separately.
+- **Checksum gaps.** Damage to the word `checksum` itself makes the file read as a
+  backup from before checksums; its rows are untouched, so it restores as it was taken.
+  Damage to the `schemaVersion` number is reported as a newer or unreadable backup, not
+  specifically as damage. A file whose line endings were converted fails the check.
+- `CryptoKit` exists only on Apple platforms, so `Backup.swift` does not compile on
+  Linux. The package declares only iOS and macOS.
 - Single-connection `DatabaseQueue`: readers wait for writers. Fine for one person and one
   screen; a later switch to `DatabasePool` would need WAL, which the vacuum helper already
   anticipates.
