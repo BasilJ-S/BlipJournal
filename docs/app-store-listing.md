@@ -62,7 +62,7 @@ Description (4000 max, about 2,100 used):
 > public, so you can check.
 >
 > CSV and JSON export. Take your data to Numbers, Excel, R or Python at any time, in wide
-> or long CSV, or as a complete JSON backup.
+> or long CSV, or as a complete JSON backup you can restore from.
 >
 > Missed prompts are counted. When a prompt expires unanswered, Blip records it as
 > missed, and Insights shows your response rate. Entries you log on your own are marked
