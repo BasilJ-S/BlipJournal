@@ -31,10 +31,11 @@ struct AboutView: View {
     }
 
     /// The SIL Open Font License travels with the fonts as a bundle resource, so it is read
-    /// from there rather than copied into code a second time.
+    /// from there rather than copied into code a second time, and reflowed for the screen.
     private var fontLicence: String {
         Bundle.main.url(forResource: "OFL", withExtension: "txt")
             .flatMap { try? String(contentsOf: $0, encoding: .utf8) }
+            .map(LicenceText.reflowed)
             ?? "Licensed under the SIL Open Font License, Version 1.1."
     }
 

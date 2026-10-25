@@ -145,7 +145,9 @@ struct JournalView: View {
         ContentUnavailableView {
             Label("No entries yet", systemImage: "book.closed")
         } description: {
-            Text("Prompts will appear here once notifications are on.")
+            Text(appModel.notifications.canDeliverPrompts
+                ? "Answered prompts will appear here."
+                : "Prompts will appear here once notifications are on.")
         } actions: {
             newEntryButton("Log an entry now")
                 .buttonStyle(.borderedProminent)
