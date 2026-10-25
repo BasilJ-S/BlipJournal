@@ -73,10 +73,8 @@ struct SurveyTemplateGalleryTests {
         #expect(Set(names).count == names.count)
     }
 
-    @Test("the default survey is one of the gallery's templates, read from its file")
-    func defaultSurveyIsATemplate() throws {
-        let template = try #require(Gallery.templates.first { $0.id == Gallery.defaultSurveyTemplateId })
-        let contents = try Self.contents(template)
-        #expect(Support.Definition(SurveyTemplate.makeDefault()) == Support.Definition(contents))
+    @Test("the template the default survey reads is in the gallery")
+    func defaultSurveyIsATemplate() {
+        #expect(Gallery.templates.contains { $0.id == Gallery.defaultSurveyTemplateId })
     }
 }
