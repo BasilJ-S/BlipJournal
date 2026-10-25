@@ -235,7 +235,7 @@ struct JournalView: View {
             let survey = query.filter.surveyId.flatMap { appModel.surveysById[$0] }
             let question = survey?.questions.first(where: { $0.id == questionId })
             let label = question?.label ?? "Answer"
-            return "\(label), \(descending ? "highest" : "lowest") first"
+            return "\(label) (\(descending ? "highest" : "lowest") first)"
         }
     }
 
@@ -269,10 +269,22 @@ struct JournalView: View {
 
     // MARK: List
 
+    /// Jumps back to the top when the order changes, so a re-sort never lands mid-list.
+    private func entryList(_ entries: [Entry], query: Query) -> some View {
+        ScrollViewReader { proxy in
+            entryRows(entries, query: query)
+                .onChange(of: query.sort) {
+                    if let first = entries.first {
+                        proxy.scrollTo(first.id, anchor: .top)
+                    }
+                }
+        }
+    }
+
     /// Day sections while the order is by date; one flat list, each row dated, when
     /// sorted by an answer, since neighbouring rows can then be weeks apart.
     @ViewBuilder
-    private func entryList(_ entries: [Entry], query: Query) -> some View {
+    private func entryRows(_ entries: [Entry], query: Query) -> some View {
         List {
             if query.sort.isChronological {
                 ForEach(daySections(entries), id: \.day) { section in

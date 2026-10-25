@@ -159,9 +159,10 @@ struct JournalFilterView: View {
                 Text("Oldest first").tag(JournalSort.oldestFirst)
                 if let survey = selectedSurvey {
                     ForEach(JournalQuery.sortableQuestions(in: survey, keeping: sort.questionId)) { question in
-                        Text("\(question.label): highest first")
+                        // Parentheses read cleanly after a label ending in "?".
+                        Text("\(question.label) (highest first)")
                             .tag(JournalSort.answer(questionId: question.id, descending: true))
-                        Text("\(question.label): lowest first")
+                        Text("\(question.label) (lowest first)")
                             .tag(JournalSort.answer(questionId: question.id, descending: false))
                     }
                 }

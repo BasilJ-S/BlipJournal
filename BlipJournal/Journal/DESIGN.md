@@ -24,7 +24,9 @@ unanswered choices are omitted. Badges wrap at large Dynamic Type.
 - Date order keeps day sections (either direction); answer order is one flat list
   whose rows show date with year. While filtered, a bar above the list shows
   "n of total entries", followed by the order when not newest first; with only the order
-  changed it shows "Sorted: …". Both carry Clear. No matches has its own empty state.
+  changed it shows "Sorted: …". Answer orders read "<question> (highest first)" in
+  both the sheet and the bar, since labels often end in "?". Changing the order
+  scrolls the list back to the top. Both bar forms carry Clear. No matches has its own empty state.
   State lives in the view and resets on relaunch.
 - `AppModel.entries` is the list source; its refresh revision reloads answer
   summaries and detail even when entry metadata is unchanged.
