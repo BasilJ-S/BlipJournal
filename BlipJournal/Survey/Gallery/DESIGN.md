@@ -8,6 +8,8 @@ survey**. The templates, their purposes and their tests live in BlipJournalCore'
   file from Files takes, and tapping one opens the same `SurveyImportSheet` preview:
   name, schedule and every question. Nothing is added until Add survey, and the result
   is an ordinary survey, paused, with fresh identifiers, editable like any other.
+  `onAdded` hands the new survey to the caller; only the welcome acts on it, turning
+  sampling on (Onboarding `DESIGN.md`).
 - **Rows** show the survey's name, the one-line purpose, and its question count and
   schedule, read from the file. Templates are read once per launch; they cannot change
   while the app runs.

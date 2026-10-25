@@ -7,8 +7,17 @@ switched on if someone found Settings → Notifications.
 
 The second step is the survey template gallery (`Survey/Gallery`), offered this once,
 without the mood and feelings template, since the seeded default survey already asks
-that. Adding a template or a blank survey, or **Skip**, finishes the welcome. A survey
-added here starts paused like any other; the intro says where to turn it on.
+that. Adding a template or a blank survey, or **Skip**, finishes the welcome.
+
+- **A template added here is on.** When notifications can be delivered, it starts
+  sampling at once through `EditorModel.startSamplingAfterOnboarding`, the editor's
+  `saveSampling` path, so its prompts are scheduled and add to the default survey's
+  (3 a day plus the template's). Picking it right after deciding on notifications is
+  the person's choice of when the phone buzzes, which is what keeps imports paused
+  elsewhere. Without permission it stays paused, and a blank survey always does, having
+  no questions. Files, the share sheet, paste and the Settings gallery stay paused.
+- The intro says which applies: on, with prompts on top of the mood survey's; or
+  paused, with the path Settings → Surveys → the survey → Sampling → Enable sampling.
 
 - `RootView` presents it as a full-screen cover while `@AppStorage("hasSeenWelcome")` is
   false. Finishing the second step sets the flag, so it never shows again, including

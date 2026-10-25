@@ -142,6 +142,21 @@ final class EditorModel {
         await notifications.scheduleChanged(surveyId: surveyId, now: now)
     }
 
+    /// Turns sampling on for a survey just added from the welcome's template gallery: the
+    /// person picked it right after deciding on notifications, so that pick is their choice
+    /// of when the phone buzzes. Only when prompts can be delivered and the survey has
+    /// questions (so never a blank one); otherwise it stays paused like any new survey.
+    /// Returns whether sampling is now on.
+    @discardableResult
+    func startSamplingAfterOnboarding(surveyId: String, now: Date = Date()) async throws -> Bool {
+        let added = try survey(surveyId)
+        guard notifications.canDeliverPrompts, !added.activeQuestions.isEmpty else { return false }
+        var sampling = added.sampling
+        sampling.isEnabled = true
+        try await saveSampling(surveyId: surveyId, sampling, now: now)
+        return true
+    }
+
     func saveNotificationPreview(surveyId: String, _ preview: NotificationPreview, now: Date = Date()) async throws {
         try store.updateNotificationPreview(surveyId: surveyId, preview, now: now)
         await notifications.refresh(now: now)

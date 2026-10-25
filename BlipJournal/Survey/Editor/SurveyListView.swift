@@ -61,7 +61,7 @@ struct SurveyListView: View {
         }
         .sheet(isPresented: $showingGallery) {
             NavigationStack {
-                TemplateGalleryView { showingGallery = false }
+                TemplateGalleryView { _ in showingGallery = false }
                     .blipScreen("New survey")
                     .toolbar {
                         ToolbarItem(placement: .cancellationAction) { Button("Cancel") { showingGallery = false } }

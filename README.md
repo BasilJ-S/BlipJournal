@@ -188,7 +188,8 @@ Premade surveys bundled with the app as survey files, in
 `BlipJournalCore/Sources/BlipJournalCore/SurveyFile/Templates/`. The gallery is under
 Settings, Surveys, +, New survey, and is offered once at the end of the
 welcome. Each shows its purpose, questions and schedule before it is added, and becomes
-an ordinary survey, paused until you turn it on. Blank is always offered beside them.
+an ordinary survey, paused until you turn it on; one picked during the welcome starts
+at once if notifications are allowed. Blank is always offered beside them.
 
 Templates: Mood & feelings (the default survey above), Focus & energy, Social time,
 Mind-wandering and Phone use. Each file holds its questions and schedule; the gallery's

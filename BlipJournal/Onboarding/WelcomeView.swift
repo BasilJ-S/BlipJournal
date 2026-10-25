@@ -132,14 +132,31 @@ struct WelcomeView: View {
         isChoosingSurvey = true
     }
 
+    private var galleryIntro: String {
+        let start = "Blip Journal starts you with a survey about mood and feelings. To look into something else as well, add a template"
+        if appModel.notifications.canDeliverPrompts {
+            return start + ". It starts right away, and its prompts come on top of the mood survey's. A blank survey starts paused until you add questions."
+        }
+        return start + " or a blank survey. Surveys you add start paused: to turn one on, go to Settings → Surveys → the survey → Sampling → Enable sampling."
+    }
+
+    private func startSampling(_ survey: Survey) async {
+        // If this fails the survey simply stays paused, as every new survey starts.
+        _ = try? await EditorModel(store: appModel.store, notifications: appModel.notifications)
+            .startSamplingAfterOnboarding(surveyId: survey.id)
+        try? appModel.refresh()
+        onFinish()
+    }
+
     /// The gallery, without the template a fresh install already has. Adding a survey or
-    /// skipping finishes the welcome.
+    /// skipping finishes the welcome; a template added here starts sampling when prompts
+    /// can arrive (`EditorModel.startSamplingAfterOnboarding`).
     private var surveyStep: some View {
         NavigationStack {
             TemplateGalleryView(
-                intro: "Blip Journal starts you with a survey about mood and feelings. To look into something else as well, start from a template or a blank survey. Surveys you add start paused; turn them on under Settings, Surveys, Sampling.",
+                intro: galleryIntro,
                 excluding: [SurveyTemplateGallery.defaultSurveyTemplateId],
-                onAdded: onFinish)
+                onAdded: { survey in Task { await startSampling(survey) } })
                 .blipScreen("Add a survey?")
                 .toolbar {
                     ToolbarItem(placement: .confirmationAction) {

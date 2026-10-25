@@ -22,7 +22,7 @@ struct ExportModelTests {
         let wide = try model.makeFile(now: now)
         let bytes = try Data(contentsOf: wide)
         #expect(bytes.starts(with: [0xEF, 0xBB, 0xBF]))
-        #expect(wide.lastPathComponent == "BlipJournal-check-in-20270115-wide.csv")
+        #expect(wide.lastPathComponent == "BlipJournal-mood-feelings-20270115-wide.csv")
 
         model.format = .longCSV
         let long = try model.makeFile(now: now)

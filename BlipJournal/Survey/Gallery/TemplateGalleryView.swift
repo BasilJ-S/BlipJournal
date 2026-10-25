@@ -8,9 +8,10 @@ struct TemplateGalleryView: View {
     @Environment(AppModel.self) private var appModel
     private let intro: String?
     private let excluding: Set<String>
-    private let onAdded: () -> Void
+    private let onAdded: (Survey) -> Void
     @State private var selected: PendingSurveyImport?
-    @State private var didAdd = false
+    /// The survey the preview added, handed on once the preview has closed.
+    @State private var added: Survey?
     @State private var showingBlank = false
     @State private var name = ""
     @State private var errorMessage: String?
@@ -18,8 +19,8 @@ struct TemplateGalleryView: View {
     /// - Parameters:
     ///   - intro: A line shown above the templates.
     ///   - excluding: Template ids to leave out, such as the one a fresh install already has.
-    ///   - onAdded: Called after a survey is added, from a template or blank.
-    init(intro: String? = nil, excluding: Set<String> = [], onAdded: @escaping () -> Void) {
+    ///   - onAdded: Called with the new survey after one is added, from a template or blank.
+    init(intro: String? = nil, excluding: Set<String> = [], onAdded: @escaping (Survey) -> Void) {
         self.intro = intro
         self.excluding = excluding
         self.onAdded = onAdded
@@ -61,9 +62,9 @@ struct TemplateGalleryView: View {
         }
         .sheet(item: $selected, onDismiss: {
             // Waits for the preview to close, so two sheets never dismiss at once.
-            if didAdd { didAdd = false; onAdded() }
+            if let survey = added { added = nil; onAdded(survey) }
         }) { pending in
-            SurveyImportSheet(outcome: pending.outcome) { didAdd = true }
+            SurveyImportSheet(outcome: pending.outcome) { added = $0 }
         }
         .alert("New survey", isPresented: $showingBlank) {
             TextField("Survey name", text: $name)
@@ -102,9 +103,10 @@ struct TemplateGalleryView: View {
     private func createBlank() {
         guard !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
         do {
-            try EditorModel(store: appModel.store, notifications: appModel.notifications).createSurvey(name: name)
+            let survey = try EditorModel(store: appModel.store, notifications: appModel.notifications)
+                .createSurvey(name: name)
             try appModel.refresh()
-            onAdded()
+            onAdded(survey)
         } catch { errorMessage = String(describing: error) }
     }
 }
