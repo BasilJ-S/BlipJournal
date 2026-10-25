@@ -69,21 +69,21 @@ whose rendered content actually changed — nothing else is touched.
 ## Notification content
 
 `Survey.notificationPreview.content(surveyName:)` (`BlipJournalCore`) is the only source
-of a notification's title and body, plus the running-out line below. Never anything from inside the survey beyond its name
-in `.surveyName` mode. Sound is the default; interruption level is left at its default
-(`.active`) rather than `.timeSensitive`, gated by
-`LiveNotificationCenterClient.useTimeSensitiveInterruption` (currently `false`), since
-letting prompts through Focus needs the
-`com.apple.developer.usernotifications.time-sensitive` entitlement, which isn't available
-under Personal Team signing; `categoryIdentifier` is `"PROMPT"`, registered with no actions
-at launch.
+of a notification's title and body; the running-out line (below) is the one addition.
+Never anything from inside the survey beyond its name in `.surveyName` mode. Sound is
+the default; interruption level is left at its default (`.active`) rather than
+`.timeSensitive`, gated by `LiveNotificationCenterClient.useTimeSensitiveInterruption`
+(currently `false`), since letting prompts through Focus needs the
+`com.apple.developer.usernotifications.time-sensitive` entitlement, which isn't
+available under Personal Team signing; `categoryIdentifier` is `"PROMPT"`, registered
+with no actions at launch.
 
-**Running out.** Every reconcile applies `RunningOutWarning` (rule in Sampling `DESIGN.md`, text in
-`RunningOutWarning.message`) to the target, so the last 3 target prompts get a countdown line
-and a refresh that schedules more restores plain text on the ones no longer last (a
-content change, so the request is replaced). The delivered sweep treats a warned body as
-current (`RunningOutWarning.matches`), so a fired warning is not removed when the app
-next opens.
+**Running out.** Every reconcile applies `RunningOutWarning` (rule in Sampling
+`DESIGN.md`, text in `RunningOutWarning.message`) to the target, so the last 3 target
+prompts get a countdown line and a refresh that schedules more restores plain text on
+the ones no longer last (a content change, so the request is replaced). The delivered
+sweep treats a warned body as current (`RunningOutWarning.matches`), so a fired warning
+is not removed when the app next opens.
 
 ## Denied or undetermined permission
 
