@@ -5,6 +5,7 @@ import UniformTypeIdentifiers
 struct SurveyListView: View {
     @Environment(AppModel.self) private var appModel
     @State private var showingNewSurvey = false
+    @State private var showingGallery = false
     @State private var showingCopySurvey = false
     @State private var name = ""
     @State private var copySource: Survey?
@@ -33,6 +34,7 @@ struct SurveyListView: View {
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 Menu {
+                    Button("Start from a template") { showingGallery = true }
                     Button("Blank survey") { name = ""; copySource = nil; showingNewSurvey = true }
                     Button("Copy an existing survey") { showingCopySurvey = true }
                     Divider()
@@ -56,6 +58,15 @@ struct SurveyListView: View {
                     }
                 }
                 .blipScreen("Copy survey")
+            }
+        }
+        .sheet(isPresented: $showingGallery) {
+            NavigationStack {
+                TemplateGalleryView { showingGallery = false }
+                    .blipScreen("New survey")
+                    .toolbar {
+                        ToolbarItem(placement: .cancellationAction) { Button("Cancel") { showingGallery = false } }
+                    }
             }
         }
         .fileImporter(isPresented: $showingFileImporter, allowedContentTypes: [.blipSurvey, .json]) { result in

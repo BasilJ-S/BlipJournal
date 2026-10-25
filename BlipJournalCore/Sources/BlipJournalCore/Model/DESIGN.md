@@ -22,7 +22,6 @@ Entry ──< Answer ─ AnswerValue                one response and its answers
   └─ promptId?                                nil means a manual entry
 
 [LabelVersion].label(at:)                     rename history lookup, used by export
-SurveyTemplate.makeDefault()                  the six-question survey a new install gets
 Survey.defaultJournalSummaryQuestionIds(for:) the summary a new survey gets when none is named
 ```
 

@@ -16,7 +16,7 @@ struct AppModelTests {
         let store = try Store.inMemory()
         let first = try makeModel(store: store)
         #expect(first.surveys.count == 1)
-        #expect(first.surveys.first?.name == "Check-in")
+        #expect(first.surveys.first?.name == "Mood & feelings")
         #expect(first.surveys.first?.activeQuestions.count == 6)
 
         let second = try makeModel(store: store)

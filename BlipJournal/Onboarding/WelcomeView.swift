@@ -1,12 +1,15 @@
+import BlipJournalCore
 import SwiftUI
 import UserNotifications
 
 /// Shown once, the first time the app is unlocked: what Blip Journal does, and the only
 /// place outside Settings → Notifications that asks for notification permission. The
-/// system prompt only ever follows the explanation here, never cold.
+/// system prompt only ever follows the explanation here, never cold. A second step offers
+/// the survey template gallery, once.
 struct WelcomeView: View {
     @Environment(AppModel.self) private var appModel
     @State private var isRequesting = false
+    @State private var isChoosingSurvey = false
     let onFinish: () -> Void
 
     init(onFinish: @escaping () -> Void) {
@@ -14,6 +17,10 @@ struct WelcomeView: View {
     }
 
     var body: some View {
+        if isChoosingSurvey { surveyStep } else { welcome }
+    }
+
+    private var welcome: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 24) {
                 BlipMark(size: 72)
@@ -69,7 +76,7 @@ struct WelcomeView: View {
         // not swap them for Continue under the person's finger.
         if permissionDecided && !isRequesting {
             Button {
-                onFinish()
+                isChoosingSurvey = true
             } label: {
                 Text("Continue")
                     .frame(maxWidth: .infinity, minHeight: 44)
@@ -102,7 +109,7 @@ struct WelcomeView: View {
             .accessibilityLabel("Enable notifications")
 
             Button {
-                onFinish()
+                isChoosingSurvey = true
             } label: {
                 Text("Not now")
                     .frame(maxWidth: .infinity, minHeight: 44)
@@ -122,6 +129,24 @@ struct WelcomeView: View {
         _ = await appModel.notifications.requestAuthorization()
         await appModel.notifications.refresh(now: Date())
         try? appModel.refresh()
-        onFinish()
+        isChoosingSurvey = true
+    }
+
+    /// The gallery, without the template a fresh install already has. Adding a survey or
+    /// skipping finishes the welcome.
+    private var surveyStep: some View {
+        NavigationStack {
+            TemplateGalleryView(
+                intro: "Blip Journal starts you with a survey about mood and feelings. To look into something else as well, start from a template or a blank survey. Surveys you add start paused; turn them on under Settings, Surveys, Sampling.",
+                excluding: [SurveyTemplateGallery.defaultSurveyTemplateId],
+                onAdded: onFinish)
+                .blipScreen("Add a survey?")
+                .toolbar {
+                    ToolbarItem(placement: .confirmationAction) {
+                        Button("Skip") { onFinish() }
+                            .accessibilityHint("Keeps just the mood and feelings survey.")
+                    }
+                }
+        }
     }
 }

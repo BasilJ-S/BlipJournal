@@ -10,7 +10,8 @@ folder only gets bytes in and out and shows the result.
   `AppModel.pendingSurveyImport`, and `RootView` presents it once unlocked, after the
   welcome and after any prompt sheet. All three end as a `PendingSurveyImport`
   shown by `SurveyImportSheet`; `PendingSurveyImport(fileAt:)` is also the path for
-  bundled template files.
+  bundled template files (`Survey/Gallery`), which pass `onAdded` to hear that a survey
+  was added.
 - **Nothing changes before confirming.** The sheet shows the preview (name, schedule,
   each question with its kind, options or range, and the Journal summary) and only Add
   survey writes, through `EditorModel.importSurvey`. A file that fails shows every issue
