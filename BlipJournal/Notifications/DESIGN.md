@@ -106,9 +106,7 @@ offers that question's answers as notification actions (`NotificationAnswers` in
   is never displayed. Only a tap on the notification itself routes into the app, behind
   the lock as before.
 - **Saving.** `answerFromNotification` reads the question ID back out of the category and
-  calls `Store.saveNotificationAnswer`, which owns every rule: open entry, flagged
-  `answeredFromNotification`, prompt left pending (R2, R3); expired or already settled
-  saves nothing (R5); a question edited since scheduling saves nothing. Then
+  calls `Store.saveNotificationAnswer`, which owns every rule (Storage `DESIGN.md`). Then
   `onEntrySaved` lets `AppModel` reload, and an expired outcome triggers a refresh.
 - **Continuing (R3).** The entry stays open until the prompt expires. Tapping the
   notification, or the Journal's "survey open" banner, routes as for any unfinished

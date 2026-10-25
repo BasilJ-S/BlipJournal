@@ -54,9 +54,7 @@ extension Store {
             guard let surveyRow = rows.surveys.first, let survey = rows.survey(for: surveyRow) else {
                 return .unavailable
             }
-            let existing = try EntryRow.fetchOne(
-                db, sql: "SELECT * FROM entry WHERE promptId = ? ORDER BY rowid LIMIT 1", arguments: [promptId]
-            ).map(Entry.init)
+            let existing = try self.entry(db, promptId: promptId)
 
             if existing?.completedAt != nil { return .alreadyAnswered }
             switch prompt.status {
@@ -110,9 +108,7 @@ extension Store {
     /// Closes or misses one expired, pending prompt inside the caller's transaction. See
     /// `settleExpiredPrompts`.
     private func settleExpiredPrompt(_ db: Database, _ prompt: Prompt, now: Date) throws {
-        if var entry = try EntryRow.fetchOne(
-            db, sql: "SELECT * FROM entry WHERE promptId = ? ORDER BY rowid LIMIT 1", arguments: [prompt.id]
-        ).map(Entry.init), entry.answeredFromNotification, entry.completedAt == nil {
+        if var entry = try self.entry(db, promptId: prompt.id), entry.answeredFromNotification, entry.completedAt == nil {
             let rows = try DefinitionRows.load(db, surveyId: prompt.surveyId)
             let stored = try self.answers(db, entryId: entry.id)
             let answered = Set(stored.map(\.questionId))
@@ -128,9 +124,10 @@ extension Store {
         try setPromptStatus(db, prompt.id, .missed, respondedAt: now)
     }
 
-    private func setPromptStatus(_ db: Database, _ id: String, _ status: PromptStatus, respondedAt: Date) throws {
-        try db.execute(
-            sql: "UPDATE prompt SET status = ?, respondedAt = ? WHERE id = ?",
-            arguments: [status, respondedAt, id])
+    /// The entry answering `promptId`, if any. The runner and this file keep it to one.
+    private func entry(_ db: Database, promptId: String) throws -> Entry? {
+        try EntryRow.fetchOne(
+            db, sql: "SELECT * FROM entry WHERE promptId = ? ORDER BY rowid LIMIT 1", arguments: [promptId]
+        ).map(Entry.init)
     }
 }

@@ -282,9 +282,8 @@ final class NotificationCoordinator: NotificationCoordinating {
             let category = Self.answerCategoryIdentifier(for: answersBySurvey[survey.id])
             if currentIds.contains(prompt.id), currentContent[prompt.id] == content,
                currentCategories[prompt.id] == category { continue }
-            var spec = Self.makeSpec(prompt: prompt, content: content, calendar: calendar)
-            spec.categoryIdentifier = category
-            try await client.add(spec)
+            try await client.add(Self.makeSpec(
+                prompt: prompt, content: content, categoryIdentifier: category, calendar: calendar))
         }
         guard myGeneration == generation else { return }
 
@@ -336,10 +335,12 @@ final class NotificationCoordinator: NotificationCoordinating {
     }
 
     private static func makeSpec(
-        prompt: Prompt, content: NotificationContent, calendar: Calendar
+        prompt: Prompt, content: NotificationContent, categoryIdentifier: String, calendar: Calendar
     ) -> NotificationRequestSpec {
         let components = calendar.dateComponents(
             [.year, .month, .day, .hour, .minute], from: prompt.scheduledAt)
-        return NotificationRequestSpec(identifier: prompt.id, content: content, dateComponents: components)
+        return NotificationRequestSpec(
+            identifier: prompt.id, content: content, dateComponents: components,
+            categoryIdentifier: categoryIdentifier)
     }
 }
