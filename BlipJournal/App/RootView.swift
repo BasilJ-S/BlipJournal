@@ -5,9 +5,11 @@ import SwiftUI
 /// A tapped notification, whether it arrived while unlocked or is only being surfaced now
 /// because the app just unlocked, is presented here as a sheet: `RootView` only exists
 /// once `AppModel.isLocked` is false, so a route set while locked waits for unlock before
-/// its sheet appears.
+/// its sheet appears. It also waits for the one-time welcome to close: two presentations
+/// from one view racing to appear would silently drop one, and the route must survive.
 struct RootView: View {
     @Environment(AppModel.self) private var appModel
+    @AppStorage("hasSeenWelcome") private var hasSeenWelcome = false
 
     var body: some View {
         TabView {
@@ -28,7 +30,7 @@ struct RootView: View {
         .toolbarBackground(.visible, for: .tabBar)
         .blipScreenBackground()
         .sheet(isPresented: Binding(
-            get: { appModel.notifications.pendingRoute != nil },
+            get: { hasSeenWelcome && appModel.notifications.pendingRoute != nil },
             set: { isPresented in
                 if !isPresented { appModel.notifications.pendingRoute = nil }
             }
@@ -38,6 +40,14 @@ struct RootView: View {
                     appModel.notifications.pendingRoute = nil
                 }
             }
+        }
+        .fullScreenCover(isPresented: Binding(
+            get: { !hasSeenWelcome },
+            set: { isPresented in
+                if !isPresented { hasSeenWelcome = true }
+            }
+        )) {
+            WelcomeView { hasSeenWelcome = true }
         }
     }
 }
