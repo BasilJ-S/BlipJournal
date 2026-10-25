@@ -1,5 +1,4 @@
 import SwiftUI
-import UIKit
 
 struct ExportView: View {
     init() {}
@@ -23,28 +22,13 @@ struct ExportView: View {
                 }
                 Text("Exported files are not encrypted. Anyone with the file can read your answers.").font(.footnote).foregroundStyle(.orange)
                 Button { do { shareURL = try model.makeFile() } catch { errorMessage = error.localizedDescription } } label: { Label("Share", systemImage: "square.and.arrow.up") }.accessibilityLabel("Share export")
-                Text("JSON backups are reserved for a future import. CSV files open in Numbers and Excel.").font(.footnote).foregroundStyle(.secondary)
+                Text("A JSON backup can be restored from Settings, Restore from backup. CSV files open in Numbers and Excel.").font(.footnote).foregroundStyle(.secondary)
             }
         }
         .blipScreen("Export")
-        .sheet(isPresented: Binding(get: { shareURL != nil }, set: { if !$0 { shareURL = nil; model?.cleanUp() } })) { if let url = shareURL { ActivityView(url: url) { self.model?.cleanUp(); shareURL = nil } } }
+        .shareSheet(url: $shareURL) { _ in model?.cleanUp() }
         .alert("Export failed", isPresented: Binding(get: { errorMessage != nil }, set: { if !$0 { errorMessage = nil } })) { Button("OK") {} } message: { Text(errorMessage ?? "") }
         .task { if model == nil { model = ExportModel(store: appModel.store) } }
         .onDisappear { model?.cleanUp() }
-    }
-}
-
-private struct ActivityView: UIViewControllerRepresentable {
-    let url: URL; let completion: () -> Void
-    func makeCoordinator() -> Coordinator { Coordinator(completion: completion) }
-    func makeUIViewController(context: Context) -> UIActivityViewController { let controller = UIActivityViewController(activityItems: [url], applicationActivities: nil); controller.completionWithItemsHandler = { _, _, _, _ in context.coordinator.finish() }; return controller }
-    func updateUIViewController(_ controller: UIActivityViewController, context: Context) {}
-    static func dismantleUIViewController(_ controller: UIActivityViewController, coordinator: Coordinator) { coordinator.finish(); controller.completionWithItemsHandler = nil }
-
-    final class Coordinator {
-        private let completion: () -> Void
-        private var didFinish = false
-        init(completion: @escaping () -> Void) { self.completion = completion }
-        func finish() { guard !didFinish else { return }; didFinish = true; completion() }
     }
 }

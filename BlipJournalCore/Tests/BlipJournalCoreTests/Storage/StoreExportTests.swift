@@ -159,8 +159,9 @@ struct StoreExportTests {
             "option": 41, "optionVersion": 41, "prompt": 1, "entry": 1, "answer": 2, "answerOption": 1,
         ])
         #expect(first.surveyVersions.map(\.name) == ["Check-in", "Renamed", "Renamed again"])
-        #expect(first.questions.map(\.id) == first.questions.map(\.id).sorted())
-        #expect(first.options.map(\.id) == first.options.map(\.id).sorted())
+        // Save order, which the survey's live reads tie-break on.
+        #expect(first.questions.map(\.id) == survey.questions.map(\.id))
+        #expect(first.options.map(\.id) == survey.questions.flatMap { $0.options.map(\.id) })
         let text = String(decoding: firstJSON, as: UTF8.self)
         #expect(text.contains("\"exportedAt\" : \"2026-05-"))
         #expect(text.contains("\"kind\" : \"singleChoice\""))

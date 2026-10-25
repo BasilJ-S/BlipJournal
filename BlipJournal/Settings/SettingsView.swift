@@ -8,6 +8,9 @@ struct SettingsView: View {
             NavigationLink("Surveys") { SurveyListView() }.blipCardRow()
             NavigationLink("Notifications") { NotificationSettingsView() }.blipCardRow()
             NavigationLink("Export") { ExportView() }.blipCardRow()
+            NavigationLink("Restore from backup") { RestoreBackupView() }
+                .accessibilityLabel("Restore from backup")
+                .blipCardRow()
             NavigationLink {
                 DeleteAllDataView()
             } label: {

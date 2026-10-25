@@ -72,7 +72,9 @@ extension Store {
     }
 
     /// Every row of every table. Versioned tables come in `(createdAt, rowid)` order,
-    /// the rest in primary-key order, so two backups of one database are equal.
+    /// `survey` in primary-key order, and the rest in `rowid` (save) order, which live
+    /// reads tie-break on and a restore therefore preserves. Two backups of one database
+    /// are equal.
     ///
     /// `now` becomes `Backup.exportedAt`, rounded to the millisecond like every stored
     /// timestamp; it is a parameter so the JSON can be byte-identical across calls.
@@ -87,14 +89,25 @@ extension Store {
                 surveySamplings: try SurveySamplingRow.fetchAll(db, sql: "SELECT * FROM surveySampling \(versioned)"),
                 surveyNotificationPreviews: try SurveyNotificationPreviewRow.fetchAll(
                     db, sql: "SELECT * FROM surveyNotificationPreview \(versioned)"),
-                questions: try QuestionRow.fetchAll(db, sql: "SELECT * FROM question ORDER BY id"),
+                questions: try QuestionRow.fetchAll(db, sql: "SELECT * FROM question ORDER BY rowid"),
                 questionVersions: try QuestionVersionRow.fetchAll(db, sql: "SELECT * FROM questionVersion \(versioned)"),
-                options: try OptionRow.fetchAll(db, sql: "SELECT * FROM option ORDER BY id"),
+                options: try OptionRow.fetchAll(db, sql: "SELECT * FROM option ORDER BY rowid"),
                 optionVersions: try OptionVersionRow.fetchAll(db, sql: "SELECT * FROM optionVersion \(versioned)"),
-                prompts: try PromptRow.fetchAll(db, sql: "SELECT * FROM prompt ORDER BY id"),
-                entries: try EntryRow.fetchAll(db, sql: "SELECT * FROM entry ORDER BY id"),
-                answers: try AnswerRow.fetchAll(db, sql: "SELECT * FROM answer ORDER BY id"),
-                answerOptions: try AnswerOptionRow.fetchAll(db, sql: "SELECT * FROM answerOption ORDER BY answerId, optionId"))
+                prompts: try PromptRow.fetchAll(db, sql: "SELECT * FROM prompt ORDER BY rowid"),
+                entries: try EntryRow.fetchAll(db, sql: "SELECT * FROM entry ORDER BY rowid"),
+                answers: try AnswerRow.fetchAll(db, sql: "SELECT * FROM answer ORDER BY rowid"),
+                answerOptions: try AnswerOptionRow.fetchAll(db, sql: "SELECT * FROM answerOption ORDER BY rowid"))
+        }
+    }
+
+    /// The survey and entry counts of the live database, counted the way
+    /// `Backup.summary` counts a backup (archived surveys included), with no date.
+    public func summary() throws -> BackupSummary {
+        try dbQueue.read { db in
+            BackupSummary(
+                exportedAt: nil,
+                surveys: try Int.fetchOne(db, sql: "SELECT COUNT(*) FROM survey") ?? 0,
+                entries: try Int.fetchOne(db, sql: "SELECT COUNT(*) FROM entry") ?? 0)
         }
     }
 }

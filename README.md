@@ -71,7 +71,7 @@ or Apple reads says `BlipJournal`, one word.
 - Conditional or branching questions.
 - HealthKit integration (planned for v1 via the State of Mind API).
 - Statistical analysis beyond descriptive charts.
-- Import of backups (export only in v0).
+- Merging a backup into existing data. A JSON backup can be restored, which replaces everything on the phone.
 
 ## Platform
 

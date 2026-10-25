@@ -14,7 +14,7 @@ final class ExportModel {
             switch self {
             case .wideCSV: "One row per entry, with a column for each question. Easiest to read in Numbers or Excel."
             case .longCSV: "One row per answer, with the question named in its own column. An entry with five answers becomes five rows, and each selected option gets its own row. Best for charts and statistics tools."
-            case .jsonBackup: "A complete backup for a future import."
+            case .jsonBackup: "A complete backup. Restore it from Settings, Restore from backup."
             }
         }
     }
