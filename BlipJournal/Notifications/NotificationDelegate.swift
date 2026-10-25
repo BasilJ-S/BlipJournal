@@ -1,3 +1,4 @@
+import UIKit
 import UserNotifications
 
 /// The centre's delegate, set at launch in `BlipJournalApp`'s `AppDelegate` so a
@@ -12,6 +13,7 @@ final class NotificationDelegate: NSObject, UNUserNotificationCenterDelegate {
 
     weak var coordinator: (any NotificationCoordinating)?
     private var pendingPromptIdBeforeAttach: String?
+    private var pendingAnswerBeforeAttach: NotificationAnswerResponse?
 
     override private init() {}
 
@@ -20,6 +22,12 @@ final class NotificationDelegate: NSObject, UNUserNotificationCenterDelegate {
         self.coordinator = coordinator
         defer { pendingPromptIdBeforeAttach = nil }
         return pendingPromptIdBeforeAttach
+    }
+
+    /// Hands back, once, an answer action that arrived before any coordinator attached.
+    func claimAnswerBeforeAttach() -> NotificationAnswerResponse? {
+        defer { pendingAnswerBeforeAttach = nil }
+        return pendingAnswerBeforeAttach
     }
 
     // MARK: UNUserNotificationCenterDelegate
@@ -49,26 +57,51 @@ final class NotificationDelegate: NSObject, UNUserNotificationCenterDelegate {
         }
     }
 
-    /// Routes the tap: to the live coordinator if one has attached, otherwise stashed
-    /// for the coordinator constructed during this cold launch to claim.
+    /// Routes a tap on the notification itself: to the live coordinator if one has
+    /// attached, otherwise stashed for the coordinator constructed during this cold launch
+    /// to claim. An answer action is saved instead, without opening anything; any other
+    /// action (a dismiss) is ignored.
     ///
-    /// `nonisolated` for the same reason as `willPresent`; the identifier it reads out of
-    /// the non-`Sendable` response is a `String`, so carrying it to the main actor is safe.
+    /// An answer is only saved while protected data is available. Answer actions are
+    /// `.authenticationRequired`, so iOS asks for the device to be unlocked before
+    /// delivering one, but the database is `NSFileProtectionComplete` and must never be
+    /// written while locked, so this checks again and drops the answer if it is not.
+    /// The handler is called only after the save, so iOS keeps the app running for it.
+    ///
+    /// `nonisolated` for the same reason as `willPresent`; the strings it reads out of
+    /// the non-`Sendable` response are `Sendable`, so carrying them to the main actor is
+    /// safe.
     nonisolated func userNotificationCenter(
         _ center: UNUserNotificationCenter,
         didReceive response: UNNotificationResponse,
         withCompletionHandler completionHandler: @escaping @Sendable () -> Void
     ) {
         let promptId = response.notification.request.content.userInfo["promptId"] as? String
+        let actionIdentifier = response.actionIdentifier
+        let categoryIdentifier = response.notification.request.content.categoryIdentifier
         Task { @MainActor in
-            if let promptId {
+            defer { completionHandler() }
+            guard let promptId else { return }
+            switch actionIdentifier {
+            case UNNotificationDefaultActionIdentifier:
                 if let coordinator = self.coordinator {
                     coordinator.pendingRoute = promptId
                 } else {
                     self.pendingPromptIdBeforeAttach = promptId
                 }
+            case UNNotificationDismissActionIdentifier:
+                break
+            default:
+                guard UIApplication.shared.isProtectedDataAvailable else { return }
+                let answer = NotificationAnswerResponse(
+                    promptId: promptId, categoryIdentifier: categoryIdentifier,
+                    actionIdentifier: actionIdentifier)
+                if let coordinator = self.coordinator {
+                    await coordinator.answerFromNotification(answer, now: Date())
+                } else {
+                    self.pendingAnswerBeforeAttach = answer
+                }
             }
-            completionHandler()
         }
     }
 }

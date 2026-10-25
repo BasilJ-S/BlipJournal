@@ -19,10 +19,12 @@ Survey ──< Question ──< ChoiceOption          definitions, insert-only u
 
 Prompt      one scheduled ping: surveyId, day, scheduledAt, expiresAt, status
 Entry ──< Answer ─ AnswerValue                one response and its answers
-  └─ promptId?                                nil means a manual entry
+  ├─ promptId?                                nil means a manual entry
+  └─ answeredFromNotification                 an answer came from the notification
 
 [LabelVersion].label(at:)                     rename history lookup, used by export
 SurveyTemplate.makeDefault()                  the six-question survey a new install gets
+NotificationAnswers(survey:)                  answers a prompt notification offers, or nil
 ```
 
 ## Invariants
@@ -71,6 +73,17 @@ SurveyTemplate.makeDefault()                  the six-question survey a new inst
   the only case that does, and only its current name. `.custom`'s message is the one
   place a value here can be invalid (`isValid` is false for a blank message once
   trimmed); Storage is the enforcement point, the same as `SamplingConfig.validationErrors`.
+- **Notification answers come from the first question only, and reveal nothing.**
+  `NotificationAnswers(survey:)` is non-nil only when the first active question is a
+  yes/no or a valid scale of at most `maxScaleChoices` (5) values. Titles are `Yes`/`No`
+  or the bare numbers with `(lowest)`/`(highest)` on the ends, never the question's
+  wording, endpoint labels or survey name, because an action title can be read on the
+  lock screen. Action identifiers (`answer.yes`, `answer.scale.3`) are what comes back
+  from the notification; `value(forActionIdentifier:)` maps one back only while it is
+  still offered, so an edit after scheduling cannot smuggle in an out-of-range value.
+- **`answeredFromNotification` means at least one answer came from the notification.**
+  It is set by `Store.saveNotificationAnswer` and never cleared; the runner carries it
+  through its saves because it saves the `Entry` it loaded.
 - **Expiry is inclusive.** `Prompt.isExpired(at:)` is true at exactly `expiresAt`, and
   always false once a prompt has an outcome.
 - **No mutation helpers.** There is no `rename`, no `archive`, no save. Definitions are

@@ -9,6 +9,10 @@ Data Protection; this is filesystem encryption, not SQLCipher.
   Call `refresh()` after writes; the revision invalidates answer-derived views
   even when an entry's metadata stays equal.
 - Seed the default template only when there are no surveys, archived included.
+- `AppModel.live()` sets the coordinator's `onEntrySaved` to `refresh()`, so an answer
+  saved from a notification while the app runs appears at once, then attaches the
+  coordinator to the notification delegate. `AppDelegate` sets that delegate and nothing
+  else; categories belong to the coordinator (Notifications `DESIGN.md`).
 - `LockPolicy` locks every cold launch and after >= 30 seconds in background.
   Foreground also asks the notification coordinator to refresh.
 - `LockView` uses device-owner authentication with passcode fallback.

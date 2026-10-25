@@ -8,18 +8,19 @@ single audited exception, an `ExportSnapshot` loader, and a JSON `Backup`. Every
 subsystem reads and writes through it. Imports only `Foundation` and `GRDB`.
 
 ```
-Schema.swift            DatabaseMigrator, migrations "v1"..."v4", tables children-first
+Schema.swift            DatabaseMigrator, migrations "v1"..."v5", tables children-first
 Rows.swift              one GRDB record struct per table, no logic
 Store.swift             open/inMemory, configuration, StoreError, current-view resolution
 Store+Definitions.swift insert-only edits, surveys(), survey(), label histories
 Store+Prompts.swift     prompt reads, insert, status, deleteFuturePendingPrompts
 Store+Entries.swift     saveEntry upsert, entries(), answers(entryId:/questionIds:), deleteEntry
+Store+NotificationAnswers.swift  saveNotificationAnswer, settleExpiredPrompts
 Store+HardDelete.swift  deletionImpact, hardDelete*, eraseEverything, DeletionImpact
 Store+Export.swift      exportSnapshot, backup
 Backup.swift            Backup, BackupExporter
 ```
 
-## Schema (v4)
+## Schema (v5)
 
 ```
 survey(id, createdAt)
@@ -35,7 +36,7 @@ questionVersion(id, questionId, label, position, isRequired, isArchived,
 option(id, questionId, createdAt)
 optionVersion(id, optionId, label, position, isArchived, createdAt)
 prompt(id, surveyId, day, scheduledAt, expiresAt, status, respondedAt)
-entry(id, surveyId, promptId, startedAt, completedAt)
+entry(id, surveyId, promptId, startedAt, completedAt, answeredFromNotification)
 answer(id, entryId, questionId, questionVersionId, answeredAt, kind,
        numericValue, textValue, boolValue, spectrumValue)   UNIQUE (entryId, questionId)
 answerOption(answerId, optionId)        PRIMARY KEY (answerId, optionId)
@@ -52,6 +53,10 @@ JSON blob (`Store.spectrumConfig(of:)` / `spectrumConfigJSON(_:)`), unlike scale
 columns, because its zone list has no fixed width; `spectrumValue` is a separate `REAL`
 column because a spectrum answer is a `Double` in `0...1` where a scale answer is an
 `Int`, so they cannot share `numericValue`.
+
+Migration `v5` adds `entry.answeredFromNotification`, `NOT NULL DEFAULT 0`: every entry
+written before it was answered in the app, so no backfill. `EntryRow` decodes a missing
+key as false, so a backup taken before v5 still restores.
 
 Migration `v3` adds the Journal summary fields to `surveyVersion`. New surveys record
 their first active scale or spectrum question by default. An upgraded row has
@@ -128,6 +133,33 @@ Keeping the stored `answeredAt` is what makes option history replayable per answ
 "Recoverability" in `Model/DESIGN.md`). Selections are stored in the caller's order,
 without repeats. An answer whose `entryId` is not `entry.id`, or two answers sharing an
 identifier, is a programming error and traps.
+
+## Notification answers
+
+`saveNotificationAnswer(promptId:questionId:actionIdentifier:now:)` saves an answer picked
+on a prompt's notification, in one transaction with every read it depends on, and
+returns what it did (`NotificationAnswerOutcome`):
+
+| Prompt | Entry | Result |
+|---|---|---|
+| unknown, or its survey is | — | `unavailable` |
+| any | completed | `alreadyAnswered` |
+| answered | none | `alreadyAnswered` (entry was deleted) |
+| missed / dismissed | none or open | `expired` |
+| pending, expired at `now` | none or open | settled as below, `expired` |
+| pending, open | none or open | `unavailable` unless `questionId` is still the first active question and `NotificationAnswers` still offers the action; otherwise `saved` |
+
+Saving creates the entry (`startedAt` = `answeredAt` = `now`, the runner's stamps) or
+adds the answer to the open one, replacing a previous answer to that question under the
+same identifier and first `answeredAt`, as the runner does. The entry is marked
+`answeredFromNotification` and left open; the prompt stays pending, so the rest can be
+answered in the app until expiry.
+
+`settleExpiredPrompts(_:now:)` replaces "mark every expired pending prompt missed" in the
+coordinator's refresh. A prompt whose open entry is `answeredFromNotification` and holds
+an answer to every active required question is closed instead: the entry completes at
+its latest `answeredAt` and the prompt is marked answered at that moment, so latency runs
+to the last answer the person gave. Everything else is marked missed at `now`, as before.
 
 ## Hard delete
 
@@ -269,6 +301,10 @@ README promises no more than that.
   identifier already used by another entry fails its primary key.
 - The byte-erasure test proves the outcome, not each safeguard: `secure_delete` alone or
   `VACUUM` alone would also pass it. `SchemaTests` pins the pragmas separately.
+- A runner open on an entry holds its own copy of it. A notification answer saved into
+  that entry meanwhile, or the entry being closed at expiry, is overwritten by the
+  runner's next autosave. Both need the app in the foreground with the runner open while
+  the person also uses the notification, so v0 accepts it.
 - Single-connection `DatabaseQueue`: readers wait for writers. Fine for one person and one
   screen; a later switch to `DatabasePool` would need WAL, which the vacuum helper already
   anticipates.

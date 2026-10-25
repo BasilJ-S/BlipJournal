@@ -34,7 +34,9 @@ Request-add errors propagate to that result; refresh can retry the persisted sch
    small).
 2. `PromptPlanner.plan` against `existing`, a `SystemRandomNumberGenerator`, and the
    given calendar.
-3. Mark `plan.missedPromptIds` as `.missed`.
+3. Settle `plan.missedPromptIds` through `Store.settleExpiredPrompts`: `.missed`, unless
+   a notification answer left an open entry holding every required answer, which is
+   completed and its prompt marked `.answered` (Storage `DESIGN.md`).
 4. Insert `plan.newPrompts`.
 5. If `canDeliverPrompts` (authorization `.authorized` or `.provisional`, a protocol
    extension so views share the rule), reconcile the request centre (below). Otherwise
@@ -51,10 +53,11 @@ synchronous store writes with no client round trip to race.
 ## Reconcile rule
 
 **Target**: pending prompts with `scheduledAt > now` belonging to a survey that is not
-archived and has `sampling.isEnabled`. Requests pending in the centre but outside the
-target are removed. For each target prompt, the request is added if missing, or replaced
-(re-adding under the same identifier and content) if its rendered content differs from
-what is currently pending — `NotificationCenterClient.pendingRequestContent()` is what
+archived and has `sampling.isEnabled`. Categories are registered first (see "Answering
+from the notification"). Requests pending in the centre but outside the target are
+removed. For each target prompt, the request is added if missing, or replaced
+(re-adding under the same identifier and content) if its rendered content or its
+category differs from what is currently pending — `NotificationCenterClient.pendingRequestContent()` is what
 makes that comparison possible without deleting and re-adding every request on every
 refresh. Request identifier is always the prompt ID; the trigger is a non-repeating
 `UNCalendarNotificationTrigger` from `calendar.dateComponents([.year, .month, .day,
@@ -75,8 +78,44 @@ in `.surveyName` mode. Sound is the default; interruption level is left at its d
 `LiveNotificationCenterClient.useTimeSensitiveInterruption` (currently `false`), since
 letting prompts through Focus needs the
 `com.apple.developer.usernotifications.time-sensitive` entitlement, which isn't available
-under Personal Team signing; `categoryIdentifier` is `"PROMPT"`, registered with no actions
-at launch.
+under Personal Team signing; `categoryIdentifier` is `"PROMPT"` (no actions) or a
+per-question answer category, below. Answer actions add nothing to the title or body.
+
+## Answering from the notification
+
+A prompt whose survey opens with a yes/no question, or a scale of at most five values,
+offers that question's answers as notification actions (`NotificationAnswers` in Model
+`DESIGN.md`); every other prompt behaves as before.
+
+- **Actions, not a content extension.** Plain `UNNotificationAction`s need no extra
+  target in `project.yml`, no app group and no shared database access from a second
+  process. The cost: the person sees buttons, not the question. Five values is the cap
+  (`NotificationAnswers.maxScaleChoices`) to keep the action list short; how many iOS
+  shows without scrolling has not been checked on a device.
+- **Categories.** One per question that offers answers, `"PROMPT.answers." + questionId`,
+  plus the plain `"PROMPT"`. The coordinator registers the whole set on every reconcile,
+  before adding requests, so an edited scale range updates the actions of requests
+  already pending. A changed first question changes the category, which replaces the
+  request. `AppDelegate` no longer registers categories at launch: that would wipe the
+  answer categories until the next foreground refresh.
+- **Unlock first (R4).** Every action is `.authenticationRequired` and none is
+  `.foreground`: iOS asks for the device to be unlocked, then wakes the app in the
+  background. The database is `NSFileProtectionComplete`, so `NotificationDelegate` also
+  checks `UIApplication.isProtectedDataAvailable` and drops the answer when it is false.
+- **Nothing shown (R6).** Answering opens no UI and sets no `pendingRoute`; the outcome
+  is never displayed. Only a tap on the notification itself routes into the app, behind
+  the lock as before.
+- **Saving.** `answerFromNotification` reads the question ID back out of the category and
+  calls `Store.saveNotificationAnswer`, which owns every rule: open entry, flagged
+  `answeredFromNotification`, prompt left pending (R2, R3); expired or already settled
+  saves nothing (R5); a question edited since scheduling saves nothing. Then
+  `onEntrySaved` lets `AppModel` reload, and an expired outcome triggers a refresh.
+- **Continuing (R3).** The entry stays open until the prompt expires. Tapping the
+  notification, or the Journal's "survey open" banner, routes as for any unfinished
+  entry and resumes it in the runner. iOS removes a notification once one of its actions
+  is used, so in practice the banner is the way back.
+- **Cold launch.** An answer arriving before a coordinator attaches is stashed on the
+  delegate like a tap, and `attach(to:)` saves it.
 
 ## Denied or undetermined permission
 
@@ -130,7 +169,17 @@ which read as the notification bouncing back to the Home Screen. Do not go back 
 
 ## Known limitations
 
-- No quick-reply or other notification actions in v0; the `PROMPT` category carries none.
+- Notification answers cover the first question only, and only yes/no or a scale of up
+  to five values; a spectrum (the default survey's first question) offers none.
+- An answer action shows no question text: with the default `.private` preview the
+  notification says only "Time for a check-in." above the buttons.
+- An answer picked while the runner is open on the same entry is overwritten by the
+  runner's next autosave (Storage `DESIGN.md`).
+- A failed save is silent: the action has no UI to report it in. The prompt stays
+  pending and can still be answered in the app.
+- A delivered notification whose survey's first question changed keeps its old category,
+  which loses its actions at the next refresh; an answer picked before then is refused
+  as `unavailable`.
 - iOS caps pending local notifications at 64 per app; `PromptPlanner.maxPending` (60)
   leaves headroom, shared across every survey, so a person running several
   high-frequency surveys sees a shorter horizon on each (see Sampling `DESIGN.md`).

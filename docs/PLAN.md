@@ -452,3 +452,7 @@ TestFlight build. Depends on everything above.
 - Backup import.
 - SQLCipher option.
 - Lock Screen widget for manual entries.
+- Notification answers beyond the first question, for spectrum questions (by zone), or
+  with the question's wording shown (a content extension or an opt-in preview mode);
+  see issue #44 and Notifications `DESIGN.md`.
+- Apple Watch answers for prompts.

@@ -91,6 +91,33 @@ struct StoreRestoreTests {
         #expect(try store.backup(now: t(300)) == before)
     }
 
+    @Test("a backup taken before schema v5 restores with every entry answered in the app")
+    func restoresPreV5Backup() throws {
+        let store = try Store.inMemory()
+        try populated(store)
+        var flagged = try #require(try store.entries(surveyId: nil, from: nil, to: nil).first)
+        flagged.answeredFromNotification = true
+        try store.saveEntry(flagged, answers: try store.answers(entryId: flagged.id))
+        let current = try store.backup(now: t(300))
+        #expect(current.entries.map(\.answeredFromNotification) == [true, false])
+
+        // A v4 backup has no `answeredFromNotification` key on its entries.
+        var text = String(decoding: try BackupExporter.json(current), as: UTF8.self)
+        let lines = text.components(separatedBy: "\n")
+        #expect(lines.filter { $0.contains("\"answeredFromNotification\"") }.count == 2)
+        text = lines.filter { !$0.contains("\"answeredFromNotification\"") }.joined(separator: "\n")
+        text = text.replacingOccurrences(of: "\"schemaVersion\" : 5", with: "\"schemaVersion\" : 4")
+        let old = try BackupExporter.decodeForRestore(Data(text.utf8))
+        #expect(old.schemaVersion == 4)
+
+        try store.restore(old)
+        #expect(try store.entries(surveyId: nil, from: nil, to: nil).map(\.answeredFromNotification) == [false, false])
+
+        // And a current backup keeps the flag through JSON and restore.
+        try store.restore(try BackupExporter.decodeForRestore(BackupExporter.json(current)))
+        #expect(try store.backup(now: t(300)) == current)
+    }
+
     @Test("a newer schemaVersion is refused and changes nothing")
     func newerSchema() throws {
         let store = try Store.inMemory()

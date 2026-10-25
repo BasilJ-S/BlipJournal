@@ -15,6 +15,10 @@ public struct Entry: Identifiable, Sendable, Equatable, Hashable, Codable {
     public var startedAt: Date
     /// When the user finished. Nil while the entry is a partial autosave.
     public var completedAt: Date?
+    /// Whether at least one answer in this entry was given from the prompt's notification
+    /// rather than inside the app. Only a prompted entry can be true. Exports surface it so
+    /// answers given without opening the app can be told apart.
+    public var answeredFromNotification: Bool
 
     /// Creates an entry. A fresh identifier is generated unless one is supplied.
     public init(
@@ -22,13 +26,15 @@ public struct Entry: Identifiable, Sendable, Equatable, Hashable, Codable {
         surveyId: String,
         promptId: String? = nil,
         startedAt: Date = Date(),
-        completedAt: Date? = nil
+        completedAt: Date? = nil,
+        answeredFromNotification: Bool = false
     ) {
         self.id = id
         self.surveyId = surveyId
         self.promptId = promptId
         self.startedAt = startedAt
         self.completedAt = completedAt
+        self.answeredFromNotification = answeredFromNotification
     }
 
     /// Whether the entry answers a prompt rather than being started by hand.

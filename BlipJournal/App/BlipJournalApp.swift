@@ -1,8 +1,13 @@
 import UserNotifications
 import SwiftUI
 
-/// Sets the notification centre's delegate and registers the `PROMPT` category before
-/// SwiftUI builds anything, so a cold launch from tapping a notification is never missed.
+/// Sets the notification centre's delegate before SwiftUI builds anything, so a cold
+/// launch from tapping a notification, or from one of its answer actions, is never missed.
+///
+/// Categories are left to `NotificationCoordinator`'s reconcile, which registers the plain
+/// `PROMPT` category with one answer category per question before adding any request.
+/// Registering here would replace that set on every launch and strip the answer actions
+/// from delivered notifications until the next foreground refresh.
 @MainActor
 final class AppDelegate: NSObject, UIApplicationDelegate {
     func application(
@@ -10,10 +15,6 @@ final class AppDelegate: NSObject, UIApplicationDelegate {
         didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil
     ) -> Bool {
         UNUserNotificationCenter.current().delegate = NotificationDelegate.shared
-        UNUserNotificationCenter.current().setNotificationCategories([
-            UNNotificationCategory(
-                identifier: NotificationCoordinator.categoryIdentifier, actions: [], intentIdentifiers: [])
-        ])
         return true
     }
 }

@@ -19,11 +19,14 @@ no UI: the app writes the string to a file and hands it to the share sheet. Impo
 archived questions included:
 
 ```
-entry_id, survey, prompted, prompt_scheduled_at, started_at, completed_at, latency_seconds,
-<one column per question, header = current label>
+entry_id, survey, prompted, answered_from_notification, prompt_scheduled_at, started_at,
+completed_at, latency_seconds, <one column per question, header = current label>
 ```
 
 `survey` is the survey's current name. `prompted` is `yes` when `entry.promptId` is set;
+`answered_from_notification` is `yes` when `entry.answeredFromNotification` is set (at
+least one answer was picked on the prompt's notification without opening the app; the
+rest may have been answered in the app afterwards), else `no`;
 `prompt_scheduled_at` and `latency_seconds` are empty for manual entries. If two
 questions share a label, every duplicate gets ` [` + the first 8 characters of its ID +
 `]` appended. Cells: scale as the integer; spectrum as its raw `0...1` value (via
@@ -37,7 +40,8 @@ multi as empty.
 empty multi-choice answer one row with empty option columns:
 
 ```
-entry_id, prompted, prompt_scheduled_at, started_at, completed_at, answered_at,
+entry_id, prompted, answered_from_notification, prompt_scheduled_at, started_at,
+completed_at, answered_at,
 question_id, question_kind, question_label_at_time, question_label_current,
 option_id, option_label_at_time, option_label_current,
 numeric_value, bool_value, text_value
@@ -66,7 +70,9 @@ survey. An option ID the survey no longer has is written with the ID as its labe
   second precision, e.g. `2026-09-05T14:03:00-04:00` (UTC prints as `Z`). Built once per
   call.
 - Booleans `yes`/`no`. Integers without separators. `latency_seconds` is
-  `completedAt - prompt.scheduledAt` in whole seconds, rounded toward zero.
+  `completedAt - prompt.scheduledAt` in whole seconds, rounded toward zero. An entry
+  answered from its notification and closed when its prompt expired has `completedAt`
+  equal to its last answer's `answeredAt` (see Storage `DESIGN.md`).
 - Empty means unanswered or not applicable. Never `nil`, `null` or `-`.
 - Every entry in `snapshot.entries` is written, in the order given. Partial entries have
   an empty `completed_at` (and `latency_seconds`); consumers filter.

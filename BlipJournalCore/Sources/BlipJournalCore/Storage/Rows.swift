@@ -159,6 +159,37 @@ public struct EntryRow: Sendable, Equatable, Codable, FetchableRecord, Persistab
     public var promptId: String?
     public var startedAt: Date
     public var completedAt: Date?
+    /// Added by migration `v5`.
+    public var answeredFromNotification: Bool
+
+    public init(
+        id: String, surveyId: String, promptId: String?, startedAt: Date, completedAt: Date?,
+        answeredFromNotification: Bool = false
+    ) {
+        self.id = id
+        self.surveyId = surveyId
+        self.promptId = promptId
+        self.startedAt = startedAt
+        self.completedAt = completedAt
+        self.answeredFromNotification = answeredFromNotification
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case id, surveyId, promptId, startedAt, completedAt, answeredFromNotification
+    }
+
+    /// Hand-written so a backup taken before schema v5, whose entries have no
+    /// `answeredFromNotification` key, still decodes and restores: it defaults to false.
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(String.self, forKey: .id)
+        surveyId = try container.decode(String.self, forKey: .surveyId)
+        promptId = try container.decodeIfPresent(String.self, forKey: .promptId)
+        startedAt = try container.decode(Date.self, forKey: .startedAt)
+        completedAt = try container.decodeIfPresent(Date.self, forKey: .completedAt)
+        answeredFromNotification = try container.decodeIfPresent(
+            Bool.self, forKey: .answeredFromNotification) ?? false
+    }
 }
 
 /// A row of `answer`. Exactly one of the four value columns is set for scale,

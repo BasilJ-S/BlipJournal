@@ -10,7 +10,7 @@ struct SchemaTests {
         let store = try Store.inMemory()
         let backup = try store.backup(now: Fixture.t0)
         #expect(backup.schemaVersion == CoreSchema.version)
-        #expect(CoreSchema.version == 4)
+        #expect(CoreSchema.version == 5)
         #expect(backup.rowCounts.values.allSatisfy { $0 == 0 })
         #expect(backup.rowCounts.count == 12)
     }
@@ -120,6 +120,46 @@ struct SchemaTests {
             id: "a2", entryId: entry.id, questionId: spectrum.id,
             questionVersionId: versionId, answeredAt: Fixture.t0, value: .spectrum(0.75))])
         #expect(try store.answers(entryId: "e2").first?.value == .spectrum(0.75))
+    }
+
+    @Test("opening a v4 database keeps its entries and marks them answered in the app")
+    func migratesFromV4() throws {
+        let directory = Fixture.temporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        let path = directory.appendingPathComponent(Store.databaseFileName).path
+
+        do {
+            var v4Only = DatabaseMigrator()
+            v4Only.registerMigration("v1", migrate: Schema.migrateV1)
+            v4Only.registerMigration("v2", migrate: Schema.migrateV2)
+            v4Only.registerMigration("v3", migrate: Schema.migrateV3)
+            v4Only.registerMigration("v4", migrate: Schema.migrateV4)
+            let queue = try DatabaseQueue(path: path)
+            try v4Only.migrate(queue)
+            try queue.write { db in
+                try db.execute(
+                    sql: "INSERT INTO survey (id, createdAt) VALUES (?, ?)",
+                    arguments: ["s1", Fixture.t0])
+                try db.execute(
+                    sql: "INSERT INTO surveyVersion (id, surveyId, name, isArchived, createdAt) VALUES (?, ?, ?, ?, ?)",
+                    arguments: ["sv1", "s1", "Existing", false, Fixture.t0])
+                try db.execute(
+                    sql: "INSERT INTO entry (id, surveyId, startedAt, completedAt) VALUES (?, ?, ?, ?)",
+                    arguments: ["e1", "s1", Fixture.t0, Fixture.t0])
+            }
+        }
+
+        let store = try Store.open(at: directory)
+        let entry = try #require(try store.entries(surveyId: "s1", from: nil, to: nil).first)
+        #expect(entry.id == "e1")
+        #expect(!entry.answeredFromNotification)
+
+        var flagged = entry
+        flagged.id = "e2"
+        flagged.answeredFromNotification = true
+        try store.saveEntry(flagged, answers: [])
+        #expect(try store.entries(surveyId: "s1", from: nil, to: nil).map(\.answeredFromNotification) == [false, true])
     }
 
     @Test("v4 repairs a development database that used v3 for spectrum storage")

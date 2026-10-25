@@ -23,28 +23,35 @@ extension Store {
         }
         precondition(Set(answers.map(\.id)).count == answers.count, "answers of entry \(entry.id) share an identifier")
         try dbQueue.write { db in
-            try EntryRow(entry).save(db)
-            let stored = try AnswerRow.fetchAll(
-                db, sql: "SELECT * FROM answer WHERE entryId = ?", arguments: [entry.id])
-            let storedById = Dictionary(stored.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
-            let keep = Set(answers.map(\.id))
+            try saveEntry(db, entry, answers: answers)
+        }
+    }
 
-            for old in stored where !keep.contains(old.id) {
-                try deleteAnswerOptions(db, answerId: old.id)
-                try old.delete(db)
+    /// The body of `saveEntry(_:answers:)`, inside a transaction the caller already holds,
+    /// so another write (a notification answer) can save an entry and set its prompt's
+    /// status atomically. The caller has checked the preconditions.
+    func saveEntry(_ db: Database, _ entry: Entry, answers: [Answer]) throws {
+        try EntryRow(entry).save(db)
+        let stored = try AnswerRow.fetchAll(
+            db, sql: "SELECT * FROM answer WHERE entryId = ?", arguments: [entry.id])
+        let storedById = Dictionary(stored.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
+        let keep = Set(answers.map(\.id))
+
+        for old in stored where !keep.contains(old.id) {
+            try deleteAnswerOptions(db, answerId: old.id)
+            try old.delete(db)
+        }
+        for answer in answers {
+            var row = AnswerRow(answer)
+            if let old = storedById[answer.id] {
+                row.answeredAt = old.answeredAt
+                try row.update(db)
+                try deleteAnswerOptions(db, answerId: answer.id)
+            } else {
+                try row.insert(db)
             }
-            for answer in answers {
-                var row = AnswerRow(answer)
-                if let old = storedById[answer.id] {
-                    row.answeredAt = old.answeredAt
-                    try row.update(db)
-                    try deleteAnswerOptions(db, answerId: answer.id)
-                } else {
-                    try row.insert(db)
-                }
-                for optionId in Self.selectedOptionIds(of: answer.value) {
-                    try AnswerOptionRow(answerId: answer.id, optionId: optionId).insert(db)
-                }
+            for optionId in Self.selectedOptionIds(of: answer.value) {
+                try AnswerOptionRow(answerId: answer.id, optionId: optionId).insert(db)
             }
         }
     }
@@ -76,15 +83,18 @@ extension Store {
 
     /// The answers of one entry, ordered by `answeredAt`. Empty for an unknown entry.
     public func answers(entryId: String) throws -> [Answer] {
-        try dbQueue.read { db in
-            let rows = try AnswerRow.fetchAll(
-                db, sql: "SELECT * FROM answer WHERE entryId = ? ORDER BY answeredAt, rowid",
-                arguments: [entryId])
-            let selections = try AnswerOptionRow.fetchAll(
-                db, sql: "SELECT * FROM answerOption WHERE answerId IN (SELECT id FROM answer WHERE entryId = ?) ORDER BY rowid",
-                arguments: [entryId])
-            return try Self.makeAnswers(rows, selections: selections)
-        }
+        try dbQueue.read { db in try answers(db, entryId: entryId) }
+    }
+
+    /// The body of `answers(entryId:)`, inside a transaction the caller already holds.
+    func answers(_ db: Database, entryId: String) throws -> [Answer] {
+        let rows = try AnswerRow.fetchAll(
+            db, sql: "SELECT * FROM answer WHERE entryId = ? ORDER BY answeredAt, rowid",
+            arguments: [entryId])
+        let selections = try AnswerOptionRow.fetchAll(
+            db, sql: "SELECT * FROM answerOption WHERE answerId IN (SELECT id FROM answer WHERE entryId = ?) ORDER BY rowid",
+            arguments: [entryId])
+        return try Self.makeAnswers(rows, selections: selections)
     }
 
     /// Every answer to the given questions, across all entries, ordered by
@@ -189,7 +199,8 @@ extension EntryRow {
     init(_ entry: Entry) {
         self.init(
             id: entry.id, surveyId: entry.surveyId, promptId: entry.promptId,
-            startedAt: entry.startedAt, completedAt: entry.completedAt)
+            startedAt: entry.startedAt, completedAt: entry.completedAt,
+            answeredFromNotification: entry.answeredFromNotification)
     }
 }
 
@@ -197,7 +208,8 @@ extension Entry {
     init(_ row: EntryRow) {
         self.init(
             id: row.id, surveyId: row.surveyId, promptId: row.promptId,
-            startedAt: row.startedAt, completedAt: row.completedAt)
+            startedAt: row.startedAt, completedAt: row.completedAt,
+            answeredFromNotification: row.answeredFromNotification)
     }
 }
 

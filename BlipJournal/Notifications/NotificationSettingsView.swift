@@ -146,6 +146,8 @@ struct NotificationSettingsView: View {
     /// soonest pending prompt's identifier when there is one, so the tap routes into the
     /// runner exactly as a scheduled prompt would; with no pending prompt it uses a
     /// stand-in identifier and `PromptRouteView` shows its "no longer available" dead end.
+    /// When that prompt's survey offers notification answers, the test carries the same
+    /// answer category, so the actions can be tried too (long-press the banner).
     ///
     /// It writes straight to the notification centre rather than through the coordinator:
     /// this is a test affordance, not part of the scheduling contract, and the next
@@ -178,7 +180,9 @@ struct NotificationSettingsView: View {
         content.title = "Blip Journal"
         content.body = "Test prompt — tap me."
         content.sound = .default
-        content.categoryIdentifier = NotificationCoordinator.categoryIdentifier
+        let survey = soonest.flatMap { appModel.surveysById[$0.surveyId] }
+        content.categoryIdentifier = NotificationCoordinator.answerCategoryIdentifier(
+            for: survey.flatMap(NotificationAnswers.init(survey:)))
         content.userInfo = ["promptId": identifier]
         let request = UNNotificationRequest(
             identifier: identifier,

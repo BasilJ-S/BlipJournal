@@ -23,6 +23,18 @@ protocol NotificationCoordinating: AnyObject {
     func promptsDestroyed(now: Date) async
     /// The prompt identifier of a tapped notification, waiting to be routed to the runner.
     var pendingRoute: String? { get set }
+    /// Saves an answer picked from a prompt notification's actions. The caller has checked
+    /// that protected data is available.
+    func answerFromNotification(_ answer: NotificationAnswerResponse, now: Date) async
+}
+
+/// An answer action picked on a prompt's notification, as much of the non-`Sendable`
+/// `UNNotificationResponse` as saving it needs.
+struct NotificationAnswerResponse: Sendable, Equatable {
+    var promptId: String
+    /// The notification's category, which names the question it offered answers for.
+    var categoryIdentifier: String
+    var actionIdentifier: String
 }
 
 extension NotificationCoordinating {
@@ -47,6 +59,7 @@ final class NoopNotificationCoordinator: NotificationCoordinating {
     func reschedule(now: Date) async -> Bool { false }
     func scheduleChanged(surveyId: String, now: Date) async {}
     func promptsDestroyed(now: Date) async {}
+    func answerFromNotification(_ answer: NotificationAnswerResponse, now: Date) async {}
 }
 
 /// Turns the planner's output into real local notifications and routes a tapped
@@ -63,6 +76,8 @@ final class NotificationCoordinator: NotificationCoordinating {
     private(set) var authorizationStatus: UNAuthorizationStatus = .notDetermined
     private(set) var isRequestingAuthorization = false
     var pendingRoute: String?
+    /// Called after a notification answer is saved, so the app can reload what it shows.
+    @ObservationIgnored var onEntrySaved: (@MainActor () -> Void)?
 
     /// Bumped at the start of every `refresh`. A run that is still awaiting the client
     /// when a newer run starts checks this before each destructive client-side step, so
@@ -77,6 +92,8 @@ final class NotificationCoordinator: NotificationCoordinating {
     @ObservationIgnored private var refreshWaiters: [CheckedContinuation<Void, Never>] = []
 
     nonisolated static let categoryIdentifier = "PROMPT"
+    /// Prefix of a prompt category that offers answers; the question ID follows it.
+    nonisolated static let answerCategoryPrefix = "PROMPT.answers."
 
     init(
         store: Store, client: NotificationCenterClient,
@@ -94,6 +111,9 @@ final class NotificationCoordinator: NotificationCoordinating {
     func attach(to delegate: NotificationDelegate) {
         if let claimed = delegate.attach(self) {
             pendingRoute = claimed
+        }
+        if let answer = delegate.claimAnswerBeforeAttach() {
+            Task { await answerFromNotification(answer, now: Date()) }
         }
     }
 
@@ -184,6 +204,24 @@ final class NotificationCoordinator: NotificationCoordinating {
         await refresh(now: now)
     }
 
+    /// Saves the answer through `Store.saveNotificationAnswer`, which owns every rule
+    /// (expiry, an entry already complete, a question edited since scheduling), then lets
+    /// the app reload. Shows nothing: whatever the outcome, no stored data is put on
+    /// screen, so this cannot bypass the app lock.
+    func answerFromNotification(_ answer: NotificationAnswerResponse, now: Date) async {
+        guard answer.categoryIdentifier.hasPrefix(Self.answerCategoryPrefix) else { return }
+        let questionId = String(answer.categoryIdentifier.dropFirst(Self.answerCategoryPrefix.count))
+        let outcome = try? store.saveNotificationAnswer(
+            promptId: answer.promptId, questionId: questionId,
+            actionIdentifier: answer.actionIdentifier, now: now)
+        guard let outcome else { return }
+        onEntrySaved?()
+        if case .expired = outcome {
+            // Settling an expired prompt changes what should be pending.
+            await refresh(now: now)
+        }
+    }
+
     // MARK: Steps 1-4: plan and persist
 
     private func planAndPersist(now: Date) throws {
@@ -200,9 +238,8 @@ final class NotificationCoordinator: NotificationCoordinating {
         var rng = SystemRandomNumberGenerator()
         let plan = planner.plan(now: now, surveys: surveys, existing: existing, calendar: calendar, using: &rng)
 
-        for id in plan.missedPromptIds {
-            try store.setPromptStatus(id, .missed, respondedAt: now)
-        }
+        // Missed, unless a notification answer already holds every required answer.
+        try store.settleExpiredPrompts(plan.missedPromptIds, now: now)
         try store.insertPrompts(plan.newPrompts)
     }
 
@@ -226,9 +263,14 @@ final class NotificationCoordinator: NotificationCoordinating {
         let target = pendingPrompts.filter { $0.scheduledAt > now && activeSurveysById[$0.surveyId] != nil }
         let targetIds = Set(target.map(\.id))
 
+        let answersBySurvey = activeSurveysById.compactMapValues(NotificationAnswers.init(survey:))
         let currentIds = await client.pendingRequestIdentifiers()
         let currentContent = await client.pendingRequestContent()
+        let currentCategories = await client.pendingRequestCategories()
         guard myGeneration == generation else { return }
+
+        // Register before adding: a request names its category by identifier.
+        client.setCategories(Self.categories(for: Array(answersBySurvey.values)))
 
         let toRemove = currentIds.subtracting(targetIds)
         if !toRemove.isEmpty {
@@ -237,8 +279,11 @@ final class NotificationCoordinator: NotificationCoordinating {
         for prompt in target {
             guard let survey = activeSurveysById[prompt.surveyId] else { continue }
             let content = survey.notificationPreview.content(surveyName: survey.name)
-            if currentIds.contains(prompt.id), currentContent[prompt.id] == content { continue }
-            let spec = Self.makeSpec(prompt: prompt, content: content, calendar: calendar)
+            let category = Self.answerCategoryIdentifier(for: answersBySurvey[survey.id])
+            if currentIds.contains(prompt.id), currentContent[prompt.id] == content,
+               currentCategories[prompt.id] == category { continue }
+            var spec = Self.makeSpec(prompt: prompt, content: content, calendar: calendar)
+            spec.categoryIdentifier = category
             try await client.add(spec)
         }
         guard myGeneration == generation else { return }
@@ -265,6 +310,29 @@ final class NotificationCoordinator: NotificationCoordinating {
         if !deliveredToRemove.isEmpty {
             client.removeDeliveredNotifications(withIdentifiers: deliveredToRemove)
         }
+    }
+
+    /// The category a prompt's request names: one per question that offers answers, so a
+    /// changed first question changes the category and the request is replaced.
+    static func answerCategoryIdentifier(for answers: NotificationAnswers?) -> String {
+        answers.map { answerCategoryPrefix + $0.questionId } ?? categoryIdentifier
+    }
+
+    /// The plain `PROMPT` category plus one answer category per distinct question, with
+    /// actions in the order `NotificationAnswers` lists them.
+    private static func categories(for answers: [NotificationAnswers]) -> [NotificationCategorySpec] {
+        var seen: Set<String> = []
+        let answerCategories = answers
+            .sorted { $0.questionId < $1.questionId }
+            .filter { seen.insert($0.questionId).inserted }
+            .map { offer in
+                NotificationCategorySpec(
+                    identifier: answerCategoryIdentifier(for: offer),
+                    actions: offer.choices.map {
+                        NotificationCategorySpec.Action(identifier: $0.actionIdentifier, title: $0.title)
+                    })
+            }
+        return [NotificationCategorySpec(identifier: categoryIdentifier, actions: [])] + answerCategories
     }
 
     private static func makeSpec(

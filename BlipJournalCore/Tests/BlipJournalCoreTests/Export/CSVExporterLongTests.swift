@@ -7,8 +7,8 @@ struct CSVExporterLongTests {
     typealias F = ExportFixture
 
     private let columns = [
-        "entry_id", "prompted", "prompt_scheduled_at", "started_at", "completed_at",
-        "answered_at",
+        "entry_id", "prompted", "answered_from_notification", "prompt_scheduled_at", "started_at",
+        "completed_at", "answered_at",
         "question_id", "question_kind", "question_label_at_time", "question_label_current",
         "option_id", "option_label_at_time", "option_label_current",
         "numeric_value", "bool_value", "text_value",
@@ -164,6 +164,20 @@ struct CSVExporterLongTests {
             #expect(field(row, "prompted") == "yes")
             #expect(field(row, "completed_at") == "")
             #expect(field(row, "answered_at") == "2026-09-05T09:00:45-04:00")
+        }
+    }
+
+    @Test("answered_from_notification repeats the entry's flag on every row of the entry")
+    func answeredFromNotification() {
+        var snapshot = F.snapshot
+        snapshot.entries[3].entry.answeredFromNotification = true
+        let table = CSVTable(CSVExporter.long(snapshot, calendar: F.calendar))
+        #expect(!table.rows(entry: F.entry4).isEmpty)
+        for row in table.rows(entry: F.entry4) {
+            #expect(field(row, "answered_from_notification") == "yes")
+        }
+        for row in table.rows(entry: F.entry1) {
+            #expect(field(row, "answered_from_notification") == "no")
         }
     }
 
