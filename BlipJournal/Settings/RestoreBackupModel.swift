@@ -32,16 +32,18 @@ final class RestoreBackupModel {
 
     /// Reads and validates the chosen file. Writes nothing to the store.
     func load(_ result: Result<URL, Error>) {
-        backup = nil
-        savedCurrentData = false
-        didRestore = false
         do {
             let url = try result.get()
+            backup = nil
+            savedCurrentData = false
+            didRestore = false
             let isScoped = url.startAccessingSecurityScopedResource()
             defer { if isScoped { url.stopAccessingSecurityScopedResource() } }
             backup = try BackupExporter.decodeForRestore(Data(contentsOf: url))
             current = Self.currentSummary(appModel.store)
         } catch {
+            // Dismissing the picker is not a failure.
+            if (error as? CocoaError)?.code == .userCancelled { return }
             errorMessage = Self.message(for: error)
         }
     }
