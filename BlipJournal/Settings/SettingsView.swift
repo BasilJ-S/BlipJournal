@@ -19,6 +19,7 @@ struct SettingsView: View {
             }
             .accessibilityLabel("Delete all data")
             .blipCardRow()
+            NavigationLink("Tip jar") { TipJarView() }.blipCardRow()
             NavigationLink("About") { AboutView() }.blipCardRow()
         }
         .listStyle(.plain)

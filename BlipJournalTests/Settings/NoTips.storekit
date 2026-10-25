@@ -1,0 +1,16 @@
+{
+  "identifier" : "B11F37A2",
+  "nonRenewingSubscriptions" : [],
+  "products" : [],
+  "settings" : {
+    "_failTransactionsEnabled" : false,
+    "_locale" : "en_US",
+    "_storeKitErrors" : [],
+    "_storefront" : "USA"
+  },
+  "subscriptionGroups" : [],
+  "version" : {
+    "major" : 3,
+    "minor" : 0
+  }
+}

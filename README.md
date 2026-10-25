@@ -46,7 +46,8 @@ or Apple reads says `BlipJournal`, one word.
 - **Fast.** A prompt should take under 30 seconds to answer. One scrolling screen, big
   tap targets, autosave, no confirmation step.
 - **Local and encrypted.** SQLite on device, protected with iOS Data Protection
-  (`complete` class). Face ID or passcode to open the app. No network access at all.
+  (`complete` class). Face ID or passcode to open the app. No network access at all,
+  apart from Apple's StoreKit for optional tips (from 1.1).
 - **Exportable.** CSV in wide and long formats, plus a JSON backup that includes survey
   definitions.
 - **Honest data.** Unprompted (manual) entries are tagged as such. Expired prompts are
@@ -193,6 +194,9 @@ Exported files are not encrypted. The app says so before sharing.
 - No diagnostic, treatment, or therapy claims anywhere in the app or listing.
 - Dynamic Type and VoiceOver labels on all controls.
 - MIT license (GPL is incompatible with App Store distribution).
+- Tips (from 1.1) are three consumable In-App Purchases, guideline 3.1.1: no external
+  payment links, nothing unlocked, no prompts outside the tip jar screen. StoreKit is
+  Apple's framework, so the "Data Not Collected" label and privacy manifest are unchanged.
 
 ## Building
 

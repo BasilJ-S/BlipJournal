@@ -33,6 +33,7 @@ xcodebuild -scheme BlipJournal -destination 'platform=iOS Simulator,name=iPhone 
 - Answers reference IDs, never label text.
 - The product name in any user-facing string is "Blip Journal". `BlipJournal` is the repo, package, target, module and bundle identifier only; never put it in text a person reads.
 - No network calls. No analytics. No third-party dependencies beyond GRDB without discussion.
+  The one exception is StoreKit for the tip jar: Apple's framework talks to the App Store, and the app sends nothing of its own.
 - Swift 6 language mode with strict concurrency. Fix warnings, do not silence them.
 - Light mode only. Use semantic system colors so a later dark mode is cheap.
 - Every control needs an accessibility label. Support Dynamic Type.

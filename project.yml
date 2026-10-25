@@ -28,6 +28,8 @@ targets:
       - path: BlipJournal
         excludes:
           - "**/*.md"
+          # Local StoreKit testing only (Run scheme and BlipJournalTests); never in the app bundle.
+          - "**/*.storekit"
     dependencies:
       - package: BlipJournalCore
         product: BlipJournalCore
@@ -54,6 +56,13 @@ targets:
     platform: iOS
     sources:
       - path: BlipJournalTests
+        excludes:
+          - "**/*.storekit"
+      # StoreKit configurations for SKTestSession, bundled with the tests only.
+      - path: BlipJournalTests/Settings/NoTips.storekit
+        buildPhase: resources
+      - path: BlipJournal/Settings/TipJar.storekit
+        buildPhase: resources
     dependencies:
       - target: BlipJournal
       - package: BlipJournalCore
@@ -69,6 +78,8 @@ schemes:
         BlipJournal: all
     run:
       config: Debug
+      # Simulated tip products for Run from Xcode. Archives and TestFlight use the App Store.
+      storeKitConfiguration: BlipJournal/Settings/TipJar.storekit
     test:
       config: Debug
       targets:
