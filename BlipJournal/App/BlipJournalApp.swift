@@ -3,8 +3,11 @@ import SwiftUI
 
 /// Sets the notification centre's delegate and registers the `PROMPT` category before
 /// SwiftUI builds anything, so a cold launch from tapping a notification is never missed.
+/// Also starts the tip transaction listener, which must run from launch (Settings `DESIGN.md`).
 @MainActor
 final class AppDelegate: NSObject, UIApplicationDelegate {
+    private var tipTransactions: Task<Void, Never>?
+
     func application(
         _ application: UIApplication,
         didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil
@@ -14,6 +17,7 @@ final class AppDelegate: NSObject, UIApplicationDelegate {
             UNNotificationCategory(
                 identifier: NotificationCoordinator.categoryIdentifier, actions: [], intentIdentifiers: [])
         ])
+        tipTransactions = TipJarModel.listenForTransactions()
         return true
     }
 }

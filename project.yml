@@ -14,6 +14,9 @@ settings:
     CODE_SIGN_STYLE: Automatic
     MARKETING_VERSION: "1.0.0"
     CURRENT_PROJECT_VERSION: "1"
+# In the project for editing in Xcode, but in no target, so nothing builds or bundles it.
+fileGroups:
+  - BlipJournal/Settings/TipJar.storekit
 packages:
   BlipJournalCore:
     path: BlipJournalCore
@@ -28,6 +31,8 @@ targets:
       - path: BlipJournal
         excludes:
           - "**/*.md"
+          # Local StoreKit testing only (see fileGroups); it must never ship in the bundle.
+          - "**/*.storekit"
     dependencies:
       - package: BlipJournalCore
         product: BlipJournalCore
@@ -69,6 +74,8 @@ schemes:
         BlipJournal: all
     run:
       config: Debug
+      # Simulated tip products for Run from Xcode. Archives and TestFlight use the App Store.
+      storeKitConfiguration: BlipJournal/Settings/TipJar.storekit
     test:
       config: Debug
       targets:

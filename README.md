@@ -193,6 +193,9 @@ Exported files are not encrypted. The app says so before sharing.
 - No diagnostic, treatment, or therapy claims anywhere in the app or listing.
 - Dynamic Type and VoiceOver labels on all controls.
 - MIT license (GPL is incompatible with App Store distribution).
+- Tips (from 1.1) are three consumable In-App Purchases, guideline 3.1.1: no external
+  payment links, nothing unlocked, no prompts outside the tip jar screen. StoreKit is
+  Apple's framework, so the "Data Not Collected" label and privacy manifest are unchanged.
 
 ## Building
 
