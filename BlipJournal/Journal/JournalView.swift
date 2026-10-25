@@ -203,7 +203,7 @@ struct JournalView: View {
     private func filterBar(query: Query, shown: Int?, failed: Bool) -> some View {
         HStack {
             Text(filterSummary(query: query, shown: shown, failed: failed))
-                .font(BlipFont.body(15))
+                .blipFont(.body, size: 15, relativeTo: .subheadline)
                 .foregroundStyle(BlipBrand.muted)
             Spacer()
             Button("Clear") { clearFilters() }
