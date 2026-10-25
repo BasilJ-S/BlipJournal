@@ -78,16 +78,12 @@ letting prompts through Focus needs the
 under Personal Team signing; `categoryIdentifier` is `"PROMPT"`, registered with no actions
 at launch.
 
-**Running out.** New prompts are only planned when the app opens, so the queue can run
-dry. On every reconcile, `RunningOutWarning.remainingCounts(scheduled:)` (Sampling) picks
-the last 3 target prompts by fire time, across all surveys, and their body gets a second
-line: "3 check-ins left. Open Blip Journal to schedule more.", then 2, then "Last check-in
-scheduled. Open Blip Journal to schedule more." Fewer than 3 targets means all of them.
-Because it is recomputed every time, a refresh that schedules more restores the plain text
-on prompts that are no longer last (a content change, so the request is replaced). The
-title is never touched, so the preview's privacy choice holds. The delivered sweep treats
-a warned body as current (`RunningOutWarning.matches`), so a fired warning is not removed
-when the app next opens.
+**Running out.** Every reconcile applies `RunningOutWarning` (rule in Sampling `DESIGN.md`, text in
+`RunningOutWarning.message`) to the target, so the last 3 target prompts get a countdown line
+and a refresh that schedules more restores plain text on the ones no longer last (a
+content change, so the request is replaced). The delivered sweep treats a warned body as
+current (`RunningOutWarning.matches`), so a fired warning is not removed when the app
+next opens.
 
 ## Denied or undetermined permission
 

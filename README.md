@@ -135,9 +135,9 @@ BlipJournal/        iOS app target. SwiftUI only.
   for any day inside the horizon that has none yet, persist them, then reconcile the
   notification center so it holds exactly the pending prompts.
 - New prompts are only scheduled when the app opens, so the last 3 pending prompts across
-  all surveys warn that they are running out, counting down to "Last check-in scheduled.
-  Open Blip Journal to schedule more." Opening the app, from one of them or otherwise,
-  schedules more and moves the warning onto whatever is now last.
+  all surveys warn that they are running out, counting down to the last one. Opening the
+  app, from one of them or otherwise, schedules more and moves the warning onto whatever
+  is now last.
 - Sampling per survey per day: split the window into N equal blocks, choose one uniform
   random time per block, enforce the minimum gap. Times are rounded to the minute.
 - Changing a survey's schedule discards that survey's future pending prompts and

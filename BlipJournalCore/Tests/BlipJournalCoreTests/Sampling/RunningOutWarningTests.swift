@@ -36,8 +36,8 @@ struct RunningOutWarningTests {
         #expect(result == ["b1": 3, "c0": 2, "a2": 1])
     }
 
-    @Test("fewer than three pending: every prompt is marked", arguments: [0, 1, 2, 3])
-    func fewerThanThree(count: Int) {
+    @Test("three or fewer pending: every prompt is marked", arguments: [0, 1, 2, 3])
+    func threeOrFewer(count: Int) {
         let prompts = (0..<count).map { prompt("p\($0)", hours: Double($0)) }
         let result = RunningOutWarning.remainingCounts(scheduled: prompts)
         #expect(result.count == count)
