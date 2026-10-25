@@ -186,17 +186,13 @@ bundled `mood-and-feelings` template file, read through the survey file importer
 
 Premade surveys bundled with the app as survey files, in
 `BlipJournalCore/Sources/BlipJournalCore/SurveyFile/Templates/`. The gallery is under
-Settings, Surveys, +, Start from a template, and is offered once at the end of the
+Settings, Surveys, +, New survey, and is offered once at the end of the
 welcome. Each shows its purpose, questions and schedule before it is added, and becomes
 an ordinary survey, paused until you turn it on. Blank is always offered beside them.
 
-| Template | Questions | Schedule |
-|---|---|---|
-| Mood & feelings | the default survey above | 3 a day, 09:00 to 23:00 |
-| Focus & energy | energy and focus (1 to 5), what you are doing, caffeine, what helps or gets in the way | 5 a day, 08:00 to 20:00 |
-| Social time | who you are with, whether you are in touch with anyone, how connected you feel, alone or company | 4 a day, 09:00 to 22:00 |
-| Mind-wandering | where your mind was, what it was on, how those thoughts felt, what you were doing | 5 a day, 09:00 to 21:00 |
-| Phone use | how much you were on your phone, what for, what made you pick it up, whether it felt worth it | 4 a day, 09:00 to 23:00 |
+Templates: Mood & feelings (the default survey above), Focus & energy, Social time,
+Mind-wandering and Phone use. Each file holds its questions and schedule; the gallery's
+order and one-line purposes are in `SurveyTemplateGallery.swift`.
 
 The wording is written for Blip Journal, not taken from a published item set. A template
 that adapts published items credits them and uses them only where their licence allows.

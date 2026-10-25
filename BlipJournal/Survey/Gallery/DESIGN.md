@@ -12,8 +12,9 @@ survey**. The templates, their purposes and their tests live in BlipJournalCore'
   schedule, read from the file. Templates are read once per launch; they cannot change
   while the app runs.
 - **Blank** asks for a name and creates an empty, paused survey through
-  `EditorModel.createSurvey`, as the Surveys + menu's Blank survey does.
-- **Where it appears.** Settings → Surveys → + → Start from a template, in a sheet that
+  `EditorModel.createSurvey`. It is the only way to start a blank survey, so the Surveys
+  + menu has one New survey item rather than a Blank item beside the gallery.
+- **Where it appears.** Settings → Surveys → + → New survey, in a sheet that
   closes once a survey is added; and once, as the second step of the welcome
   (Onboarding `DESIGN.md`), which leaves out the mood and feelings template.
 - `onAdded` runs from the preview sheet's `onDismiss`, not while it is closing, so the

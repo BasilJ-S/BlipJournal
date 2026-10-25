@@ -34,8 +34,7 @@ struct SurveyListView: View {
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 Menu {
-                    Button("Start from a template") { showingGallery = true }
-                    Button("Blank survey") { name = ""; copySource = nil; showingNewSurvey = true }
+                    Button("New survey") { showingGallery = true }
                     Button("Copy an existing survey") { showingCopySurvey = true }
                     Divider()
                     Button("Import a survey file") { showingFileImporter = true }
@@ -87,12 +86,12 @@ struct SurveyListView: View {
         return EditorText.window(survey.sampling)
     }
 
+    /// Copies `copySource` under the chosen name. A blank survey starts in the gallery.
     private func create() {
-        guard !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
+        guard let copySource, !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
         do {
             let model = EditorModel(store: appModel.store, notifications: appModel.notifications)
-            if let copySource { _ = try model.copySurvey(sourceId: copySource.id, name: name) }
-            else { _ = try model.createSurvey(name: name) }
+            _ = try model.copySurvey(sourceId: copySource.id, name: name)
             try appModel.refresh(); self.copySource = nil; name = ""
         } catch { errorMessage = String(describing: error) }
     }
