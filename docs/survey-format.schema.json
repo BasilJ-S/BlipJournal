@@ -1,0 +1,155 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/BasilJ-S/BlipJournal/blob/main/docs/survey-format.schema.json",
+  "title": "Blip Journal survey file",
+  "description": "One survey definition: its questions, options, schedule and Journal summary. See docs/survey-format.md. This schema checks the shape of a file; Blip Journal also checks the rules that span fields, such as a scale's min being below its max.",
+  "type": "object",
+  "required": ["formatVersion", "name", "questions"],
+  "additionalProperties": false,
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "formatVersion": {
+      "description": "The version of this format the file is written in.",
+      "const": 1
+    },
+    "name": {
+      "description": "The survey's name.",
+      "$ref": "#/$defs/text"
+    },
+    "questions": {
+      "description": "The questions, in the order they are asked.",
+      "type": "array",
+      "items": { "$ref": "#/$defs/question" }
+    },
+    "sampling": {
+      "$ref": "#/$defs/sampling"
+    },
+    "journalSummary": {
+      "description": "Ids of up to two questions whose answers appear on each Journal row, in order. Leave it out for the first scale or spectrum question; [] for none.",
+      "type": "array",
+      "maxItems": 2,
+      "uniqueItems": true,
+      "items": { "$ref": "#/$defs/text" }
+    }
+  },
+  "$defs": {
+    "text": {
+      "description": "Text that is not blank.",
+      "type": "string",
+      "pattern": "\\S"
+    },
+    "question": {
+      "type": "object",
+      "required": ["kind", "label"],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "description": "A name for the question within this file, used only by journalSummary. Blip Journal assigns its own identifiers on import.",
+          "$ref": "#/$defs/text"
+        },
+        "kind": {
+          "enum": ["scale", "spectrum", "singleChoice", "multiChoice", "yesNo", "text"]
+        },
+        "label": {
+          "description": "The question as it is shown.",
+          "$ref": "#/$defs/text"
+        },
+        "required": {
+          "description": "Whether a check-in cannot be finished without answering.",
+          "type": "boolean",
+          "default": false
+        },
+        "expandable": {
+          "description": "singleChoice and multiChoice only: whether new options can be added while answering.",
+          "type": "boolean",
+          "default": false
+        },
+        "options": {
+          "description": "singleChoice and multiChoice only: the options, in order.",
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/text" },
+          "default": []
+        },
+        "scale": {
+          "$ref": "#/$defs/scale"
+        },
+        "spectrum": {
+          "$ref": "#/$defs/spectrum"
+        }
+      }
+    },
+    "scale": {
+      "description": "scale only: the range and its end labels.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "min": { "type": "integer", "minimum": -100, "maximum": 100, "default": 1 },
+        "max": { "type": "integer", "minimum": -100, "maximum": 100, "default": 7 },
+        "minLabel": { "type": "string", "default": "Very unpleasant" },
+        "maxLabel": { "type": "string", "default": "Very pleasant" }
+      }
+    },
+    "spectrum": {
+      "description": "spectrum only: the labelled zones, left to right, and the boundaries between them. Leave it out for Very unpleasant, Neutral and Very pleasant in equal thirds.",
+      "type": "object",
+      "required": ["zones"],
+      "additionalProperties": false,
+      "properties": {
+        "zones": {
+          "type": "array",
+          "minItems": 2,
+          "items": { "$ref": "#/$defs/zone" }
+        },
+        "breakpoints": {
+          "description": "One fewer than the zones, increasing, each between 0 and 1. Leave it out for equal zones.",
+          "type": "array",
+          "items": { "type": "number", "exclusiveMinimum": 0, "exclusiveMaximum": 1 }
+        }
+      }
+    },
+    "zone": {
+      "type": "object",
+      "required": ["label"],
+      "additionalProperties": false,
+      "properties": {
+        "label": { "$ref": "#/$defs/text" },
+        "color": { "$ref": "#/$defs/color" }
+      }
+    },
+    "color": {
+      "oneOf": [
+        { "type": "string", "pattern": "^#[0-9A-Fa-f]{6}$" },
+        {
+          "type": "object",
+          "required": ["red", "green", "blue"],
+          "additionalProperties": false,
+          "properties": {
+            "red": { "type": "number" },
+            "green": { "type": "number" },
+            "blue": { "type": "number" }
+          }
+        }
+      ]
+    },
+    "sampling": {
+      "description": "When prompts arrive. Every field is optional.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "promptsPerDay": { "type": "integer", "minimum": 0, "maximum": 20, "default": 3 },
+        "windowStart": { "$ref": "#/$defs/time", "default": "09:00" },
+        "windowEnd": { "$ref": "#/$defs/time", "default": "23:00" },
+        "minGapMinutes": { "type": "integer", "minimum": 0, "maximum": 1440, "default": 60 },
+        "expiryMinutes": { "type": "integer", "minimum": 1, "maximum": 240, "default": 20 }
+      }
+    },
+    "time": {
+      "description": "A time of day, HH:MM on a 24-hour clock. 24:00 is midnight at the end of the day.",
+      "type": "string",
+      "pattern": "^(([01][0-9]|2[0-3]):[0-5][0-9]|24:00)$"
+    }
+  }
+}
