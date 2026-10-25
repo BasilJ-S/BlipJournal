@@ -13,4 +13,11 @@ use a shared SwiftUI large heading below an inline navigation bar, bypassing the
 large-title host because it produces a zero-height render surface on the current target.
 Content headings use Nunito.
 
+Views set brand type with `blipFont(_:size:relativeTo:)` or `blipMonoLabel()`, never
+`BlipFont` directly. `BlipFont` builds a `UIFont` at a fixed point size, which ignores
+Dynamic Type; both modifiers hold the size in a `ScaledMetric`, so the font is rebuilt at
+the person's text size. The spec's 12pt cap on mono labels holds at the default size and
+is exceeded at larger sizes on purpose. The tab bar font is configured once through UIKit
+and does not scale, matching system tab bars, which use the large content viewer instead.
+
 `BlipAppearance` is main-actor isolated because it configures UIKit tab appearance.

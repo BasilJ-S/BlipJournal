@@ -23,6 +23,7 @@ struct BlipJournalApp: App {
     @UIApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
     @Environment(\.scenePhase) private var scenePhase
     @State private var launch: Launch
+    @State private var privacyShield = PrivacyShield()
 
     /// Either a working model or the reason there is none. Store errors at launch are
     /// fatal in v0: there is no recovery path, and hiding them would be worse.
@@ -58,16 +59,30 @@ struct BlipJournalApp: App {
                 .environment(appModel)
                 .preferredColorScheme(.light)
                 .onChange(of: scenePhase) { _, phase in
+                    // The shield goes up on leaving `.active`, before the app-switcher
+                    // snapshot is taken. While locked, `LockView` shows nothing private.
                     switch phase {
                     case .background:
+                        if !appModel.isLocked { privacyShield.show() }
                         appModel.didEnterBackground(at: Date())
                     case .active:
+                        // Lock first: on a relock the shield stays up until the
+                        // `isLocked` change below, so the old content never shows.
                         appModel.willEnterForeground(at: Date())
+                        if !appModel.isLocked { privacyShield.hide() }
                     case .inactive:
-                        break
+                        // The notification permission alert also makes the scene
+                        // inactive; covering the screen then would hide the
+                        // explanation the alert follows.
+                        if !appModel.isLocked && !appModel.notifications.isRequestingAuthorization {
+                            privacyShield.show()
+                        }
                     @unknown default:
                         break
                     }
+                }
+                .onChange(of: appModel.isLocked) { _, isLocked in
+                    if isLocked { privacyShield.hide() }
                 }
             case .failed(let message):
                 LaunchFailureView(message: message)

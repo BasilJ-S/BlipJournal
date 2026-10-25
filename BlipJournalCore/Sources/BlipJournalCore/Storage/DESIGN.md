@@ -234,7 +234,8 @@ README promises no more than that.
   `Date()` taken at runtime therefore does not compare equal to its stored form.
 - Autosave overwrites (`saveEntry` replacing a text answer) are plain updates without a
   vacuum, so the previous text may linger in the file until the next destructive call.
-- There is no `unarchiveSurvey`; a survey, once archived, is hidden until hard-deleted.
+- `unarchiveSurvey` appends a survey version with `isArchived` cleared, like every other
+  edit. It has no store-level test yet; the editor's Archived screen is its only caller.
 - `entriesEmptied` is a preview; nothing removes an emptied entry later.
 - **What the Store does not check.** Foreign keys reject unknown identifiers and
   duplicate keys, and that is all. The Store accepts, unchecked: a value outside its

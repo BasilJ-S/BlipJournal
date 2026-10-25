@@ -114,6 +114,7 @@ struct AppModelTests {
 @MainActor
 final class SpyNotificationCoordinator: NotificationCoordinating {
     var authorizationStatus: UNAuthorizationStatus { .notDetermined }
+    var isRequestingAuthorization: Bool { false }
     var pendingRoute: String?
     private(set) var refreshDates: [Date] = []
     var onRefresh: (() -> Void)?

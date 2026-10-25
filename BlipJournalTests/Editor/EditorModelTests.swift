@@ -136,6 +136,7 @@ struct EditorModelTests {
 @MainActor
 private final class EditorNotificationSpy: NotificationCoordinating {
     var authorizationStatus: UNAuthorizationStatus { .notDetermined }
+    var isRequestingAuthorization: Bool { false }
     var pendingRoute: String?
     var refreshDates: [Date] = []
     var scheduleDates: [Date] = []

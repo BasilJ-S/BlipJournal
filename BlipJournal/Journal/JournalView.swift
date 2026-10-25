@@ -379,10 +379,17 @@ struct JournalView: View {
         ContentUnavailableView {
             Label("No entries yet", systemImage: "book.closed")
         } description: {
-            Text("Prompts will appear here once notifications are on.")
+            Text(appModel.notifications.canDeliverPrompts
+                ? "Answered prompts will appear here."
+                : "Prompts will appear here once notifications are on.")
         } actions: {
             newEntryButton("Log an entry now")
                 .buttonStyle(.borderedProminent)
+            if !appModel.notifications.canDeliverPrompts {
+                NavigationLink("Turn on prompts") { NotificationSettingsView() }
+                    .accessibilityLabel("Turn on prompts")
+                    .accessibilityHint("Opens notification settings.")
+            }
         }
     }
 
@@ -455,15 +462,15 @@ private struct EntryRow: View {
                         Text(entry.startedAt, style: .time)
                     }
                 }
-                .font(BlipFont.qualifier(17))
+                .blipFont(.qualifier, size: 17)
                 if let answerSummary = summary.value {
                     Text(answerSummary)
-                        .font(BlipFont.qualifier(17))
+                        .blipFont(.qualifier, size: 17)
                         .foregroundStyle(BlipBrand.muted)
                 }
             }
             Text(survey?.name ?? "Unknown survey")
-                .font(BlipFont.body(15))
+                .blipFont(.body, size: 15, relativeTo: .subheadline)
                 .foregroundStyle(BlipBrand.muted)
             ViewThatFits(in: .horizontal) {
                 HStack(spacing: 8) { badges }

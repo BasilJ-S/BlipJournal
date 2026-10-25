@@ -36,9 +36,10 @@ Request-add errors propagate to that result; refresh can retry the persisted sch
    given calendar.
 3. Mark `plan.missedPromptIds` as `.missed`.
 4. Insert `plan.newPrompts`.
-5. If authorization is `.authorized` or `.provisional`, reconcile the request centre
-   (below). Otherwise stop here: the store stays consistent (prompts are planned and
-   marked missed on schedule) but nothing is requested until permission is granted.
+5. If `canDeliverPrompts` (authorization `.authorized` or `.provisional`, a protocol
+   extension so views share the rule), reconcile the request centre (below). Otherwise
+   stop here: the store stays consistent (prompts are planned and marked missed on
+   schedule) but nothing is requested until permission is granted.
 
 Refreshes are serialized through the coordinator. A later refresh waits for an earlier
 one to finish all of its notification-centre work, so a reset cannot reconcile against
@@ -82,9 +83,11 @@ at launch.
 Prompts are still planned and stored on every refresh regardless of authorization, so the
 schedule stays correct the moment permission is granted. No request is added and nothing
 delivered is swept while permission is anything but `.authorized` or `.provisional`.
-`requestAuthorization()` is called only from the explicit "Enable notifications" button
-in `NotificationSettingsView`; launch, foreground, `scheduleChanged`, `promptsDestroyed`
-and displaying the settings screen never call it. Manual journaling, survey editing,
+`requestAuthorization()` is called only from an explicit "Enable notifications" button,
+in `NotificationSettingsView` or the one-time `WelcomeView` (Onboarding `DESIGN.md`).
+`isRequestingAuthorization` is true while it awaits the system alert, so the privacy
+shield can stay down for it (App `DESIGN.md`). Launch, foreground, `scheduleChanged`,
+`promptsDestroyed` and displaying the settings screen never call it. Manual journaling, survey editing,
 Insights and export never check authorization.
 
 ## Routing states (`PromptRouteView`)
@@ -133,7 +136,6 @@ which read as the notification bouncing back to the Home Screen. Do not go back 
   high-frequency surveys sees a shorter horizon on each (see Sampling `DESIGN.md`).
 - No background refresh: the schedule is only as fresh as the last foreground or
   schedule-affecting write.
-- `Store` has no `unarchiveSurvey` yet (Storage `DESIGN.md`), so "unarchiving restores
-  scheduling when the saved configuration is enabled" is implemented by the coordinator
-  logic (an unarchived, enabled survey is eligible the same as any other) but not yet
-  exercised by a coordinator test; A4 owns adding the unarchive path and its own coverage.
+- Unarchiving a survey (`Store.unarchiveSurvey`, from the editor's Archived screen)
+  restores its scheduling when the saved configuration is enabled: an unarchived, enabled
+  survey is eligible the same as any other. No coordinator test exercises that path yet.

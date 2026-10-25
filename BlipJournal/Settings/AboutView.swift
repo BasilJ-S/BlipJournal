@@ -21,32 +21,66 @@ struct AboutView: View {
             }
             Section("Privacy") { Text("Blip Journal makes no network requests and collects no data.") }
             Section("Licence") { DisclosureGroup("MIT Licence") { Text(mitLicence).font(.footnote).textSelection(.enabled) } }
+            Section("Acknowledgements") {
+                DisclosureGroup("GRDB.swift") { Text(grdbLicence).font(.footnote).textSelection(.enabled) }
+                DisclosureGroup("Nunito and JetBrains Mono fonts") { Text(fontLicence).font(.footnote).textSelection(.enabled) }
+            }
             Section { Link(destination: URL(string: "https://github.com/BasilJ-S/BlipJournal")!) { Label("View source repository", systemImage: "link") }.accessibilityLabel("View Blip Journal source repository") }
         }
         .blipScreen("About")
     }
+
+    /// The SIL Open Font License travels with the fonts as a bundle resource, so it is read
+    /// from there rather than copied into code a second time, and reflowed for the screen.
+    private var fontLicence: String {
+        Bundle.main.url(forResource: "OFL", withExtension: "txt")
+            .flatMap { try? String(contentsOf: $0, encoding: .utf8) }
+            .map(LicenceText.reflowed)
+            ?? "Licensed under the SIL Open Font License, Version 1.1."
+    }
+
+    private var grdbLicence: String { """
+        Copyright (C) 2015-2025 Gwendal Roué
+
+        Permission is hereby granted, free of charge, to any person obtaining a copy of \
+        this software and associated documentation files (the "Software"), to deal in \
+        the Software without restriction, including without limitation the rights to \
+        use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of \
+        the Software, and to permit persons to whom the Software is furnished to do so, \
+        subject to the following conditions:
+
+        The above copyright notice and this permission notice shall be included in all \
+        copies or substantial portions of the Software.
+
+        THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR \
+        IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS \
+        FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR \
+        COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN \
+        AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION \
+        WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+        """ }
 
     private var mitLicence: String { """
         MIT License
 
         Copyright (c) 2026 Basil Jancso-Szabo
 
-        Permission is hereby granted, free of charge, to any person obtaining a copy
-        of this software and associated documentation files (the "Software"), to deal
-        in the Software without restriction, including without limitation the rights
-        to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-        copies of the Software, and to permit persons to whom the Software is
+        Permission is hereby granted, free of charge, to any person obtaining a copy \
+        of this software and associated documentation files (the "Software"), to deal \
+        in the Software without restriction, including without limitation the rights \
+        to use, copy, modify, merge, publish, distribute, sublicense, and/or sell \
+        copies of the Software, and to permit persons to whom the Software is \
         furnished to do so, subject to the following conditions:
 
-        The above copyright notice and this permission notice shall be included in all
+        The above copyright notice and this permission notice shall be included in all \
         copies or substantial portions of the Software.
 
-        THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-        IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-        FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-        AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-        LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-        OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+        THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR \
+        IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, \
+        FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE \
+        AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER \
+        LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, \
+        OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE \
         SOFTWARE.
         """ }
 }

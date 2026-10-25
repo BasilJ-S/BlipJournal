@@ -34,6 +34,9 @@ unanswered choices are omitted. Badges wrap at large Dynamic Type.
   clearing state and after awaiting a read, so a cancelled revision cannot overwrite
   a newer summary. Tests explicitly complete overlapping reads in reverse order.
 - New entry opens the fixed A3 runner signature; multiple surveys offer a menu.
+- While `canDeliverPrompts` is false, the empty state says prompts need notifications
+  and its "Turn on prompts" link pushes `NotificationSettingsView` onto the Journal tab's
+  own stack. Once prompts can be delivered it says answered prompts will appear there.
 - Unfinished entries offer Continue entry, resuming the same entry. Completed entries
   are read-only.
   Sheet dismissal reloads the model, including swipe dismissal.
