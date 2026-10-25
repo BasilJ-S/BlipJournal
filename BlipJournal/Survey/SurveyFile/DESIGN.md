@@ -25,5 +25,9 @@ folder only gets bytes in and out and shows the result.
   scope and never copied into the app.
 
 Known limitations: a survey file opened while a prompt sheet appears is dropped when
-that sheet takes over, and must be opened again. There is no in-app copy of the AI
+that sheet takes over, and must be opened again. One opened while another sheet is up
+inside a tab (the paste sheet, a new question) waits in `pendingSurveyImport` but SwiftUI
+may not present it until something else changes; opening it again works. Files are read
+on the main actor, which is fine for a survey but noticeable for a large backup opened
+by mistake. There is no in-app copy of the AI
 prompt; it lives in the spec.
