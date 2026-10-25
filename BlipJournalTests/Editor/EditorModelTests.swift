@@ -122,6 +122,21 @@ struct EditorModelTests {
         #expect(archived.first?.0.label == "Retired")
     }
 
+    @Test func importedSurveysStartPausedAndPrivateWithoutTouchingOthers() throws {
+        let store = try Store.inMemory()
+        let editor = model(store: store)
+        let existing = try editor.createSurvey(name: "Existing", now: now)
+        let contents = try SurveyFile.decode(text: #"""
+            {"formatVersion": 1, "name": "Imported", "questions": [{"kind": "scale", "label": "Energy"}]}
+            """#).get()
+        let imported = try editor.importSurvey(contents, now: now.addingTimeInterval(1))
+        #expect(imported.name == "Imported")
+        #expect(imported.sampling.isEnabled == false)
+        #expect(imported.notificationPreview == .private)
+        #expect(imported.activeQuestions.map(\.label) == ["Energy"])
+        #expect(try store.surveys(includeArchived: true).map(\.id) == [existing.id, imported.id])
+    }
+
     @Test func customPreviewDraftTracksEmptyAndValidMessageChanges() {
         let empty = SamplingSettingsView.effectivePreview(mode: 2, customMessage: " \n")
         #expect(!empty.isValid)

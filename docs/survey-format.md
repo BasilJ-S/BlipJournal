@@ -8,8 +8,8 @@ researcher shares so every participant answers the same protocol, built-in templ
 and text you paste.
 
 A survey file never holds answers, and importing one never changes anything already in
-the app: it always adds a new survey. (The JSON backup is a different file and is not
-imported.)
+the app: it always adds a new survey. A JSON backup is a different file: it holds
+everything, answers included, and is restored under Settings, Restore from backup.
 
 - **Extension:** `.blipsurvey` for files Blip Journal writes. Blip Journal also opens
   `.json` files. Both are the same JSON; rename one to the other freely.
@@ -199,6 +199,8 @@ When a file cannot be imported, Blip Journal lists every problem it found, each 
 where it is (such as "Question 3, scale") and what to change, and adds nothing. Besides
 the shape the schema describes, it checks:
 
+- The file is a survey file and not a JSON backup. A backup is named as one, with a
+  pointer to Settings, Restore from backup.
 - The `formatVersion` is one it reads. A file from a newer version of Blip Journal is
   refused with a request to update the app, without checking anything else.
 - Each question `id` appears once, and each `journalSummary` entry names one of them.

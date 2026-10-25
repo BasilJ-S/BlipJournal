@@ -25,6 +25,10 @@ struct SurveyEditorView: View {
                             JournalSummarySettingsView(surveyId: survey.id)
                         }
                         NavigationLink("Archived in this survey") { ArchivedView(scope: .survey(survey.id)) }
+                        ShareLink(item: SurveyFileDocument(survey: survey), preview: SharePreview(survey.name)) {
+                            Label("Share survey file", systemImage: "square.and.arrow.up")
+                        }
+                        .accessibilityHint("Shares the questions and schedule as a file. Never includes answers.")
                     }
                     Section("Questions") {
                         ForEach(survey.activeQuestions) { question in

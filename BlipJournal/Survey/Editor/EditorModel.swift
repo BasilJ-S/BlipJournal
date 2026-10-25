@@ -69,6 +69,13 @@ final class EditorModel {
         return try survey(copy.id)
     }
 
+    /// Adds a survey file's survey as a new survey: fresh identifiers, notifications
+    /// paused, a private preview. The import itself is `Store.importSurvey`.
+    @discardableResult
+    func importSurvey(_ contents: SurveyFileContents, now: Date = Date()) throws -> Survey {
+        try store.importSurvey(contents, now: now)
+    }
+
     func rename(surveyId: String, to name: String, now: Date = Date()) throws {
         try store.renameSurvey(surveyId, to: name, now: now)
         Task { await notifications.refresh(now: now) }

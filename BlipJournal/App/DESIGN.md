@@ -28,6 +28,9 @@ Data Protection; this is filesystem encryption, not SQLCipher.
   once; on a relock it comes down from `onChange(of: isLocked)`, together with
   `LockView` replacing the root, so the old content never flashes.
 - `RootView` presents the one-time `WelcomeView` (Onboarding `DESIGN.md`).
+- `onOpenURL` reads a survey file handed over by another app into
+  `AppModel.pendingSurveyImport`, even while locked; `RootView` previews it once unlocked,
+  after the welcome and any prompt sheet (Survey/SurveyFile `DESIGN.md`).
 - Launch store errors remain fatal with their error text, as required by A1.
   DEBUG logs the directory protection class; verify encryption on a device.
 

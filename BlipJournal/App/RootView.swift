@@ -41,6 +41,17 @@ struct RootView: View {
                 }
             }
         }
+        // A survey file opened from another app. Waits, like a prompt route, for the
+        // welcome to close and for any prompt sheet, so two sheets never race.
+        .sheet(item: Binding(
+            get: {
+                hasSeenWelcome && appModel.notifications.pendingRoute == nil
+                    ? appModel.pendingSurveyImport : nil
+            },
+            set: { appModel.pendingSurveyImport = $0 }
+        )) { pending in
+            SurveyImportSheet(outcome: pending.outcome)
+        }
         .fullScreenCover(isPresented: Binding(
             get: { !hasSeenWelcome },
             set: { isPresented in

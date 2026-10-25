@@ -92,6 +92,18 @@ struct SurveyFileErrorTests {
         #expect(issue.message.contains("Update Blip Journal"))
     }
 
+    @Test("a JSON backup is named as one and pointed at Restore, with no other issues")
+    func backupFile() throws {
+        let store = try Store.inMemory()
+        let backup = try BackupExporter.json(store.backup(now: Date(timeIntervalSince1970: 0)))
+        guard case .failure(let error) = SurveyFile.decode(backup) else {
+            Issue.record("a backup decoded as a survey file")
+            return
+        }
+        #expect(error.issues.count == 1)
+        #expect(error.issues.first?.message.contains("Restore from backup") == true)
+    }
+
     @Test("every issue in a file is reported, in file order")
     func everyIssue() {
         let issues = Support.issues(#"""

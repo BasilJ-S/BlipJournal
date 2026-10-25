@@ -47,6 +47,11 @@ or Apple reads says `BlipJournal`, one word.
   tap targets, autosave, no confirmation step.
 - **Local and encrypted.** SQLite on device, protected with iOS Data Protection
   (`complete` class). Face ID or passcode to open the app. No network access at all.
+- **Surveys as files.** A survey's questions and schedule can be written by hand, or by
+  describing it to any AI assistant, in a documented JSON format
+  ([docs/survey-format.md](docs/survey-format.md)), then imported from Files, the share
+  sheet or pasted text. Any survey can be shared as a file. Survey files never hold
+  answers, and importing one only ever adds a new survey, paused until you turn it on.
 - **Exportable.** CSV in wide and long formats, plus a JSON backup that includes survey
   definitions.
 - **Honest data.** Unprompted (manual) entries are tagged as such. Expired prompts are
@@ -90,13 +95,14 @@ BlipJournalCore/    Swift package. No UIKit. Tested with `swift test` on macOS.
   Storage/           GRDB schema, migrations, insert-only versioning, queries
   Sampling/          Stratified random day sampler and multi-survey prompt planner
   Export/            CSV (wide, long) and JSON backup
+  SurveyFile/        Survey file format: read, validate, write, import
   Journal/           Journal filter and sort rules
 BlipJournal/        iOS app target. SwiftUI only.
   App/               Entry point, app model, biometric lock, app-switcher cover
   Onboarding/        One-time welcome that asks for notification permission
   Journal/           Entries list and entry detail with delete
   Notifications/     UNUserNotificationCenter adapter for the prompt planner
-  Survey/            Survey runner (answering) and survey editor
+  Survey/            Survey runner (answering), survey editor, survey file import and export
   Insights/          Swift Charts views
   Settings/          Surveys, sampling, export, about
 ```

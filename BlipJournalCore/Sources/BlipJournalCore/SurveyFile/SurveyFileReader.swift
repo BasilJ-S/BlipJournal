@@ -69,6 +69,15 @@ struct SurveyFileReader {
             report(path, "A survey file must be one JSON object, starting with { and ending with }.")
             return nil
         }
+        // A JSON backup is also a .json file Blip Journal opens; name it rather than list
+        // every table as an unknown field.
+        if root["formatVersion"] == nil, root["schemaVersion"] != nil, root["exportedAt"] != nil {
+            report(path, """
+                This is a Blip Journal backup, not a survey file. To bring it back, use \
+                Settings, Restore from backup.
+                """)
+            return nil
+        }
         // A newer version can mean fields this build has never heard of, so nothing else
         // is worth reporting until the version is one it reads.
         guard readFormatVersion(root["formatVersion"], at: path / "formatVersion") else { return nil }

@@ -19,5 +19,9 @@ states what survives, mentions emptied entries, and ends with “It cannot be un
 Spectrum questions require at least two non-blank labelled zones and ordered interior
 boundaries. Their colour pickers and boundary sliders carry labels naming their zones.
 
+Surveys can also come from survey files, and the editor's "Share survey file" writes
+one; see `Survey/SurveyFile/DESIGN.md`. `EditorText` holds wording shared with that
+preview: the clock, the schedule window and the question kind descriptions.
+
 Known limitations: drag reorder is available only in EditMode; question kinds cannot
 change; copying duplicates current active configuration only, never response history.

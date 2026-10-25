@@ -81,6 +81,12 @@ struct BlipJournalApp: App {
                         break
                     }
                 }
+                // "Open in Blip Journal" from Files, Mail or a share sheet. Read now,
+                // while the URL is valid; previewed once unlocked.
+                .onOpenURL { url in
+                    guard url.isFileURL else { return }
+                    appModel.pendingSurveyImport = PendingSurveyImport(fileAt: url)
+                }
                 .onChange(of: appModel.isLocked) { _, isLocked in
                     if isLocked { privacyShield.hide() }
                 }
