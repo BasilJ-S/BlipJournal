@@ -103,7 +103,7 @@ struct SurveyImportSheet: View {
 
     private func add(_ contents: SurveyFileContents) {
         do {
-            try EditorModel(store: appModel.store, notifications: appModel.notifications).importSurvey(contents)
+            try appModel.store.importSurvey(contents)
             try appModel.refresh()
             dismiss()
         } catch { errorMessage = String(describing: error) }

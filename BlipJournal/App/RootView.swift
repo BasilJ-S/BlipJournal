@@ -48,7 +48,13 @@ struct RootView: View {
                 hasSeenWelcome && appModel.notifications.pendingRoute == nil
                     ? appModel.pendingSurveyImport : nil
             },
-            set: { appModel.pendingSurveyImport = $0 }
+            set: { pending in
+                // Stepping aside for a prompt sheet dismisses this one; keep the file
+                // so it shows again once the prompt sheet closes.
+                if pending != nil || appModel.notifications.pendingRoute == nil {
+                    appModel.pendingSurveyImport = pending
+                }
+            }
         )) { pending in
             SurveyImportSheet(outcome: pending.outcome)
         }

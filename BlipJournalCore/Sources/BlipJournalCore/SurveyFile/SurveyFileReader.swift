@@ -193,12 +193,8 @@ struct SurveyFileReader {
     private mutating func readOptions(_ value: JSONValue?, at path: FieldPath) -> [ChoiceOption] {
         var labels: [String] = []
         for (index, item) in (array(value, at: path) ?? []).enumerated() {
-            guard let label = requiredText(item, at: path / index) else { continue }
-            if labels.contains(label) {
-                report(path / index, "\"\(label)\" is already an option. Each option must be different.")
-            } else {
-                labels.append(label)
-            }
+            // Repeats are allowed, as in the editor: answers name options by identifier.
+            if let label = requiredText(item, at: path / index) { labels.append(label) }
         }
         return labels.enumerated().map { ChoiceOption(label: $1, position: $0) }
     }

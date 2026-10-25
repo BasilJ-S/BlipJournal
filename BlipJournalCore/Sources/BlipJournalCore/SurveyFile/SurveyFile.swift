@@ -15,6 +15,34 @@ public struct SurveyFileContents: Sendable, Equatable {
     /// Identifiers from ``questions``, resolved: the file's own `journalSummary`, or
     /// ``Survey/defaultJournalSummaryQuestionIds(for:)`` when the file has none.
     public var journalSummaryQuestionIds: [String]
+
+    init(name: String, questions: [Question], sampling: SamplingConfig, journalSummaryQuestionIds: [String]) {
+        self.name = name
+        self.questions = questions
+        self.sampling = sampling
+        self.journalSummaryQuestionIds = journalSummaryQuestionIds
+    }
+
+    /// A survey's current definition, exactly what its survey file holds: active
+    /// questions and options renumbered from 0 in display order, the schedule switched
+    /// on, and the active Journal summary. Identifiers are the survey's own, so
+    /// ``Store/importSurvey(_:now:)`` of this is a copy of the survey.
+    public init(_ survey: Survey) {
+        var sampling = survey.sampling
+        sampling.isEnabled = true
+        self.init(
+            name: survey.name,
+            questions: survey.activeQuestions.enumerated().map { index, question in
+                var copy = question
+                copy.position = index
+                copy.options = question.activeOptions.enumerated().map { optionIndex, option in
+                    ChoiceOption(id: option.id, label: option.label, position: optionIndex)
+                }
+                return copy
+            },
+            sampling: sampling,
+            journalSummaryQuestionIds: survey.journalSummaryQuestions.map(\.id))
+    }
 }
 
 /// Everything wrong with a survey file. Reading a file never changes anything, so a
@@ -65,9 +93,12 @@ public enum SurveyFile {
         do {
             root = try JSONDecoder().decode(JSONValue.self, from: data)
         } catch {
+            // JSONDecoder names the spot as "line L, column C" in its underlying error.
+            let place = String(describing: error).firstMatch(of: #/line (\d+), column (\d+)/#)
+                .map { " The problem is around line \($0.1), column \($0.2)." } ?? ""
             return .failure(SurveyFileError(FieldPath(), """
                 This isn't valid JSON. Look for a missing comma, quotation mark or bracket.
-                """))
+                """ + place))
         }
         var reader = SurveyFileReader()
         if let contents = reader.readSurvey(root), reader.issues.isEmpty {
@@ -103,20 +134,20 @@ public enum SurveyFile {
     /// Question ids are `q1`, `q2`, … in display order, used only by `journalSummary`.
     /// The same survey always produces the same bytes.
     public static func encode(_ survey: Survey) -> Data {
-        Data((document(for: survey).formatted() + "\n").utf8)
+        Data((document(for: SurveyFileContents(survey)).formatted() + "\n").utf8)
     }
 
-    static func document(for survey: Survey) -> JSONValue {
-        let questions = survey.activeQuestions
+    private static func document(for contents: SurveyFileContents) -> JSONValue {
+        let questions = contents.questions
         var fileIds: [String: String] = [:]
         for (index, question) in questions.enumerated() {
             fileIds[question.id] = "q\(index + 1)"
         }
-        let summary = survey.journalSummaryQuestions.compactMap { fileIds[$0.id] }
+        let summary = contents.journalSummaryQuestionIds.compactMap { fileIds[$0] }
         return .object([
             .init("formatVersion", .number(Double(formatVersion))),
-            .init("name", .string(survey.name)),
-            .init("sampling", document(for: survey.sampling)),
+            .init("name", .string(contents.name)),
+            .init("sampling", document(for: contents.sampling)),
             .init("journalSummary", .array(summary.map(JSONValue.string))),
             .init("questions", .array(questions.map { document(for: $0, id: fileIds[$0.id] ?? "") })),
         ])

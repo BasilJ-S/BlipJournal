@@ -4,8 +4,7 @@ A survey file holds one Blip Journal survey: its name, questions, options, sampl
 schedule and Journal summary. It is plain JSON, short enough to write by hand, and
 regular enough for an AI assistant to write from a description. Every way a survey
 enters the app from outside goes through this format: files you write, files a
-researcher shares so every participant answers the same protocol, built-in templates,
-and text you paste.
+researcher shares so every participant answers the same protocol, and text you paste.
 
 A survey file never holds answers, and importing one never changes anything already in
 the app: it always adds a new survey. A JSON backup is a different file: it holds
@@ -14,8 +13,9 @@ everything, answers included, and is restored under Settings, Restore from backu
 - **Extension:** `.blipsurvey` for files Blip Journal writes. Blip Journal also opens
   `.json` files. Both are the same JSON; rename one to the other freely.
 - **Schema:** [`survey-format.schema.json`](survey-format.schema.json) (JSON Schema
-  2020-12). Add `"$schema"` with its URL to a file to get checking and completion in an
-  editor that supports it. The schema checks the shape; Blip Journal also checks rules
+  2020-12). Add
+  `"$schema": "https://raw.githubusercontent.com/BasilJ-S/BlipJournal/main/docs/survey-format.schema.json"`
+  to a file to get checking and completion in an editor that supports it. The schema checks the shape; Blip Journal also checks rules
   that span fields, listed under [Validation](#validation).
 - **Current version:** `formatVersion` 1.
 
@@ -112,7 +112,7 @@ falling back to a default.
 | `id` | text | none | not blank, different for each question. Only `journalSummary` uses it. |
 | `required` | true or false | `false` | whether a check-in cannot be finished without an answer |
 | `expandable` | true or false | `false` | `singleChoice` and `multiChoice` only: new options can be added while answering |
-| `options` | list of text | `[]` | `singleChoice` and `multiChoice` only: not blank, no repeats, in display order |
+| `options` | list of text | `[]` | `singleChoice` and `multiChoice` only: not blank, in display order |
 | `scale` | [scale](#scale) | every scale default | `scale` only |
 | `spectrum` | [spectrum](#spectrum) | the pleasantness spectrum | `spectrum` only |
 
@@ -238,7 +238,7 @@ Rules for the file:
   "multiChoice" (pick any options), "yesNo", "text" (a short note).
 - Optional on any question: "required" (true or false, default false), "id" (a short
   name, only needed to list the question in journalSummary).
-- singleChoice and multiChoice: "options", a list of distinct labels, and optionally
+- singleChoice and multiChoice: "options", a list of labels, and optionally
   "expandable": true to let new options be added while answering.
 - scale: optionally "scale" with "min" and "max" (whole numbers from -100 to 100, min
   below max) and "minLabel" and "maxLabel" (text). Default 1 to 7.

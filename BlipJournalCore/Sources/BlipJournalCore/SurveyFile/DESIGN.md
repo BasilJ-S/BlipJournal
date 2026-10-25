@@ -32,8 +32,8 @@ Survey ─ SurveyFile.encode ─> Data
   one built by hand.
 - **Identifiers come from the app.** File `id`s are local names for `journalSummary` and
   are dropped. `decode` mints identifiers so contents can be previewed; `importSurvey`
-  mints them again, so one decoded value can be imported twice (a double tap, or a
-  bundled template added twice) without a primary key clash.
+  mints them again, so one decoded value can be imported twice (a double tap, or the same
+  file imported again) without a primary key clash.
 - **Imports start paused** with the `.private` notification preview, like every new
   survey. The format has no field for either: when a phone buzzes is the person's
   choice, not the file author's.
@@ -45,14 +45,20 @@ Survey ─ SurveyFile.encode ─> Data
 - **A newer `formatVersion` stops at once** with an "update Blip Journal" message: a
   newer file can have fields this build cannot judge.
 - **Same rules as the editor.** Anything the editor can save, the writer can write and
-  the reader accepts: empty question lists, choice questions with no options, empty scale
-  labels, and colours outside `0...1`. `encode` then `decode` gives back the same current
+  the reader accepts: empty question lists, choice questions with no options, repeated
+  option labels, empty scale labels, and colours outside `0...1`. Blank question and
+  option labels are refused here and by the editor alike. `encode` then `decode` gives back the same current
   definition, which the round-trip tests check.
 - **Deterministic output.** `encode` writes keys in a fixed, readable order with
   two-space indentation, so the same survey always gives the same bytes and a protocol
   file diffs cleanly.
 
 ## Decisions
+
+- **One definition shape for files and copies.** `SurveyFileContents(survey)` is a
+  survey's current definition; `encode` writes it and the editor's "Copy an existing
+  survey" imports it under a new name, so copying and exporting cannot disagree about
+  what a survey's definition is.
 
 - **`decode` returns a `Result`.** Callers want `SurveyFileError` itself to list issues;
   a throwing API would hand them `any Error` and a cast.

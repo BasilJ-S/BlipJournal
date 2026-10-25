@@ -26,28 +26,3 @@ struct SurveyFileDocument: Transferable {
         }
     }
 }
-
-/// A survey file read and waiting for the person to look it over, or a request to paste
-/// one. Every way a survey enters from outside (Files, another app's share sheet, pasted
-/// text) ends here and in `SurveyImportSheet`.
-struct PendingSurveyImport: Identifiable {
-    let id = UUID()
-    /// Nil asks the person to paste survey text first.
-    let outcome: Result<SurveyFileContents, SurveyFileError>?
-
-    private init(outcome: Result<SurveyFileContents, SurveyFileError>?) {
-        self.outcome = outcome
-    }
-
-    static func paste() -> PendingSurveyImport {
-        PendingSurveyImport(outcome: nil)
-    }
-
-    /// Reads a file picked in Files or handed over by another app, inside its security
-    /// scope when it has one. Bundled files take the same path.
-    init(fileAt url: URL) {
-        let isScoped = url.startAccessingSecurityScopedResource()
-        defer { if isScoped { url.stopAccessingSecurityScopedResource() } }
-        self.init(outcome: SurveyFile.decode(contentsOf: url))
-    }
-}

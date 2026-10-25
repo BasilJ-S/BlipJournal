@@ -9,25 +9,28 @@ folder only gets bytes in and out and shows the result.
   share sheet arrives as `onOpenURL` in `BlipJournalApp`, is read at once into
   `AppModel.pendingSurveyImport`, and `RootView` presents it once unlocked, after the
   welcome and after any prompt sheet. All three end as a `PendingSurveyImport`
-  shown by `SurveyImportSheet`; `PendingSurveyImport(fileAt:)` is also the path for
-  bundled template files.
+  shown by `SurveyImportSheet`.
+- **Reading a file.** `PendingSurveyImport(fileAt:)` opens the security scope and reads
+  through `NSFileCoordinator`, which downloads an iCloud placeholder before handing over
+  the URL. Opening in place (`LSSupportsOpeningDocumentsInPlace` true) relies on this:
+  files are read where they are and never copied into the app.
 - **Nothing changes before confirming.** The sheet shows the preview (name, schedule,
   each question with its kind, options or range, and the Journal summary) and only Add
-  survey writes, through `EditorModel.importSurvey`. A file that fails shows every issue
-  as location and message, and "Nothing was added".
+  survey writes, calling `Store.importSurvey` directly: there is no app-side logic to
+  put in `EditorModel`. A file that fails shows every issue as location and message,
+  and "Nothing was added".
 - **Way out.** The survey editor's "Share survey file" is a `ShareLink` over
   `SurveyFileDocument`, a `Transferable` that writes `SurveyFile.encode` as
   `<survey name>.blipsurvey`. No temporary file to clean up; it holds no answers.
 - **File type.** `UTType.blipSurvey` (`io.github.basilj-s.BlipJournal.survey`, conforms
   to `public.json`) is exported in Info.plist and `project.yml`, with Blip Journal as
   owner of `.blipsurvey` and an alternate handler for `.json`.
-  `LSSupportsOpeningDocumentsInPlace` is true: files are read inside their security
-  scope and never copied into the app.
+- **Prompt sheets win, imports wait.** While a prompt route is pending the import sheet
+  steps aside, and `RootView` ignores the sheet's dismissal so the file is shown again
+  once the prompt sheet closes.
 
-Known limitations: a survey file opened while a prompt sheet appears is dropped when
-that sheet takes over, and must be opened again. One opened while another sheet is up
-inside a tab (the paste sheet, a new question) waits in `pendingSurveyImport` but SwiftUI
-may not present it until something else changes; opening it again works. Files are read
-on the main actor, which is fine for a survey but noticeable for a large backup opened
-by mistake. There is no in-app copy of the AI
-prompt; it lives in the spec.
+Known limitations: a file opened while another sheet is up inside a tab (the paste
+sheet, a new question) waits in `pendingSurveyImport`, but SwiftUI may not present it
+until something else changes; opening it again works. Files are read on the main actor,
+which is fine for a survey but noticeable for a large backup opened by mistake. There is
+no in-app copy of the AI prompt; it lives in the spec.
