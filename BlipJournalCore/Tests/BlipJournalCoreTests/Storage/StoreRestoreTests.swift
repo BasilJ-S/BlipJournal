@@ -6,29 +6,10 @@ import Testing
 struct StoreRestoreTests {
     private let t = Fixture.at
 
-    /// A store holding two surveys, an edit history, a prompt and entries with answers.
-    private func populated(_ store: Store) throws {
-        let survey = try Fixture.seed(store, now: t(0))
-        try Fixture.seed(store, name: "Other", now: t(1))
-        try store.renameSurvey(survey.id, to: "Renamed", now: t(2))
-        let feeling = try survey.question(labelled: "How are you feeling right now?")
-        let describes = try survey.question(labelled: "What best describes this feeling?")
-        let prompt = Fixture.prompt(survey, scheduledAt: t(50))
-        try store.insertPrompts([prompt])
-        try store.record(
-            in: survey, promptId: prompt.id, startedAt: t(100),
-            answers: [
-                (feeling, .scale(4)),
-                (describes, .multi(optionIds: [
-                    try describes.option(labelled: "Calm").id, try describes.option(labelled: "Happy").id])),
-            ])
-        try store.record(in: survey, startedAt: t(200), answers: [])
-    }
-
     @Test("round trip: backup, mutate, restore gives back the backup")
     func roundTrip() throws {
         let store = try Store.inMemory()
-        try populated(store)
+        try Fixture.populated(store)
         let original = try store.backup(now: t(300))
         #expect(original.entries.count == 2)
 
@@ -49,7 +30,7 @@ struct StoreRestoreTests {
     @Test("restoring into a populated store replaces rather than merges")
     func replaces() throws {
         let source = try Store.inMemory()
-        try populated(source)
+        try Fixture.populated(source)
         let backup = try source.backup(now: t(300))
 
         let target = try Store.inMemory()
@@ -64,7 +45,7 @@ struct StoreRestoreTests {
     @Test("a failing row rolls everything back")
     func rollback() throws {
         let store = try Store.inMemory()
-        try populated(store)
+        try Fixture.populated(store)
         let before = try store.backup(now: t(300))
 
         var bad = before
@@ -94,7 +75,7 @@ struct StoreRestoreTests {
     @Test("a newer schemaVersion is refused and changes nothing")
     func newerSchema() throws {
         let store = try Store.inMemory()
-        try populated(store)
+        try Fixture.populated(store)
         let before = try store.backup(now: t(300))
 
         var newer = before
@@ -118,7 +99,7 @@ struct StoreRestoreTests {
     @Test("the round-trip fixture has a row in every table, so a table missing from restore fails")
     func coversEveryTable() throws {
         let store = try Store.inMemory()
-        try populated(store)
+        try Fixture.populated(store)
         let original = try store.backup(now: t(300))
         #expect(Set(original.rowCounts.keys) == Set(Schema.tablesChildrenFirst))
         for (table, count) in original.rowCounts { #expect(count > 0, "no \(table) rows in the fixture") }

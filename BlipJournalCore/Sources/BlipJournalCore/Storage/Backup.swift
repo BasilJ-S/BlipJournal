@@ -1,4 +1,6 @@
+#if canImport(CryptoKit)
 import CryptoKit
+#endif
 import Foundation
 import GRDB
 
@@ -97,13 +99,13 @@ public struct Backup: Sendable, Equatable, Codable {
 /// GRDB's own parser, the same path a row takes out of SQLite, so a decoded backup
 /// compares equal to the one that was encoded.
 ///
-/// The file carries a SHA-256 checksum as its first key. It covers the canonical
-/// encoding: the exact bytes of the file with the checksum key, its value and the comma
-/// after it removed, which is `canonicalJSON(backup)`. The checksum is not part of
-/// `Backup`, so `decode(json(b)) == b`.
+/// File layout: `canonicalJSON(backup)` with `"checksum" : "<64 lowercase hex>",`
+/// spliced in straight after the opening brace, so the checksum is the first key and
+/// covers exactly the file's bytes with that key, its value and the comma removed. The
+/// checksum is not part of `Backup`, so `decode(json(b)) == b`. SHA-256 comes from
+/// CryptoKit, or `PortableSHA256` where CryptoKit does not exist.
 public enum BackupExporter {
-    /// The backup as JSON: `canonicalJSON(backup)` with `"checksum" : "<SHA-256 hex>",`
-    /// spliced in straight after the opening brace.
+    /// The backup as JSON, with its checksum.
     public static func json(_ backup: Backup) throws -> Data {
         let canonical = try canonicalJSON(backup)
         var file = Data(checksumOpening)
@@ -113,8 +115,7 @@ public enum BackupExporter {
         return file
     }
 
-    /// The bytes the checksum covers: the backup encoded with sorted keys, pretty
-    /// printing and millisecond dates, with no checksum key.
+    /// The bytes the checksum covers.
     static func canonicalJSON(_ backup: Backup) throws -> Data {
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
@@ -145,10 +146,8 @@ public enum BackupExporter {
     /// Reads a backup file a person chose and refuses it with a typed `RestoreError`
     /// rather than a decoder error: `.newerSchema` when its `schemaVersion` is above
     /// `CoreSchema.version` (checked first, because a newer file may well not decode),
-    /// `.unreadable` for anything else that is not a backup, including a file whose
-    /// checksum is malformed, misplaced or does not match its contents. The checksum is
-    /// checked before any row is decoded. A file with no `checksum` key, as written
-    /// before checksums existed, is read without one.
+    /// `.unreadable` for anything else that is not a backup, including one whose
+    /// checksum does not verify. A file with no `checksum` key (pre-#47) skips that check.
     public static func decodeForRestore(_ data: Data) throws -> Backup {
         let header: RestoreHeader
         do { header = try JSONDecoder().decode(RestoreHeader.self, from: data) } catch { throw RestoreError.unreadable }
@@ -181,25 +180,31 @@ public enum BackupExporter {
 
     /// Lowercase hex SHA-256 of `canonical`.
     static func checksum(of canonical: Data) -> String {
+        #if canImport(CryptoKit)
+        return hex(Array(SHA256.hash(data: canonical)))
+        #else
+        return hex(PortableSHA256.hash(canonical))
+        #endif
+    }
+
+    /// `bytes` as lowercase hex.
+    static func hex(_ bytes: [UInt8]) -> String {
         let hexDigits = Array("0123456789abcdef".utf8)
         var hex: [UInt8] = []
-        hex.reserveCapacity(checksumLength)
-        for byte in SHA256.hash(data: canonical) {
+        hex.reserveCapacity(bytes.count * 2)
+        for byte in bytes {
             hex.append(hexDigits[Int(byte >> 4)])
             hex.append(hexDigits[Int(byte & 0x0f)])
         }
         return String(decoding: hex, as: UTF8.self)
     }
 
-    /// What `json` writes before the checksum's hex digits, and after them. The opening
-    /// starts with the brace that `canonicalJSON` starts with.
     private static let checksumOpening = Array("{\n  \"checksum\" : \"".utf8)
     private static let checksumClosing = Array("\",".utf8)
-    private static let checksumLength = SHA256.byteCount * 2
+    private static let checksumLength = PortableSHA256.byteCount * 2
 
-    /// Splits a file `json` wrote into its stored checksum and the canonical bytes it
-    /// covers, by undoing the splice exactly. `nil` when the file does not start with
-    /// the checksum in that layout, or its value is not 64 lowercase hex digits.
+    /// The stored checksum and the canonical bytes it covers, or `nil` unless the file
+    /// starts with a 64-digit lowercase hex checksum in exactly the layout `json` writes.
     static func splitChecksum(_ data: Data) -> (checksum: String, canonical: Data)? {
         let bytes = [UInt8](data)
         let hexStart = checksumOpening.count

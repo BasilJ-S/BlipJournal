@@ -8,22 +8,6 @@ import Testing
 struct BackupChecksumTests {
     private let t = Fixture.at
 
-    /// A store with an edit history and a scale, a multi-choice and a text answer.
-    private func populated() throws -> Store {
-        let store = try Store.inMemory()
-        let survey = try Fixture.seed(store, now: t(0))
-        try store.renameSurvey(survey.id, to: "Renamed", now: t(1))
-        let feeling = try survey.question(labelled: "How are you feeling right now?")
-        let describes = try survey.question(labelled: "What best describes this feeling?")
-        let anything = try survey.question(labelled: "Anything else?")
-        try store.record(in: survey, startedAt: t(100), answers: [
-            (feeling, .scale(4)),
-            (describes, .multi(optionIds: [try describes.option(labelled: "Calm").id])),
-            (anything, .text("Walked to the lake with Sam")),
-        ])
-        return store
-    }
-
     /// `data` as text with the first occurrence of `target` replaced.
     private func replacingFirst(in data: Data, _ target: String, with replacement: String) throws -> Data {
         let text = String(decoding: data, as: UTF8.self)
@@ -31,21 +15,32 @@ struct BackupChecksumTests {
         return Data(text.replacingCharacters(in: range, with: replacement).utf8)
     }
 
-    @Test("the checksum is lowercase hex SHA-256")
+    @Test("the checksum is lowercase hex SHA-256, on this platform's path and the portable one")
     func knownVectors() {
-        #expect(BackupExporter.checksum(of: Data())
-            == "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855")
-        #expect(BackupExporter.checksum(of: Data("abc".utf8))
-            == "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad")
+        // FIPS 180-4 test vectors: empty, one block, two blocks, and a million "a"s.
+        let vectors: [(input: Data, digest: String)] = [
+            (Data(), "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"),
+            (Data("abc".utf8), "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"),
+            (Data("abcdbcdecdefdefgefghfghighijhijkijkljklmklmnlmnomnopnopq".utf8),
+             "248d6a61d20638b8e5c026930c3e6039a33ce45964ff2167f6ecedd419db06c1"),
+            (Data(repeating: UInt8(ascii: "a"), count: 1_000_000),
+             "cdc76e5c9914fb9281a1c7e284d73e67f1809a48a497200e046d39ccc7112cd0"),
+        ]
+        for (input, digest) in vectors {
+            #expect(BackupExporter.checksum(of: input) == digest)
+            #expect(BackupExporter.hex(PortableSHA256.hash(input)) == digest)
+        }
     }
 
     @Test("export writes a checksum of exactly the canonical bytes, and restore accepts it")
     func roundTrip() throws {
-        let store = try populated()
+        let store = try Store.inMemory()
+        try Fixture.populated(store)
         let backup = try store.backup(now: t(300))
         let file = try BackupExporter.json(backup)
         let canonical = try BackupExporter.canonicalJSON(backup)
         let checksum = BackupExporter.checksum(of: canonical)
+        #expect(BackupExporter.hex(PortableSHA256.hash(canonical)) == checksum)   // both paths agree
 
         #expect(String(decoding: file, as: UTF8.self)
             .hasPrefix("{\n  \"checksum\" : \"\(checksum)\",\n  \"answerOptions\" : ["))
@@ -59,15 +54,12 @@ struct BackupChecksumTests {
         #expect(try BackupExporter.json(store.backup(now: t(300))) == file)
         #expect(try BackupExporter.decode(file) == backup)
         #expect(try BackupExporter.decodeForRestore(file) == backup)
-
-        try store.eraseEverything(now: t(310))
-        try store.restore(BackupExporter.decodeForRestore(file))
-        #expect(try store.backup(now: t(300)) == backup)
     }
 
     @Test("one changed character inside a text answer is refused and nothing changes")
     func alteredTextAnswer() throws {
-        let store = try populated()
+        let store = try Store.inMemory()
+        try Fixture.populated(store)
         let file = try BackupExporter.json(store.backup(now: t(300)))
         let altered = try replacingFirst(in: file, "with Sam", with: "with Pam")
         // Still a well-formed backup: only the checksum stands between it and a restore.
@@ -84,21 +76,19 @@ struct BackupChecksumTests {
 
     @Test("a backup with no checksum, as written before checksums, still restores")
     func missingChecksumAccepted() throws {
-        let store = try populated()
+        let store = try Store.inMemory()
+        try Fixture.populated(store)
         let backup = try store.backup(now: t(300))
         // Before this change `json` wrote exactly what `canonicalJSON` writes now.
         let legacy = try BackupExporter.canonicalJSON(backup)
         #expect(BackupExporter.splitChecksum(legacy)?.checksum == nil)
         #expect(try BackupExporter.decodeForRestore(legacy) == backup)
-
-        try store.eraseEverything(now: t(310))
-        try store.restore(BackupExporter.decodeForRestore(legacy))
-        #expect(try store.backup(now: t(300)) == backup)
     }
 
     @Test("a malformed, misplaced or wrong checksum is refused")
     func malformedChecksumRefused() throws {
-        let store = try populated()
+        let store = try Store.inMemory()
+        try Fixture.populated(store)
         let file = try BackupExporter.json(store.backup(now: t(300)))
         let good = try #require(BackupExporter.splitChecksum(file)).checksum
         let field = "\"checksum\" : \"\(good)\""
@@ -127,7 +117,8 @@ struct BackupChecksumTests {
 
     @Test("a single changed character anywhere in string content is refused (seeded sweep)")
     func byteFlipSweep() throws {
-        let store = try populated()
+        let store = try Store.inMemory()
+        try Fixture.populated(store)
         let backup = try store.backup(now: t(300))
         let bytes = [UInt8](try BackupExporter.json(backup))
         let canonical = try BackupExporter.canonicalJSON(backup)
