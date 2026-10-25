@@ -32,6 +32,15 @@ struct PendingSurveyImportTests {
         #expect(error.issues.map(\.path).contains("name"))
     }
 
+    @Test func readsEveryBundledTemplateFromTheAppBundle() {
+        for template in SurveyTemplateGallery.templates {
+            guard case .success? = PendingSurveyImport(fileAt: template.url).outcome else {
+                Issue.record("the \(template.id) template did not read inside the app")
+                continue
+            }
+        }
+    }
+
     @Test func pasteStartsWithNothingRead() {
         #expect(PendingSurveyImport.paste().outcome == nil)
     }
