@@ -57,7 +57,7 @@ struct SurveyRunnerView: View {
         if draft.hasAnswer(for: q.id) { Button("Clear answer") { Task { do { try await draft.set(nil, for: q.id) } catch { errorMessage = String(describing: error) } } }.frame(minHeight: 44).accessibilityLabel("Clear answer for \(q.label)") }
         }.padding().frame(maxWidth: .infinity, alignment: .leading).background(BlipBrand.sand, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
     }
-    private func load() { guard draft == nil else { return }; do { if let entry { draft = try EntryDraft(store: appModel.store, entry: entry) } else if let survey { draft = try EntryDraft(store: appModel.store, survey: survey, promptId: promptId) } } catch { errorMessage = String(describing: error) } }
+    private func load() { guard draft == nil, !appModel.isLocked else { return }; do { if let entry { draft = try EntryDraft(store: appModel.store, entry: entry) } else if let survey { draft = try EntryDraft(store: appModel.store, survey: survey, promptId: promptId) } } catch { errorMessage = String(describing: error) } }
     private func add() { guard let q = addQuestion, let draft else { return }; let label = option.trimmingCharacters(in: .whitespacesAndNewlines); guard !label.isEmpty, !q.activeOptions.contains(where: { $0.label.caseInsensitiveCompare(label) == .orderedSame }) else { return }; Task { do { try await draft.addOption(label: label, to: q.id); addQuestion = nil } catch { errorMessage = String(describing: error) } } }
     private func finish(_ draft: EntryDraft, complete: Bool) async { leaving = true; defer { leaving = false }; do { if complete { try await draft.complete() } else { try await draft.flush() }; onFinish() } catch { errorMessage = String(describing: error) } }
 }

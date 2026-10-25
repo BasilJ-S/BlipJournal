@@ -14,14 +14,55 @@ struct EntryDraftTests {
         return (store, survey)
     }
 
-    @Test func createsAndResumesDraft() throws {
+    private func entryCount(_ store: Store, _ survey: Survey) throws -> Int { try store.entries(surveyId: survey.id, from: nil, to: nil).count }
+
+    @Test func manualDraftIsSavedOnFirstAnswerAndResumes() async throws {
         let (store, survey) = try fixture()
         let first = try EntryDraft(store: store, survey: survey, promptId: nil, now: now)
-        #expect(try store.entries(surveyId: survey.id, from: nil, to: nil).count == 1)
-        let question = try #require(survey.activeQuestions.first)
-        try #require(first.values[question.id] == nil)
-        let resumed = try EntryDraft(store: store, entry: first.entry)
-        #expect(resumed.entry.id == first.entry.id)
+        #expect(try entryCount(store, survey) == 0)
+        let question = try #require(survey.activeQuestions.first(where: { $0.kind == .spectrum }))
+        try await first.set(.spectrum(0.3), for: question.id, now: now.addingTimeInterval(30))
+        let saved = try #require(try store.entries(surveyId: survey.id, from: nil, to: nil).first)
+        #expect(saved.id == first.entry.id); #expect(saved.startedAt == now)
+        let resumed = try EntryDraft(store: store, entry: saved)
+        #expect(resumed.values[question.id] == .spectrum(0.3))
+    }
+
+    @Test func manualDraftWithoutAnswersLeavesNoEntry() async throws {
+        let (store, survey) = try fixture()
+        let draft = try EntryDraft(store: store, survey: survey, promptId: nil, now: now)
+        let text = try #require(survey.activeQuestions.first(where: { $0.kind == .text }))
+        draft.setText("   ", for: text.id, now: now); try await draft.flush()
+        let other = try #require(survey.activeQuestions.first(where: { $0.kind != .text }))
+        try await draft.set(nil, for: other.id, now: now)
+        #expect(try entryCount(store, survey) == 0)
+    }
+
+    @Test func nonBlankTextSavesManualDraft() async throws {
+        let (store, survey) = try fixture()
+        let draft = try EntryDraft(store: store, survey: survey, promptId: nil, now: now)
+        let text = try #require(survey.activeQuestions.first(where: { $0.kind == .text }))
+        draft.setText("note", for: text.id, now: now); try await draft.flush()
+        #expect(try entryCount(store, survey) == 1)
+    }
+
+    @Test func clearingEveryAnswerKeepsTheSavedEntry() async throws {
+        let (store, survey) = try fixture()
+        let draft = try EntryDraft(store: store, survey: survey, promptId: nil, now: now)
+        let question = try #require(survey.activeQuestions.first(where: { $0.kind == .spectrum }))
+        try await draft.set(.spectrum(0.3), for: question.id, now: now)
+        try await draft.set(nil, for: question.id, now: now)
+        #expect(try entryCount(store, survey) == 1); #expect(try store.answers(entryId: draft.entry.id).isEmpty)
+    }
+
+    @Test func notificationDraftReusesPromptEntry() throws {
+        let (store, survey) = try fixture()
+        let prompt = Prompt(surveyId: survey.id, day: "2026-01-01", scheduledAt: now, expiresAt: now.addingTimeInterval(3600))
+        try store.insertPrompts([prompt])
+        let first = try EntryDraft(store: store, survey: survey, promptId: prompt.id, now: now)
+        #expect(try entryCount(store, survey) == 1)
+        let reopened = try EntryDraft(store: store, survey: survey, promptId: prompt.id, now: now.addingTimeInterval(60))
+        #expect(reopened.entry.id == first.entry.id); #expect(try entryCount(store, survey) == 1)
     }
 
     @Test func keepsAnswerIdentityAndFirstTimestamp() async throws {
