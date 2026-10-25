@@ -97,4 +97,15 @@ extension Store {
                 answerOptions: try AnswerOptionRow.fetchAll(db, sql: "SELECT * FROM answerOption ORDER BY answerId, optionId"))
         }
     }
+
+    /// The survey and entry counts of the live database, counted the way
+    /// `Backup.summary` counts a backup (archived surveys included), with no date.
+    public func summary() throws -> BackupSummary {
+        try dbQueue.read { db in
+            BackupSummary(
+                exportedAt: nil,
+                surveys: try Int.fetchOne(db, sql: "SELECT COUNT(*) FROM survey") ?? 0,
+                entries: try Int.fetchOne(db, sql: "SELECT COUNT(*) FROM entry") ?? 0)
+        }
+    }
 }

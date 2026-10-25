@@ -1,7 +1,8 @@
 import Foundation
 import GRDB
 
-// The one place that deletes a definition row. Every method here refuses a target whose
+// The one place that deletes a definition row (`restore` replaces them all, as a
+// whole-database operation). Every hard-delete method here refuses a target whose
 // current version is not archived, runs in one transaction, and ends with the
 // checkpoint and vacuum step. `deletionImpact` collects exactly the rows the delete
 // would remove, so the counts shown to a person are the counts that go.
@@ -106,6 +107,41 @@ extension Store {
         }
         try checkpointAndVacuum()
         return survey
+    }
+
+    /// Replaces the whole database with the rows of `backup`: deletes every row of every
+    /// table, children first as `eraseEverything` does, then inserts every row of the
+    /// backup, parents first, all in one transaction. If any step throws (a dangling
+    /// foreign key, a duplicate key) the transaction rolls back and the database is
+    /// exactly as it was. After it commits, `checkpointAndVacuum()` erases the replaced
+    /// rows from the file the same way a delete does.
+    ///
+    /// Nothing is reseeded: afterwards `backup(now:)` equals `backup` apart from
+    /// `exportedAt`. Throws `RestoreError.newerSchema` before touching anything when the
+    /// backup came from a newer schema than `CoreSchema.version`.
+    public func restore(_ backup: Backup) throws {
+        guard backup.schemaVersion <= CoreSchema.version else {
+            throw RestoreError.newerSchema(found: backup.schemaVersion, supported: CoreSchema.version)
+        }
+        try dbQueue.write { db in
+            for table in Schema.tablesChildrenFirst {
+                try db.execute(sql: "DELETE FROM \(table)")
+            }
+            // The reverse of `tablesChildrenFirst`, and the order of `Backup`'s arrays.
+            for row in backup.surveys { try row.insert(db) }
+            for row in backup.surveyVersions { try row.insert(db) }
+            for row in backup.surveySamplings { try row.insert(db) }
+            for row in backup.surveyNotificationPreviews { try row.insert(db) }
+            for row in backup.questions { try row.insert(db) }
+            for row in backup.questionVersions { try row.insert(db) }
+            for row in backup.options { try row.insert(db) }
+            for row in backup.optionVersions { try row.insert(db) }
+            for row in backup.prompts { try row.insert(db) }
+            for row in backup.entries { try row.insert(db) }
+            for row in backup.answers { try row.insert(db) }
+            for row in backup.answerOptions { try row.insert(db) }
+        }
+        try checkpointAndVacuum()
     }
 
     // MARK: The rows a delete removes

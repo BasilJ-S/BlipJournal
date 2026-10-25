@@ -4,7 +4,7 @@ import GRDB
 /// Every table of the database as plain rows, for a JSON backup.
 ///
 /// The arrays are the GRDB record structs verbatim, in schema order, so the file is a
-/// faithful dump rather than a re-interpretation. Import is out of scope for v0.
+/// faithful dump rather than a re-interpretation. `Store.restore(_:)` writes one back.
 public struct Backup: Sendable, Equatable, Codable {
     /// `CoreSchema.version` at the time of the backup.
     public var schemaVersion: Int
@@ -107,8 +107,9 @@ public enum BackupExporter {
         return try encoder.encode(backup)
     }
 
-    /// The inverse of `json`: reads a backup file back into a `Backup` value. Writing
-    /// it into a store is a separate, later feature.
+    /// The inverse of `json`: reads a backup file back into a `Backup` value. Writing it
+    /// into a store is `Store.restore(_:)`; `decodeForRestore` is the entry point for a
+    /// file a person chose.
     public static func decode(_ data: Data) throws -> Backup {
         let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .custom { decoder in
@@ -121,6 +122,20 @@ public enum BackupExporter {
             return date
         }
         return try decoder.decode(Backup.self, from: data)
+    }
+
+    /// Reads a backup file a person chose and refuses it with a typed `RestoreError`
+    /// rather than a decoder error: `.newerSchema` when its `schemaVersion` is above
+    /// `CoreSchema.version` (checked first, because a newer file may well not decode),
+    /// `.unreadable` for anything else that is not a backup.
+    public static func decodeForRestore(_ data: Data) throws -> Backup {
+        struct Header: Decodable { var schemaVersion: Int }
+        let header: Header
+        do { header = try JSONDecoder().decode(Header.self, from: data) } catch { throw RestoreError.unreadable }
+        guard header.schemaVersion <= CoreSchema.version else {
+            throw RestoreError.newerSchema(found: header.schemaVersion, supported: CoreSchema.version)
+        }
+        do { return try decode(data) } catch { throw RestoreError.unreadable }
     }
 
     /// `now` as the database would hand it back: rounded to the millisecond and built by
@@ -149,5 +164,35 @@ public enum BackupExporter {
             ? [.withInternetDateTime, .withFractionalSeconds]
             : [.withInternetDateTime]
         return formatter
+    }
+}
+
+/// Why a backup cannot be restored. The app turns these into plain messages.
+public enum RestoreError: Error, Equatable, Sendable {
+    /// The file is not a backup this version can read.
+    case unreadable
+    /// The backup was taken by a newer version of the app than this one.
+    case newerSchema(found: Int, supported: Int)
+}
+
+/// What the restore screen shows about a backup, or about the data on the phone, so the
+/// two can sit side by side.
+public struct BackupSummary: Sendable, Equatable {
+    /// When the backup was taken. `nil` for the live database.
+    public var exportedAt: Date?
+    public var surveys: Int
+    public var entries: Int
+
+    public init(exportedAt: Date?, surveys: Int, entries: Int) {
+        self.exportedAt = exportedAt
+        self.surveys = surveys
+        self.entries = entries
+    }
+}
+
+extension Backup {
+    /// The date and the survey and entry counts of this backup. Archived surveys count.
+    public var summary: BackupSummary {
+        BackupSummary(exportedAt: exportedAt, surveys: surveys.count, entries: entries.count)
     }
 }
