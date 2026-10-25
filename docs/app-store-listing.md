@@ -44,7 +44,7 @@ Promotional text (170 max, 146 used; editable without a new build):
 > Your memory lies about your days. Blip Journal asks you in the moment, with your own
 > questions, at random times. Private, offline and open source.
 
-Description (4000 max, about 2,100 used):
+Description (4000 max):
 
 > Your memory lies about your days. Think back over a week and you recall the high
 > points and the last few hours; the ordinary afternoons are gone. Blip Journal asks you
@@ -71,7 +71,8 @@ Description (4000 max, about 2,100 used):
 > HOW IT WORKS
 > • Pick how many prompts a day, the hours they may arrive, the minimum gap between
 >   them and how long each stays open.
-> • Prompts arrive at unpredictable times inside that window, never clumped together.
+> • Prompts arrive at unpredictable times inside that window, never closer together than
+>   the gap you set.
 > • Answer on one scrolling screen. Answers save as you go.
 > • Log an entry yourself any time.
 >
@@ -124,9 +125,8 @@ Order for the 6.9" iPhone set. Each caption is one short line over the screensho
 4. **"See your own patterns."** Insights: a scale over time and by hour of day.
 5. **"Missed prompts count."** Insights with the response rate tile, answered and missed
    counts visible.
-6. **"No network. No account. Open source."** A privacy screen. The app has no single
-   privacy panel today: use the welcome screen with its "Everything stays on this
-   iPhone" line or About's Privacy and Licence sections, or add a dedicated panel first.
+6. **"No network. No account. Open source."** About's Privacy section ("Blip Journal
+   makes no network requests and collects no data.").
 
 Shots 1 and 2 are blocked on #44 and #42 for their best version (R4). Use sample data
 with a non-mood survey in at least two shots, so mood reads as one example.
