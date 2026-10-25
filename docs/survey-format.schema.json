@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/BasilJ-S/BlipJournal/blob/main/docs/survey-format.schema.json",
+  "$id": "https://raw.githubusercontent.com/BasilJ-S/BlipJournal/main/docs/survey-format.schema.json",
   "title": "Blip Journal survey file",
   "description": "One survey definition: its questions, options, schedule and Journal summary. See docs/survey-format.md. This schema checks the shape of a file; Blip Journal also checks the rules that span fields, such as a scale's min being below its max.",
   "type": "object",
@@ -69,7 +69,6 @@
         "options": {
           "description": "singleChoice and multiChoice only: the options, in order.",
           "type": "array",
-          "uniqueItems": true,
           "items": { "$ref": "#/$defs/text" },
           "default": []
         },

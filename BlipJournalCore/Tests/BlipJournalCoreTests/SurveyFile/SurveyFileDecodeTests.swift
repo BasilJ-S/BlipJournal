@@ -111,6 +111,14 @@ struct SurveyFileDecodeTests {
         #expect(contents.questions[2].allowsCustomOptions == false)
     }
 
+    @Test("repeated option labels are kept as separate options, as the editor allows")
+    func repeatedOptions() throws {
+        let contents = try Support.decode(Support.file(question: #"{"kind": "multiChoice", "label": "Q", "options": ["A", "A"]}"#))
+        let options = contents.questions[0].activeOptions
+        #expect(options.map(\.label) == ["A", "A"])
+        #expect(options[0].id != options[1].id)
+    }
+
     @Test("journalSummary names questions by file id, in its own order")
     func journalSummaryByFileId() throws {
         let contents = try Support.decode(#"""

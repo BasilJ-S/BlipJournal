@@ -7,7 +7,7 @@ struct SurveyFileRoundTripTests {
     private typealias Support = SurveyFileTestSupport
     private let now = Date(timeIntervalSince1970: 1_800_000_000)
 
-    /// Every kind, archived definitions, two summary questions in reverse order, a paused
+    /// Every kind, archived definitions, a repeated option label, two summary questions in reverse order, a paused
     /// non-default schedule, colours outside 0...1 and text that needs escaping.
     private static func elaborateSurvey() -> Survey {
         let scale = Question(
@@ -29,6 +29,7 @@ struct SurveyFileRoundTripTests {
                 ChoiceOption(label: "Retired", position: 1, isArchived: true),
                 ChoiceOption(label: "Alone ☕️", position: 0),
                 ChoiceOption(label: "Back\\slash\ttab", position: 5),
+                ChoiceOption(label: "Partner", position: 6),
             ])
         let empty = Question(kind: .singleChoice, label: "Not set up yet", position: 10)
         let archived = Question(kind: .yesNo, label: "Old question", position: 1, isArchived: true)
@@ -58,7 +59,7 @@ struct SurveyFileRoundTripTests {
         #expect(Support.Definition(contents) == Support.Definition(survey))
         #expect(contents.questions.map(\.label) == survey.activeQuestions.map(\.label))
         #expect(!contents.questions.contains { $0.label == "Old question" })
-        #expect(contents.questions[2].activeOptions.map(\.label) == ["Alone ☕️", "Partner", "Back\\slash\ttab"])
+        #expect(contents.questions[2].activeOptions.map(\.label) == ["Alone ☕️", "Partner", "Back\\slash\ttab", "Partner"])
     }
 
     @Test("export leaves out archived definitions, sampling state and the notification preview")

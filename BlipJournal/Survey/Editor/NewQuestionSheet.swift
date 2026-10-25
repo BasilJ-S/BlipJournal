@@ -34,6 +34,6 @@ struct NewQuestionSheet: View {
         }
     }
     private func add() {
-        do { let q = try EditorModel(store: appModel.store, notifications: appModel.notifications).addQuestion(surveyId: surveyId, kind: kind, label: label, isRequired: required, scale: kind == .scale ? scale : nil, spectrum: kind == .spectrum ? spectrum : nil, allowsCustomOptions: kind.usesOptions && customOptions); for (i, value) in options.split(separator: "\n").map(String.init).enumerated() { _ = try EditorModel(store: appModel.store, notifications: appModel.notifications).addOption(questionId: q.id, label: value) ; _ = i }; try appModel.refresh(); dismiss() } catch { errorMessage = String(describing: error) }
+        do { let q = try EditorModel(store: appModel.store, notifications: appModel.notifications).addQuestion(surveyId: surveyId, kind: kind, label: label, isRequired: required, scale: kind == .scale ? scale : nil, spectrum: kind == .spectrum ? spectrum : nil, allowsCustomOptions: kind.usesOptions && customOptions); for (i, value) in options.split(separator: "\n").map(String.init).filter({ !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }).enumerated() { _ = try EditorModel(store: appModel.store, notifications: appModel.notifications).addOption(questionId: q.id, label: value) ; _ = i }; try appModel.refresh(); dismiss() } catch { errorMessage = String(describing: error) }
     }
 }

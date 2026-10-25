@@ -122,19 +122,27 @@ struct EditorModelTests {
         #expect(archived.first?.0.label == "Retired")
     }
 
-    @Test func importedSurveysStartPausedAndPrivateWithoutTouchingOthers() throws {
+    @Test func copyKeepsTheCurrentDefinitionUnderNewIdentifiers() throws {
         let store = try Store.inMemory()
         let editor = model(store: store)
-        let existing = try editor.createSurvey(name: "Existing", now: now)
-        let contents = try SurveyFile.decode(text: #"""
-            {"formatVersion": 1, "name": "Imported", "questions": [{"kind": "scale", "label": "Energy"}]}
-            """#).get()
-        let imported = try editor.importSurvey(contents, now: now.addingTimeInterval(1))
-        #expect(imported.name == "Imported")
-        #expect(imported.sampling.isEnabled == false)
-        #expect(imported.notificationPreview == .private)
-        #expect(imported.activeQuestions.map(\.label) == ["Energy"])
-        #expect(try store.surveys(includeArchived: true).map(\.id) == [existing.id, imported.id])
+        let energy = Question(kind: .scale, label: "Energy", position: 0, scale: ScaleConfig(min: 1, max: 5))
+        let doing = Question(
+            kind: .singleChoice, label: "Doing", position: 1, allowsCustomOptions: true,
+            options: [ChoiceOption(label: "Same", position: 0), ChoiceOption(label: "Same", position: 1)])
+        let source = try store.createSurvey(
+            name: "Source", sampling: SamplingConfig(promptsPerDay: 5), questions: [energy, doing],
+            journalSummaryQuestionIds: [doing.id, energy.id], now: now)
+        try store.updateNotificationPreview(surveyId: source.id, .surveyName, now: now)
+
+        let copy = try editor.copySurvey(sourceId: source.id, name: "Copy", now: now.addingTimeInterval(1))
+
+        #expect(copy.name == "Copy")
+        #expect(copy.sampling == SamplingConfig(promptsPerDay: 5, isEnabled: false))
+        #expect(copy.notificationPreview == .private)
+        #expect(copy.activeQuestions.map(\.label) == ["Energy", "Doing"])
+        #expect(copy.activeQuestions[1].activeOptions.map(\.label) == ["Same", "Same"])
+        #expect(copy.journalSummaryQuestions.map(\.label) == ["Doing", "Energy"])
+        #expect(Set(copy.questions.map(\.id)).isDisjoint(with: source.questions.map(\.id)))
     }
 
     @Test func customPreviewDraftTracksEmptyAndValidMessageChanges() {

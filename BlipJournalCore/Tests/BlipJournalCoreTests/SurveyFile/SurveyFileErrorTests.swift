@@ -40,7 +40,6 @@ struct RejectedSurveyFile: Sendable, CustomTestStringConvertible {
         .init(name: "spectrum on a scale question", json: question(#"{"kind": "scale", "label": "Q", "spectrum": {}}"#), path: "questions[0].spectrum"),
         .init(name: "options not a list", json: question(#"{"kind": "singleChoice", "label": "Q", "options": "A, B"}"#), path: "questions[0].options"),
         .init(name: "blank option", json: question(#"{"kind": "singleChoice", "label": "Q", "options": [" "]}"#), path: "questions[0].options[0]"),
-        .init(name: "repeated option", json: question(#"{"kind": "multiChoice", "label": "Q", "options": ["A", "A"]}"#), path: "questions[0].options[1]"),
         .init(name: "scale min above max", json: question(#"{"kind": "scale", "label": "Q", "scale": {"min": 5, "max": 1}}"#), path: "questions[0].scale"),
         .init(name: "scale beyond 100", json: question(#"{"kind": "scale", "label": "Q", "scale": {"max": 101}}"#), path: "questions[0].scale"),
         .init(name: "fractional scale bound", json: question(#"{"kind": "scale", "label": "Q", "scale": {"min": 2.5}}"#), path: "questions[0].scale.min"),
@@ -102,6 +101,13 @@ struct SurveyFileErrorTests {
         }
         #expect(error.issues.count == 1)
         #expect(error.issues.first?.message.contains("Restore from backup") == true)
+    }
+
+    @Test("invalid JSON says where the problem is")
+    func invalidJSONLocation() throws {
+        let issue = try #require(Support.issues("{\"formatVersion\": 1,\n  \"name\": \"S\" \"questions\": []}").first)
+        #expect(issue.path == "")
+        #expect(issue.message.contains("line 2"))
     }
 
     @Test("every issue in a file is reported, in file order")

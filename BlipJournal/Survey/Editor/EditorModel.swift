@@ -37,43 +37,13 @@ final class EditorModel {
         return try store.createSurvey(name: name, sampling: sampling, questions: [], now: now)
     }
 
+    /// A new survey with the source's current definition under a new name, through the
+    /// same import a survey file takes: fresh identifiers, paused, private preview.
     @discardableResult
     func copySurvey(sourceId: String, name: String, now: Date = Date()) throws -> Survey {
-        let source = try survey(sourceId)
-        var copiedIdsBySourceId: [String: String] = [:]
-        let questions = source.activeQuestions.enumerated().map { index, question in
-            let copied = Question(
-                kind: question.kind,
-                label: question.label,
-                position: index,
-                isRequired: question.isRequired,
-                scale: question.scale,
-                spectrum: question.spectrum,
-                allowsCustomOptions: question.allowsCustomOptions,
-                options: question.activeOptions.enumerated().map { optionIndex, option in
-                    ChoiceOption(label: option.label, position: optionIndex)
-                })
-            copiedIdsBySourceId[question.id] = copied.id
-            return copied
-        }
-        var sampling = source.sampling
-        sampling.isEnabled = false
-        let summaryIds = source.journalSummaryQuestionIds.compactMap { copiedIdsBySourceId[$0] }
-        let copy = try store.createSurvey(
-            name: name, sampling: sampling, questions: questions,
-            journalSummaryQuestionIds: summaryIds, now: now)
-        // New surveys always start privately, even when the source used another preview.
-        if source.notificationPreview != .default {
-            try store.updateNotificationPreview(surveyId: copy.id, .default, now: now)
-        }
-        return try survey(copy.id)
-    }
-
-    /// Adds a survey file's survey as a new survey: fresh identifiers, notifications
-    /// paused, a private preview. The import itself is `Store.importSurvey`.
-    @discardableResult
-    func importSurvey(_ contents: SurveyFileContents, now: Date = Date()) throws -> Survey {
-        try store.importSurvey(contents, now: now)
+        var contents = try SurveyFileContents(survey(sourceId))
+        contents.name = name
+        return try store.importSurvey(contents, now: now)
     }
 
     func rename(surveyId: String, to name: String, now: Date = Date()) throws {
