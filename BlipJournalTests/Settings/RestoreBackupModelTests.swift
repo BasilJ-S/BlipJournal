@@ -15,9 +15,11 @@ struct RestoreBackupModelTests {
         }
         #expect(newer != unreadable)
 
-        let damaged = RestoreBackupModel.message(for: RestoreBackupModel.RestoreFailure.damagedBackup)
+        let damaged = RestoreBackupModel.message(for: RestoreError.rejected)
         #expect(damaged.contains("Nothing was changed"))
         struct DatabaseLike: LocalizedError { var errorDescription: String? { "SQLite error 19: FOREIGN KEY constraint failed" } }
-        #expect(!RestoreBackupModel.message(for: DatabaseLike()).contains("SQLite"))
+        let other = RestoreBackupModel.message(for: DatabaseLike())
+        #expect(!other.contains("SQLite"))
+        #expect(!other.contains("Nothing was changed"))   // the data may have been replaced
     }
 }

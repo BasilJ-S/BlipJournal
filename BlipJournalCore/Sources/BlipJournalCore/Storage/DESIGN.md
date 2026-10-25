@@ -217,8 +217,10 @@ README promises no more than that.
   decoded, never built by hand.
 - **Restore replaces, in `Store+HardDelete.swift`.** `restore(_:)` and `eraseEverything`
   share one helper: delete every row children-first, insert in the same transaction, then
-  `checkpointAndVacuum()`. `restore` inserts every backup row parents-first; any failure
-  (dangling foreign key, duplicate key) rolls back and leaves the database as it was, and
+  `checkpointAndVacuum()`. `restore` inserts every backup row parents-first; a failure
+  inside the transaction (dangling foreign key, duplicate key) rolls back, leaves the
+  database as it was and throws `RestoreError.rejected`; an error from the vacuum after the
+  commit propagates as itself, so a caller never claims "nothing changed" wrongly; and
   a newer `schemaVersion` is refused before anything is touched. Nothing is reseeded, so
   `backup(now:)` afterwards equals the restored backup apart from `exportedAt`. No merge.
   `BackupExporter.decodeForRestore` reads a chosen file and throws a typed `RestoreError`

@@ -69,17 +69,17 @@ struct StoreRestoreTests {
 
         var bad = before
         bad.surveys = []                       // keep the rows, drop their parents
-        #expect(throws: (any Error).self) { try store.restore(bad) }
+        #expect(throws: RestoreError.rejected) { try store.restore(bad) }
         #expect(try store.backup(now: t(300)) == before)
 
         var dangling = before
         dangling.answers[0].entryId = "no-such-entry"
-        #expect(throws: (any Error).self) { try store.restore(dangling) }
+        #expect(throws: RestoreError.rejected) { try store.restore(dangling) }
         #expect(try store.backup(now: t(300)) == before)
 
         var duplicate = before
         duplicate.entries.append(duplicate.entries[0])
-        #expect(throws: (any Error).self) { try store.restore(duplicate) }
+        #expect(throws: RestoreError.rejected) { try store.restore(duplicate) }
         #expect(try store.backup(now: t(300)) == before)
     }
 

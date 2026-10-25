@@ -173,6 +173,10 @@ public enum RestoreError: Error, Equatable, Sendable {
     case unreadable
     /// The backup was taken by a newer version of the app than this one.
     case newerSchema(found: Int, supported: Int)
+    /// The database rejected the rows (a dangling foreign key, a duplicate key). The
+    /// transaction rolled back and nothing changed. An error from the vacuum after a
+    /// successful commit is not this: it propagates as itself.
+    case rejected
 }
 
 /// What the restore screen shows about a backup, or about the data on the phone, so the

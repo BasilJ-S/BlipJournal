@@ -111,7 +111,7 @@ extension Store {
         guard backup.schemaVersion <= CoreSchema.version else {
             throw RestoreError.newerSchema(found: backup.schemaVersion, supported: CoreSchema.version)
         }
-        try replacingAllRows { db in
+        try replacingAllRows(onRollback: { _ in RestoreError.rejected }) { db in
             // The reverse of `Schema.tablesChildrenFirst`; `StoreRestoreTests` fails if a
             // table is missing here.
             for row in backup.surveys { try row.insert(db) }
@@ -130,13 +130,23 @@ extension Store {
     }
 
     /// Deletes every row of every table, children first, runs `insert` in the same
-    /// transaction, then `checkpointAndVacuum()` so the replaced rows leave the file.
-    private func replacingAllRows<T: Sendable>(_ insert: @Sendable (Database) throws -> T) throws -> T {
-        let result = try dbQueue.write { db in
-            for table in Schema.tablesChildrenFirst {
-                try db.execute(sql: "DELETE FROM \(table)")
+    /// transaction, then `checkpointAndVacuum()` so the replaced rows leave the file. An
+    /// error inside the transaction (it rolled back) is passed through `onRollback`; an
+    /// error from the vacuum, after the commit, propagates unchanged.
+    private func replacingAllRows<T: Sendable>(
+        onRollback: @Sendable (Error) -> Error = { $0 },
+        _ insert: @Sendable (Database) throws -> T
+    ) throws -> T {
+        let result: T
+        do {
+            result = try dbQueue.write { db in
+                for table in Schema.tablesChildrenFirst {
+                    try db.execute(sql: "DELETE FROM \(table)")
+                }
+                return try insert(db)
             }
-            return try insert(db)
+        } catch {
+            throw onRollback(error)
         }
         try checkpointAndVacuum()
         return result

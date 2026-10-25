@@ -66,10 +66,16 @@ final class RestoreBackupModel {
     /// refreshes the app, as delete-all does.
     func restore() async throws {
         guard let backup else { return }
-        try await DeleteAllDataModel.reset(appModel: appModel) {
-            do { try self.appModel.store.restore(backup) }
-            catch let error as RestoreError { throw error }
-            catch { throw RestoreFailure.damagedBackup }   // a database error: rolled back
+        do {
+            try await DeleteAllDataModel.reset(appModel: appModel) { try self.appModel.store.restore(backup) }
+        } catch let error as RestoreError {
+            throw error   // rolled back: the screen is still accurate
+        } catch {
+            // The data may have been replaced; do not leave a live Replace button.
+            self.backup = nil
+            savedCurrentData = false
+            current = Self.currentSummary(appModel.store)
+            throw error
         }
         self.backup = nil
         savedCurrentData = false
@@ -77,19 +83,15 @@ final class RestoreBackupModel {
         current = Self.currentSummary(appModel.store)
     }
 
-    /// A well-formed backup whose rows the database rejected (a restore that rolled back).
-    enum RestoreFailure: Error { case damagedBackup }
-
     static func message(for error: Error) -> String {
-        if error is RestoreFailure {
-            return "This backup is damaged or inconsistent. Nothing was changed."
-        }
         guard let restoreError = error as? RestoreError else {
-            return "Something went wrong while refreshing Blip Journal. Close and reopen the app."
+            return "Blip Journal may have restored the backup but could not finish. Close and reopen the app."
         }
         switch restoreError {
         case .newerSchema:
             return "This backup was made by a newer version of Blip Journal. Update the app to restore it. Nothing was changed."
+        case .rejected:
+            return "This backup is damaged or inconsistent. Nothing was changed."
         case .unreadable:
             return "This file is not a Blip Journal backup, or it is damaged. Nothing was changed."
         }
