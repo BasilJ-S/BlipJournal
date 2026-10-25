@@ -106,7 +106,6 @@ public enum BackupExporter {
     /// spliced in straight after the opening brace.
     public static func json(_ backup: Backup) throws -> Data {
         let canonical = try canonicalJSON(backup)
-        precondition(canonical.first == UInt8(ascii: "{"), "a backup encodes as a JSON object")
         var file = Data(checksumOpening)
         file.append(contentsOf: checksum(of: canonical).utf8)
         file.append(contentsOf: checksumClosing)
@@ -196,7 +195,7 @@ public enum BackupExporter {
     /// starts with the brace that `canonicalJSON` starts with.
     private static let checksumOpening = Array("{\n  \"checksum\" : \"".utf8)
     private static let checksumClosing = Array("\",".utf8)
-    private static let checksumLength = 64
+    private static let checksumLength = SHA256.byteCount * 2
 
     /// Splits a file `json` wrote into its stored checksum and the canonical bytes it
     /// covers, by undoing the splice exactly. `nil` when the file does not start with

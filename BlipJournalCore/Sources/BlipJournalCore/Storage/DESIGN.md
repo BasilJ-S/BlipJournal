@@ -225,7 +225,8 @@ README promises no more than that.
   Verification undoes the splice on the raw bytes rather than re-encoding the decoded
   value, so a later Foundation that formats JSON differently cannot make an old,
   intact backup fail. SHA-256 comes from CryptoKit, no new dependency. It detects
-  damage, not tampering: anyone can recompute it.- **Restore replaces, in `Store+HardDelete.swift`.** `restore(_:)` and `eraseEverything`
+  damage, not tampering: anyone can recompute it.
+- **Restore replaces, in `Store+HardDelete.swift`.** `restore(_:)` and `eraseEverything`
   share one helper: delete every row children-first, insert in the same transaction, then
   `checkpointAndVacuum()`. `restore` inserts every backup row parents-first; a failure
   inside the transaction (dangling foreign key, duplicate key, or an answer that

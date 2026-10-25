@@ -133,8 +133,7 @@ struct BackupChecksumTests {
         let canonical = try BackupExporter.canonicalJSON(backup)
         // Skip the checksum itself: everything after it is the canonical encoding.
         let positions = Self.stringContentPositions(bytes, from: bytes.count - canonical.count + 1)
-        #expect(positions.count > 1_000)
-        try #require(!positions.isEmpty)
+        try #require(positions.count > 1_000)
 
         let alphabet = Array("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789".utf8)
         var rng = SeededRandomNumberGenerator(seed: 47)
