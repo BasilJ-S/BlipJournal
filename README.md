@@ -197,7 +197,8 @@ Default survey, all questions optional except the first:
 - **Long CSV.** One row per answer, or per selected option for choice questions. Includes
   question ID, question kind, label at time of answer, current label, option ID, option
   label at time of answer, current option label, and the raw value.
-- **JSON backup.** Every table, including version history, with a schema version number.
+- **JSON backup.** Every table, including version history, with a schema version number
+  and a SHA-256 checksum, so restore refuses a file that changed after export.
 
 Exported files are not encrypted. The app says so before sharing.
 
