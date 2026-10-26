@@ -129,4 +129,5 @@ final class SpyNotificationCoordinator: NotificationCoordinating {
     }
     func scheduleChanged(surveyId: String, now: Date) async {}
     func promptsDestroyed(now: Date) async {}
+    func answerFromNotification(_ answer: NotificationAnswerResponse) async {}
 }

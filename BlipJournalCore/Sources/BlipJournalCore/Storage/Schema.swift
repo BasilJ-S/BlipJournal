@@ -24,6 +24,7 @@ enum Schema {
         migrator.registerMigration("v2", migrate: migrateV2)
         migrator.registerMigration("v3", migrate: migrateV3)
         migrator.registerMigration("v4", migrate: migrateV4)
+        migrator.registerMigration("v5", migrate: migrateV5)
         return migrator
     }
 
@@ -156,11 +157,21 @@ enum Schema {
         }
     }
 
+    /// Schema version 5: `entry.answeredFromNotification`, true when an answer in the
+    /// entry was given from the prompt's notification actions. Every existing entry was
+    /// answered in the app, so the column defaults to false and needs no backfill.
+    static func migrateV5(_ db: Database) throws {
+        try db.alter(table: "entry") { t in
+            t.add(column: "answeredFromNotification", .boolean).notNull().defaults(to: false)
+        }
+    }
+
     /// Schema version 4: `QuestionKind/spectrum` support.
     ///
     /// The column checks also repair development databases that recorded this branch's
     /// pre-merge spectrum migration as v3 before main assigned v3 to Journal summaries.
-    private static func migrateV4(_ db: Database) throws {
+    /// Internal for the v4-to-v5 migration test.
+    static func migrateV4(_ db: Database) throws {
         let surveyColumns = Set(try db.columns(in: "surveyVersion").map(\.name))
         if !surveyColumns.isSuperset(of: [
             "journalSummaryIsConfigured", "primarySummaryQuestionId", "secondarySummaryQuestionId",

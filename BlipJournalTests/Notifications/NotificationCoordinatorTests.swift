@@ -25,14 +25,15 @@ struct NotificationCoordinatorTests {
     /// questions (the coordinator never reads them).
     @discardableResult
     private func makeSurvey(
-        store: Store, name: String = "Check-in", isEnabled: Bool = true, now: Date
+        store: Store, name: String = "Check-in", isEnabled: Bool = true,
+        questions: [Question] = [], now: Date
     ) throws -> Survey {
         try store.createSurvey(
             name: name,
             sampling: SamplingConfig(
                 promptsPerDay: 3, windowStartMinutes: 0, windowEndMinutes: 1440,
                 minGapMinutes: 30, expiryMinutes: 20, isEnabled: isEnabled),
-            questions: [], now: now)
+            questions: questions, now: now)
     }
 
     // MARK: Refresh
@@ -364,6 +365,136 @@ struct NotificationCoordinatorTests {
         #expect(await client.pendingRequestIdentifiers().isEmpty)
     }
 
+    // MARK: Notification answers
+
+    private func yesNoSurvey(store: Store, name: String = "Sleep") throws -> Survey {
+        try makeSurvey(
+            store: store, name: name,
+            questions: [
+                Question(kind: .yesNo, label: "Slept well?", position: 0, isRequired: true),
+                Question(kind: .text, label: "Anything else?", position: 1),
+            ],
+            now: now)
+    }
+
+    @Test func answerableSurveyRegistersItsActionsAndItsRequestsNameThem() async throws {
+        let store = try Store.inMemory()
+        let answerable = try yesNoSurvey(store: store)
+        let plain = try makeSurvey(store: store, name: "Notes", now: now)
+        let client = FakeNotificationCenterClient()
+        client.authorizationStatusToReturn = .authorized
+        let coordinator = makeCoordinator(store: store, client: client)
+
+        await coordinator.refresh(now: now)
+
+        let questionId = try #require(answerable.activeQuestions.first).id
+        let answerCategory = NotificationCoordinator.answerCategoryPrefix + questionId
+        #expect(client.categories.map(\.identifier) == [NotificationCoordinator.categoryIdentifier, answerCategory])
+        #expect(client.categories.first?.actions.isEmpty == true)
+        #expect(client.categories.last?.actions.map(\.title) == ["Yes", "No"])
+
+        let categories = await client.pendingRequestCategories()
+        let prompts = try store.prompts(status: .pending).filter { $0.scheduledAt > now }
+        #expect(!prompts.isEmpty)
+        for prompt in prompts {
+            let expected = prompt.surveyId == plain.id ? NotificationCoordinator.categoryIdentifier : answerCategory
+            #expect(categories[prompt.id] == expected)
+        }
+    }
+
+    @Test func changingTheFirstQuestionReplacesTheRequestsCategory() async throws {
+        let store = try Store.inMemory()
+        let survey = try yesNoSurvey(store: store)
+        let client = FakeNotificationCenterClient()
+        client.authorizationStatusToReturn = .authorized
+        let coordinator = makeCoordinator(store: store, client: client)
+        await coordinator.refresh(now: now)
+        let addsBefore = client.addCallCount
+
+        // Archive the yes/no question: the note is first now, and offers nothing.
+        let first = try #require(survey.activeQuestions.first)
+        try store.updateQuestion(
+            first.id, label: first.label, position: first.position, isRequired: true, isArchived: true,
+            scale: nil, allowsCustomOptions: false, now: now.addingTimeInterval(1))
+        await coordinator.refresh(now: now.addingTimeInterval(1))
+
+        #expect(client.addCallCount > addsBefore)
+        #expect(client.categories.map(\.identifier) == [NotificationCoordinator.categoryIdentifier])
+        let categories = await client.pendingRequestCategories()
+        #expect(!categories.isEmpty)
+        #expect(categories.values.allSatisfy { $0 == NotificationCoordinator.categoryIdentifier })
+    }
+
+    @Test func answerFromNotificationSavesAnOpenEntryAndTellsTheApp() async throws {
+        let store = try Store.inMemory()
+        let survey = try yesNoSurvey(store: store)
+        let question = try #require(survey.activeQuestions.first)
+        let prompt = Prompt(
+            surveyId: survey.id, day: DayKey.string(for: now, calendar: toronto),
+            scheduledAt: now.addingTimeInterval(-60), expiresAt: now.addingTimeInterval(1140))
+        try store.insertPrompts([prompt])
+        let coordinator = makeCoordinator(store: store, client: FakeNotificationCenterClient())
+        let reloads = ReloadCounter()
+        coordinator.onEntrySaved = { reloads.count += 1 }
+        let offered = try #require(NotificationAnswers(survey: survey))
+
+        await coordinator.answerFromNotification(
+            NotificationAnswerResponse(
+                promptId: prompt.id,
+                categoryIdentifier: NotificationCoordinator.answerCategoryIdentifier(for: offered),
+                actionIdentifier: offered.choices[0].actionIdentifier, answeredAt: now))
+
+        let entry = try #require(try store.entries(surveyId: survey.id, from: nil, to: nil).first)
+        #expect(entry.promptId == prompt.id)
+        #expect(entry.answeredFromNotification)
+        #expect(entry.completedAt == nil)
+        #expect(try store.answers(entryId: entry.id).map(\.questionId) == [question.id])
+        #expect(reloads.count == 1)
+        // The save is followed by a refresh, which plans the prompts still to come.
+        #expect(try store.prompts(status: .pending).contains { $0.scheduledAt > now })
+        #expect(coordinator.pendingRoute == nil)
+    }
+
+    @Test func answerUnderThePlainCategorySavesNothing() async throws {
+        let store = try Store.inMemory()
+        let survey = try yesNoSurvey(store: store)
+        let prompt = Prompt(
+            surveyId: survey.id, day: DayKey.string(for: now, calendar: toronto),
+            scheduledAt: now.addingTimeInterval(-60), expiresAt: now.addingTimeInterval(1140))
+        try store.insertPrompts([prompt])
+        let coordinator = makeCoordinator(store: store, client: FakeNotificationCenterClient())
+
+        await coordinator.answerFromNotification(
+            NotificationAnswerResponse(
+                promptId: prompt.id, categoryIdentifier: NotificationCoordinator.categoryIdentifier,
+                actionIdentifier: "answer.yes", answeredAt: now))
+
+        #expect(try store.entries(surveyId: nil, from: nil, to: nil).isEmpty)
+    }
+
+    @Test func refreshCompletesAnExpiredNotificationEntryInsteadOfMissingIt() async throws {
+        let store = try Store.inMemory()
+        let survey = try yesNoSurvey(store: store)
+        let question = try #require(survey.activeQuestions.first)
+        let prompt = Prompt(
+            surveyId: survey.id, day: DayKey.string(for: now, calendar: toronto),
+            scheduledAt: now.addingTimeInterval(-3600), expiresAt: now.addingTimeInterval(-2400))
+        try store.insertPrompts([prompt])
+        let offered = try #require(NotificationAnswers(survey: survey))
+        let answeredAt = now.addingTimeInterval(-3000)
+        #expect(try store.saveNotificationAnswer(
+            promptId: prompt.id, questionId: question.id,
+            actionIdentifier: offered.choices[1].actionIdentifier, now: answeredAt) != .unavailable)
+        let coordinator = makeCoordinator(store: store, client: FakeNotificationCenterClient())
+
+        await coordinator.refresh(now: now)
+
+        let settled = try #require(try store.prompts(status: nil).first { $0.id == prompt.id })
+        #expect(settled.status == .answered)
+        let entry = try #require(try store.entries(surveyId: survey.id, from: nil, to: nil).first)
+        #expect(entry.completedAt != nil)
+    }
+
     // MARK: Running out
 
     /// The last three pending prompts after `date`, by fire time, ties by identifier.
@@ -428,4 +559,9 @@ struct NotificationCoordinatorTests {
         let plain = NotificationPreview.private.content(surveyName: "Check-in")
         #expect(delivered.first?.content == RunningOutWarning.content(plain, remaining: 1))
     }
+}
+
+@MainActor
+private final class ReloadCounter {
+    var count = 0
 }

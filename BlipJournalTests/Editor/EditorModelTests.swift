@@ -193,4 +193,5 @@ private final class EditorNotificationSpy: NotificationCoordinating {
     func refresh(now: Date) async { refreshDates.append(now) }
     func scheduleChanged(surveyId: String, now: Date) async { scheduleDates.append(now) }
     func promptsDestroyed(now: Date) async {}
+    func answerFromNotification(_ answer: NotificationAnswerResponse) async {}
 }

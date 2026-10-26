@@ -61,8 +61,11 @@ final class AppModel {
         print("BlipJournal store at \(directory.path), protection class: \(protection)")
         #endif
         let coordinator = NotificationCoordinator(store: store, client: LiveNotificationCenterClient())
+        let model = try AppModel(store: store, notifications: coordinator)
+        // An answer saved from a notification while the app runs shows up at once.
+        coordinator.onEntrySaved = { [weak model] in try? model?.refresh() }
         coordinator.attach(to: .shared)
-        return try AppModel(store: store, notifications: coordinator)
+        return model
     }
 
     /// Reloads surveys and entries from the store. Call after any write.

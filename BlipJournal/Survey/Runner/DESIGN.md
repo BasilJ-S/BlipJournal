@@ -4,7 +4,9 @@ The runner presents active questions in one scrollable screen. An entry exists o
 a person has answered something: a new manual check-in is held unsaved (`startedAt` is
 when it opened) until its first non-empty answer, so closing, or tapping Done in a survey
 with no required questions, without answering leaves nothing. A notification check-in
-saves at open and reuses its entry on reopen. The runner does not load while locked, so
+saves at open and reuses its entry on reopen. If its entry is closed at expiry while the
+runner is open (an entry started from notification answers), the next save fails with
+`.completed` instead of reopening it. The runner does not load while locked, so
 a rebuild during relock teardown cannot open a second draft. `EntryDraft` preserves
 answer IDs and first timestamps, and writes through one ordered queue. Text edits debounce
 for 300ms and flush on close, completion, and backgrounding. Quick Note uses a locally

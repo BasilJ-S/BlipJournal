@@ -57,7 +57,9 @@ or Apple reads says `BlipJournal`, one word.
   expandable in place while answering. Start from blank or from a premade template
   (see [Defaults](#defaults)).
 - **Fast.** A prompt should take under 30 seconds to answer. One scrolling screen, big
-  tap targets, autosave, no confirmation step.
+  tap targets, autosave, no confirmation step. When a survey opens with a yes/no or a
+  short scale (up to five values), that first answer can be picked straight from the
+  notification after unlocking, without opening the app.
 - **Local and encrypted.** SQLite on device, protected with iOS Data Protection
   (`complete` class). Face ID or passcode to open the app. No network access at all.
 - **Surveys as files.** A survey's questions and schedule can be written by hand, or by
@@ -167,6 +169,15 @@ BlipJournal/        iOS app target. SwiftUI only.
   `LiveNotificationCenterClient.useTimeSensitiveInterruption`.
 - A prompt opened after its expiry is logged as missed and the user is offered a manual
   entry instead.
+- **Answers from the notification.** A prompt whose survey opens with a yes/no question
+  or a scale of at most five values offers those answers as notification actions. Each
+  action requires the device to be unlocked (the database is `NSFileProtectionComplete`)
+  and opens nothing, so no stored data is shown. The answer starts the prompt's entry (a prompt already opened in the app is left to the app),
+  which stays open for the rest of the survey until the prompt expires; at expiry it is
+  completed if every required question has an answer, otherwise the prompt is missed as
+  usual. An answer that arrives after expiry is not saved and the prompt is recorded as
+  missed. Action titles are generic (`Yes`, `No`, `1 (lowest)` ...) so the lock screen
+  reveals nothing about the survey.
 
 ### UI subsystem
 
@@ -217,10 +228,10 @@ that adapts published items credits them and uses them only where their licence 
 ## Export formats
 
 - **Wide CSV.** One row per entry. Columns: entry metadata (survey, prompted or manual,
-  prompt time, completion time, latency) then one column per question using current
-  labels. Multi-choice cells join selected labels with `; `.
+  answered from the notification, prompt time, completion time, latency) then one column
+  per question using current labels. Multi-choice cells join selected labels with `; `.
 - **Long CSV.** One row per answer, or per selected option for choice questions. Includes
-  question ID, question kind, label at time of answer, current label, option ID, option
+  the entry metadata, question ID, question kind, label at time of answer, current label, option ID, option
   label at time of answer, current option label, and the raw value.
 - **JSON backup.** Every table, including version history, with a schema version number
   and a SHA-256 checksum, so restore refuses a file that changed after export.

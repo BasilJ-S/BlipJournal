@@ -19,6 +19,11 @@ protocol NotificationCenterClient: Sendable {
     func pendingRequestIdentifiers() async -> Set<String>
     /// The rendered title/body of every pending request, keyed by identifier.
     func pendingRequestContent() async -> [String: NotificationContent]
+    /// The category identifier of every pending request, keyed by identifier.
+    func pendingRequestCategories() async -> [String: String]
+    /// Replaces every registered notification category, and with them the answer actions
+    /// a prompt's notification offers.
+    func setCategories(_ categories: [NotificationCategorySpec])
     /// Schedules one request. Re-adding an identifier already pending replaces it.
     ///
     /// Takes a `Sendable` spec rather than a `UNNotificationRequest`: the request itself
@@ -55,6 +60,20 @@ struct NotificationRequestSpec: Sendable, Equatable {
     var identifier: String
     var content: NotificationContent
     var dateComponents: DateComponents
+    /// `NotificationCoordinator.categoryIdentifier`, or a per-question answer category.
+    var categoryIdentifier: String = NotificationCoordinator.categoryIdentifier
+}
+
+/// One notification category and its actions, `Sendable` for the same reason as
+/// `NotificationRequestSpec`.
+struct NotificationCategorySpec: Sendable, Equatable {
+    struct Action: Sendable, Equatable {
+        var identifier: String
+        var title: String
+    }
+
+    var identifier: String
+    var actions: [Action]
 }
 
 /// Wraps `UNUserNotificationCenter.current()`. Stateless: every call reaches the live
@@ -93,6 +112,29 @@ struct LiveNotificationCenterClient: NotificationCenterClient {
         return result
     }
 
+    func pendingRequestCategories() async -> [String: String] {
+        var result: [String: String] = [:]
+        for request in await center.pendingNotificationRequests() {
+            result[request.identifier] = request.content.categoryIdentifier
+        }
+        return result
+    }
+
+    /// Every action requires the device to be unlocked (`.authenticationRequired`) and
+    /// none opens the app (no `.foreground`): the database is `NSFileProtectionComplete`,
+    /// so it can only be written once the device is unlocked, and answering never shows
+    /// anything stored.
+    func setCategories(_ categories: [NotificationCategorySpec]) {
+        center.setNotificationCategories(Set(categories.map { category in
+            UNNotificationCategory(
+                identifier: category.identifier,
+                actions: category.actions.map {
+                    UNNotificationAction(identifier: $0.identifier, title: $0.title, options: [.authenticationRequired])
+                },
+                intentIdentifiers: [])
+        }))
+    }
+
     func add(_ spec: NotificationRequestSpec) async throws {
         let content = UNMutableNotificationContent()
         content.title = spec.content.title
@@ -101,7 +143,7 @@ struct LiveNotificationCenterClient: NotificationCenterClient {
         if Self.useTimeSensitiveInterruption {
             content.interruptionLevel = .timeSensitive
         }
-        content.categoryIdentifier = NotificationCoordinator.categoryIdentifier
+        content.categoryIdentifier = spec.categoryIdentifier
         content.userInfo = ["promptId": spec.identifier]
         let trigger = UNCalendarNotificationTrigger(dateMatching: spec.dateComponents, repeats: false)
         let request = UNNotificationRequest(identifier: spec.identifier, content: content, trigger: trigger)
@@ -142,9 +184,11 @@ final class FakeNotificationCenterClient: NotificationCenterClient, @unchecked S
     struct PendingEntry: Equatable {
         var content: NotificationContent
         var scheduledAt: DateComponents
+        var categoryIdentifier: String = NotificationCoordinator.categoryIdentifier
     }
 
     private(set) var pending: [String: PendingEntry] = [:]
+    private(set) var categories: [NotificationCategorySpec] = []
     private(set) var delivered: [DeliveredNotification] = []
     private(set) var addCallCount = 0
     private(set) var requestAuthorizationCallCount = 0
@@ -191,6 +235,14 @@ final class FakeNotificationCenterClient: NotificationCenterClient, @unchecked S
         pending.mapValues(\.content)
     }
 
+    func pendingRequestCategories() async -> [String: String] {
+        pending.mapValues(\.categoryIdentifier)
+    }
+
+    func setCategories(_ categories: [NotificationCategorySpec]) {
+        self.categories = categories
+    }
+
     func add(_ spec: NotificationRequestSpec) async throws {
         addCallCount += 1
         if holdAdd {
@@ -200,7 +252,8 @@ final class FakeNotificationCenterClient: NotificationCenterClient, @unchecked S
                 addStarted = true
             }
         }
-        pending[spec.identifier] = PendingEntry(content: spec.content, scheduledAt: spec.dateComponents)
+        pending[spec.identifier] = PendingEntry(
+            content: spec.content, scheduledAt: spec.dateComponents, categoryIdentifier: spec.categoryIdentifier)
     }
 
     func removePendingRequests(withIdentifiers identifiers: [String]) {

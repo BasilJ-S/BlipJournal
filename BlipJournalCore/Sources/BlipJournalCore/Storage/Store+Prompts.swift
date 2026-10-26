@@ -43,11 +43,17 @@ extension Store {
     /// Updates only `status` and `respondedAt`. Throws `notFound` for an unknown prompt.
     public func setPromptStatus(_ id: String, _ status: PromptStatus, respondedAt: Date?) throws {
         try dbQueue.write { db in
-            try db.execute(
-                sql: "UPDATE prompt SET status = ?, respondedAt = ? WHERE id = ?",
-                arguments: [status, respondedAt, id])
+            try setPromptStatus(db, id, status, respondedAt: respondedAt)
             guard db.changesCount > 0 else { throw StoreError.notFound }
         }
+    }
+
+    /// The body of `setPromptStatus(_:_:respondedAt:)` inside the caller's transaction,
+    /// without the `notFound` check.
+    func setPromptStatus(_ db: Database, _ id: String, _ status: PromptStatus, respondedAt: Date?) throws {
+        try db.execute(
+            sql: "UPDATE prompt SET status = ?, respondedAt = ? WHERE id = ?",
+            arguments: [status, respondedAt, id])
     }
 
     /// Deletes the survey's pending prompts scheduled strictly after `after`. Nothing

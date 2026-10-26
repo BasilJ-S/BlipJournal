@@ -12,14 +12,14 @@ import Foundation
 public enum CSVExporter {
     /// Fixed columns of the wide format, before the per-question columns.
     static let wideFixedColumns = [
-        "entry_id", "survey", "prompted", "prompt_scheduled_at", "started_at",
-        "completed_at", "latency_seconds",
+        "entry_id", "survey", "prompted", "answered_from_notification", "prompt_scheduled_at",
+        "started_at", "completed_at", "latency_seconds",
     ]
 
     /// Every column of the long format.
     static let longColumns = [
-        "entry_id", "prompted", "prompt_scheduled_at", "started_at", "completed_at",
-        "answered_at",
+        "entry_id", "prompted", "answered_from_notification", "prompt_scheduled_at", "started_at",
+        "completed_at", "answered_at",
         "question_id", "question_kind", "question_label_at_time", "question_label_current",
         "option_id", "option_label_at_time", "option_label_current",
         "numeric_value", "bool_value", "text_value",
@@ -165,10 +165,12 @@ public enum CSVExporter {
             date.map(formatter.string(from:)) ?? ""
         }
 
-        /// `prompted`, `prompt_scheduled_at`, `started_at`, `completed_at`.
+        /// `prompted`, `answered_from_notification`, `prompt_scheduled_at`, `started_at`,
+        /// `completed_at`.
         func promptFields(_ exportEntry: ExportEntry) -> [String] {
             [
                 yesNo(exportEntry.entry.promptId != nil),
+                yesNo(exportEntry.entry.answeredFromNotification),
                 timestamp(prompt(of: exportEntry)?.scheduledAt),
                 timestamp(exportEntry.entry.startedAt),
                 timestamp(exportEntry.entry.completedAt),

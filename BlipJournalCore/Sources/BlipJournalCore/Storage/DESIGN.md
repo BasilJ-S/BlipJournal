@@ -9,19 +9,20 @@ subsystem reads and writes through it. Imports only `Foundation` and `GRDB`, plu
 `CryptoKit` in `Backup.swift` where it exists.
 
 ```
-Schema.swift            DatabaseMigrator, migrations "v1"..."v4", tables children-first
+Schema.swift            DatabaseMigrator, migrations "v1"..."v5", tables children-first
 Rows.swift              one GRDB record struct per table, no logic
 Store.swift             open/inMemory, configuration, StoreError, current-view resolution
 Store+Definitions.swift insert-only edits, surveys(), survey(), label histories
 Store+Prompts.swift     prompt reads, insert, status, deleteFuturePendingPrompts
 Store+Entries.swift     saveEntry upsert, entries(), answers(entryId:/questionIds:), deleteEntry
+Store+NotificationAnswers.swift  saveNotificationAnswer, settleExpiredPrompts
 Store+HardDelete.swift  deletionImpact, hardDelete*, eraseEverything, DeletionImpact
 Store+Export.swift      exportSnapshot, backup
 Backup.swift            Backup, BackupExporter (JSON, checksum), RestoreError
 PortableSHA256.swift    pure-Swift SHA-256 for the checksum where CryptoKit is missing
 ```
 
-## Schema (v4)
+## Schema (v5)
 
 ```
 survey(id, createdAt)
@@ -37,7 +38,7 @@ questionVersion(id, questionId, label, position, isRequired, isArchived,
 option(id, questionId, createdAt)
 optionVersion(id, optionId, label, position, isArchived, createdAt)
 prompt(id, surveyId, day, scheduledAt, expiresAt, status, respondedAt)
-entry(id, surveyId, promptId, startedAt, completedAt)
+entry(id, surveyId, promptId, startedAt, completedAt, answeredFromNotification)
 answer(id, entryId, questionId, questionVersionId, answeredAt, kind,
        numericValue, textValue, boolValue, spectrumValue)   UNIQUE (entryId, questionId)
 answerOption(answerId, optionId)        PRIMARY KEY (answerId, optionId)
@@ -54,6 +55,10 @@ JSON blob (`Store.spectrumConfig(of:)` / `spectrumConfigJSON(_:)`), unlike scale
 columns, because its zone list has no fixed width; `spectrumValue` is a separate `REAL`
 column because a spectrum answer is a `Double` in `0...1` where a scale answer is an
 `Int`, so they cannot share `numericValue`.
+
+Migration `v5` adds `entry.answeredFromNotification`, `NOT NULL DEFAULT 0`: every entry
+written before it was answered in the app, so no backfill. `EntryRow` decodes a missing
+key as false, so a backup taken before v5 still restores.
 
 Migration `v3` adds the Journal summary fields to `surveyVersion`. New surveys record
 their first active scale or spectrum question by default
@@ -118,8 +123,11 @@ delete removes is exactly what its code says. Indexes: every foreign key column 
 
 ## `saveEntry` upsert rules
 
-One transaction. The entry row is replaced by value. Answers are reconciled by identifier
-against the entry's stored answers:
+One transaction. The entry row is replaced by value, with two guards against a stale
+copy (the runner holds one for as long as it is open): a stored
+`answeredFromNotification` stays true, and saving an incomplete entry over a completed
+one throws `StoreError.entryCompleted` and changes nothing. `EntryDraft` reports that as
+`.completed`. Answers are reconciled by identifier against the entry's stored answers:
 
 | Stored answer | In `answers`? | Result |
 |---|---|---|
@@ -131,6 +139,34 @@ Keeping the stored `answeredAt` is what makes option history replayable per answ
 "Recoverability" in `Model/DESIGN.md`). Selections are stored in the caller's order,
 without repeats. An answer whose `entryId` is not `entry.id`, or two answers sharing an
 identifier, is a programming error and traps.
+
+## Notification answers
+
+`saveNotificationAnswer(promptId:questionId:actionIdentifier:now:)` saves an answer picked
+on a prompt's notification, in one transaction with every read it depends on, and
+returns what it did (`NotificationAnswerOutcome`):
+
+| Prompt | Entry | Result |
+|---|---|---|
+| unknown, or its survey is | — | `unavailable` |
+| any | completed | `alreadyAnswered` |
+| answered | none | `alreadyAnswered` (entry was deleted) |
+| missed / dismissed | none or open | `expired` |
+| pending, expired at `now` | none or open | settled as below, `expired` |
+| pending, open | open, started in the app | `unavailable`: the runner owns it |
+| pending, open | none, or open from a notification | `unavailable` unless `questionId` is still the first active question and `NotificationAnswers` still offers the action; otherwise `saved` |
+
+Saving creates the entry (`startedAt` = `answeredAt` = `now`, the runner's stamps) or
+adds the answer to the open notification entry, replacing a previous answer to that
+question under the same identifier and first `answeredAt`, as the runner does. The entry is marked
+`answeredFromNotification` and left open; the prompt stays pending, so the rest can be
+answered in the app until expiry.
+
+`settleExpiredPrompts(_:now:)` replaces "mark every expired pending prompt missed" in the
+coordinator's refresh. A prompt whose open entry is `answeredFromNotification` and holds
+an answer to every active required question is closed instead: one `UPDATE` sets the
+entry's `completedAt` to its latest `answeredAt`, answers untouched, and the prompt is
+marked answered at that moment, so latency runs to the last answer the person gave. Everything else is marked missed at `now`, as before.
 
 ## Hard delete
 
@@ -286,6 +322,11 @@ README promises no more than that.
   identifier already used by another entry fails its primary key.
 - The byte-erasure test proves the outcome, not each safeguard: `secure_delete` alone or
   `VACUUM` alone would also pass it. `SchemaTests` pins the pragmas separately.
+- A runner open on a notification entry still holds its own copy, so a second
+  notification answer to the same entry while it is open would be dropped by the next
+  autosave. iOS removes a notification once an action is used, so there is no second
+  action to pick; the flag survives either way, and an entry closed at expiry is never
+  reopened (see `saveEntry`).
 - **Checksum gaps.** Damage to the word `checksum` itself makes the file read as a
   backup from before checksums; its rows are untouched, so it restores as it was taken.
   Damage to the `schemaVersion` number is reported as a newer or unreadable backup, not

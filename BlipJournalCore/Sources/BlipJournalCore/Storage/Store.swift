@@ -13,6 +13,9 @@ public enum StoreError: Error, Equatable {
     case invalidNotificationPreview
     /// Journal summaries accept at most two distinct, active questions from the survey.
     case invalidJournalSummary
+    /// `saveEntry` was asked to save an incomplete entry over one already completed (an
+    /// expired notification entry closed while the runner still held its copy).
+    case entryCompleted
 }
 
 /// The single door to the SQLite database. Every other subsystem reads and writes

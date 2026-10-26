@@ -7,8 +7,8 @@ struct CSVExporterWideTests {
     typealias F = ExportFixture
 
     private let fixedColumns = [
-        "entry_id", "survey", "prompted", "prompt_scheduled_at", "started_at",
-        "completed_at", "latency_seconds",
+        "entry_id", "survey", "prompted", "answered_from_notification", "prompt_scheduled_at",
+        "started_at", "completed_at", "latency_seconds",
     ]
 
     private var output: String { CSVExporter.wide(F.snapshot, calendar: F.calendar) }
@@ -113,6 +113,18 @@ struct CSVExporterWideTests {
         #expect(table[2, column: "latency_seconds"] == "")
         #expect(table[2, column: "started_at"] == "2026-09-04T08:00:00-04:00")
         #expect(table[2, column: "completed_at"] == "2026-09-04T08:01:00-04:00")
+    }
+
+    @Test("answered_from_notification follows the entry's flag and is no for in-app entries")
+    func answeredFromNotification() {
+        #expect((0..<F.entries.count).map { table[$0, column: "answered_from_notification"] }
+            == ["no", "no", "no", "no"])
+        var snapshot = F.snapshot
+        snapshot.entries[3].entry.answeredFromNotification = true
+        let flagged = CSVTable(CSVExporter.wide(snapshot, calendar: F.calendar))
+        #expect(flagged[3, column: "answered_from_notification"] == "yes")
+        #expect(flagged[3, column: "prompted"] == "yes")
+        #expect(flagged[0, column: "answered_from_notification"] == "no")
     }
 
     @Test("a partial entry has empty completed_at and latency, unanswered cells empty")
