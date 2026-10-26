@@ -1,0 +1,41 @@
+{
+  "formatVersion": 1,
+  "name": "Focus & energy",
+  "sampling": {
+    "promptsPerDay": 5,
+    "windowStart": "08:00",
+    "windowEnd": "20:00",
+    "minGapMinutes": 60,
+    "expiryMinutes": 20
+  },
+  "journalSummary": ["energy", "focus"],
+  "questions": [
+    {
+      "id": "energy",
+      "kind": "scale",
+      "label": "How much energy do you have right now?",
+      "required": true,
+      "scale": { "min": 1, "max": 5, "minLabel": "Running on empty", "maxLabel": "Full of energy" }
+    },
+    {
+      "id": "focus",
+      "kind": "scale",
+      "label": "How focused are you right now?",
+      "scale": { "min": 1, "max": 5, "minLabel": "Scattered", "maxLabel": "Fully absorbed" }
+    },
+    {
+      "kind": "singleChoice",
+      "label": "What are you doing?",
+      "expandable": true,
+      "options": ["Deep work", "Meetings", "Emails or messages", "Studying", "Reading", "Chores", "Resting", "Commuting"]
+    },
+    {
+      "kind": "yesNo",
+      "label": "Have you had caffeine in the last two hours?"
+    },
+    {
+      "kind": "text",
+      "label": "Anything helping or getting in the way?"
+    }
+  ]
+}

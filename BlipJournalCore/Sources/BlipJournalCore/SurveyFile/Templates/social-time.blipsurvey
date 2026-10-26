@@ -1,0 +1,38 @@
+{
+  "formatVersion": 1,
+  "name": "Social time",
+  "sampling": {
+    "promptsPerDay": 4,
+    "windowStart": "09:00",
+    "windowEnd": "22:00",
+    "minGapMinutes": 90,
+    "expiryMinutes": 20
+  },
+  "journalSummary": ["with", "connected"],
+  "questions": [
+    {
+      "id": "with",
+      "kind": "multiChoice",
+      "label": "Who are you with right now?",
+      "required": true,
+      "expandable": true,
+      "options": ["No one", "Partner", "Family", "Friends", "Colleagues", "Strangers"]
+    },
+    {
+      "kind": "singleChoice",
+      "label": "Are you in touch with anyone right now?",
+      "options": ["No", "Face to face", "Messages", "Call or video"]
+    },
+    {
+      "id": "connected",
+      "kind": "scale",
+      "label": "How connected do you feel to other people right now?",
+      "scale": { "min": 1, "max": 5, "minLabel": "Not at all", "maxLabel": "Very" }
+    },
+    {
+      "kind": "singleChoice",
+      "label": "Right now, would you rather have…",
+      "options": ["More time alone", "Things as they are", "More company"]
+    }
+  ]
+}

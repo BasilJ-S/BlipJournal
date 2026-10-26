@@ -9,11 +9,13 @@ folder only gets bytes in and out and shows the result.
   share sheet arrives as `onOpenURL` in `BlipJournalApp`, is read at once into
   `AppModel.pendingSurveyImport`, and `RootView` presents it once unlocked, after the
   welcome and after any prompt sheet. All three end as a `PendingSurveyImport`
-  shown by `SurveyImportSheet`.
+  shown by `SurveyImportSheet`. The template gallery (`Survey/Gallery`) reads its
+  bundled files the same way and passes `onAdded` to be handed the survey that was added.
 - **Reading a file.** `PendingSurveyImport(fileAt:)` opens the security scope and reads
   through `NSFileCoordinator`, which downloads an iCloud placeholder before handing over
   the URL. Opening in place (`LSSupportsOpeningDocumentsInPlace` true) relies on this:
-  files are read where they are and never copied into the app.
+  files are read where they are and never copied into the app. Bundled template files
+  take the same path; they have no scope and coordinate trivially.
 - **Nothing changes before confirming.** The sheet shows the preview (name, schedule,
   each question with its kind, options or range, and the Journal summary) and only Add
   survey writes, calling `Store.importSurvey` directly: there is no app-side logic to

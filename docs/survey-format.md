@@ -5,6 +5,8 @@ schedule and Journal summary. It is plain JSON, short enough to write by hand, a
 regular enough for an AI assistant to write from a description. Every way a survey
 enters the app from outside goes through this format: files you write, files a
 researcher shares so every participant answers the same protocol, and text you paste.
+The survey templates offered under New survey, including the survey a new install
+starts with, are survey files too: they ship inside the app and are read the same way.
 
 A survey file never holds answers, and importing one never changes anything already in
 the app: it always adds a new survey. A JSON backup is a different file: it holds

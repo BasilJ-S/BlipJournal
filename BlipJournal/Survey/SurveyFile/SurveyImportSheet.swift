@@ -12,10 +12,13 @@ struct SurveyImportSheet: View {
     @State private var errorMessage: String?
     /// Whether the sheet started from pasting, so a failed check can go back to the text.
     private let isPasting: Bool
+    /// Called with the new survey once it is added, just before the sheet closes itself.
+    private let onAdded: (Survey) -> Void
 
-    init(outcome: Result<SurveyFileContents, SurveyFileError>?) {
+    init(outcome: Result<SurveyFileContents, SurveyFileError>?, onAdded: @escaping (Survey) -> Void = { _ in }) {
         _outcome = State(initialValue: outcome)
         isPasting = outcome == nil
+        self.onAdded = onAdded
     }
 
     var body: some View {
@@ -103,8 +106,9 @@ struct SurveyImportSheet: View {
 
     private func add(_ contents: SurveyFileContents) {
         do {
-            try appModel.store.importSurvey(contents)
+            let survey = try appModel.store.importSurvey(contents)
             try appModel.refresh()
+            onAdded(survey)
             dismiss()
         } catch { errorMessage = String(describing: error) }
     }

@@ -54,7 +54,8 @@ or Apple reads says `BlipJournal`, one word.
   within the window so they are unpredictable but never clump.
 - **Customisable surveys.** Arbitrarily many surveys. Each is a list of questions:
   scale, single choice, multiple choice, yes/no, or short text. Choice lists are
-  expandable in place while answering.
+  expandable in place while answering. Start from blank or from a premade template
+  (see [Defaults](#defaults)).
 - **Fast.** A prompt should take under 30 seconds to answer. One scrolling screen, big
   tap targets, autosave, no confirmation step.
 - **Local and encrypted.** SQLite on device, protected with iOS Data Protection
@@ -107,14 +108,15 @@ BlipJournalCore/    Swift package. No UIKit. Tested with `swift test` on macOS.
   Storage/           GRDB schema, migrations, insert-only versioning, queries
   Sampling/          Stratified random day sampler and multi-survey prompt planner
   Export/            CSV (wide, long) and JSON backup
-  SurveyFile/        Survey file format: read, validate, write, import
+  SurveyFile/        Survey file format: read, validate, write, import; bundled templates
   Journal/           Journal filter and sort rules
 BlipJournal/        iOS app target. SwiftUI only.
   App/               Entry point, app model, biometric lock, app-switcher cover
-  Onboarding/        One-time welcome that asks for notification permission
+  Onboarding/        One-time welcome: notification permission, then the template gallery
   Journal/           Entries list and entry detail with delete
   Notifications/     UNUserNotificationCenter adapter for the prompt planner
-  Survey/            Survey runner (answering), survey editor, survey file import and export
+  Survey/            Survey runner (answering), survey editor, survey file import and export,
+                     template gallery
   Insights/          Swift Charts views
   Settings/          Surveys, sampling, export, about
 ```
@@ -186,7 +188,8 @@ BlipJournal/        iOS app target. SwiftUI only.
 | Minimum gap | 60 min |
 | Expiry | 20 min |
 
-Default survey, all questions optional except the first:
+Default survey, "Mood & feelings", all questions optional except the first. It is the
+bundled `mood-and-feelings` template file, read through the survey file importer:
 
 1. How are you feeling right now? Spectrum from "Very unpleasant" to "Very pleasant".
 2. What best describes this feeling? Multiple choice.
@@ -194,6 +197,22 @@ Default survey, all questions optional except the first:
 4. What are you doing? Single choice, expandable.
 5. Who are you with? Multiple choice, expandable.
 6. Anything else? Short text.
+
+### Survey templates
+
+Premade surveys bundled with the app as survey files, in
+`BlipJournalCore/Sources/BlipJournalCore/SurveyFile/Templates/`. The gallery is under
+Settings, Surveys, +, New survey, and is offered once at the end of the
+welcome. Each shows its purpose, questions and schedule before it is added, and becomes
+an ordinary survey, paused until you turn it on; one picked during the welcome starts
+at once if notifications are allowed. Blank is always offered beside them.
+
+Templates: Mood & feelings (the default survey above), Focus & energy, Social time,
+Mind-wandering and Phone use. Each file holds its questions and schedule; the gallery's
+order and one-line purposes are in `SurveyTemplateGallery.swift`.
+
+The wording is written for Blip Journal, not taken from a published item set. A template
+that adapts published items credits them and uses them only where their licence allows.
 
 ## Export formats
 

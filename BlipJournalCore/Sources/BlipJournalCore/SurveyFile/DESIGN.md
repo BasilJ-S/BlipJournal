@@ -14,6 +14,9 @@ SurveyFile.swift          SurveyFile (decode/encode), SurveyFileContents, Survey
 SurveyFileReader.swift    validation into contents, FieldPath for issue locations
 JSONValue.swift           untyped JSON tree, parsed with JSONDecoder, written in key order
 Store+SurveyFile.swift    Store.importSurvey: fresh identifiers, paused, via createSurvey
+SurveyTemplateGallery.swift  the bundled templates: file id, purpose, bundle URL
+SurveyTemplate.swift      makeDefault: the survey a new install gets, read from a template
+Templates/                the template survey files, a package resource (.copy)
 ```
 
 ## Flow
@@ -32,8 +35,8 @@ Survey ─ SurveyFile.encode ─> Data
   one built by hand.
 - **Identifiers come from the app.** File `id`s are local names for `journalSummary` and
   are dropped. `decode` mints identifiers so contents can be previewed; `importSurvey`
-  mints them again, so one decoded value can be imported twice (a double tap, or the same
-  file imported again) without a primary key clash.
+  mints them again, so one decoded value can be imported twice (a double tap, the same
+  file imported again, or a bundled template added twice) without a primary key clash.
 - **Imports start paused** with the `.private` notification preview, like every new
   survey. The format has no field for either: when a phone buzzes is the person's
   choice, not the file author's.
@@ -52,6 +55,27 @@ Survey ─ SurveyFile.encode ─> Data
 - **Deterministic output.** `encode` writes keys in a fixed, readable order with
   two-space indentation, so the same survey always gives the same bytes and a protocol
   file diffs cleanly.
+
+## Template gallery
+
+- **Templates are survey files.** Each is a `.blipsurvey` in `Templates/`, read with
+  `SurveyFile.decode(contentsOf:)` like a file from Files, so a template the reader
+  rejects is a test failure, not a gallery bug. `SurveyTemplateGallery.templates` adds
+  only what the format has no field for: the gallery order and a one-line purpose. The
+  name, questions and schedule come from the file.
+- **The default survey is a template.** `SurveyTemplate.makeDefault`, which seeds a new
+  install and reseeds after erasing everything, reads `mood-and-feelings` through the
+  same reader, so there is no second definition of the default to drift. A bundled file
+  that does not read is a broken build, so it stops with `preconditionFailure` rather
+  than making every caller handle an error no person can cause; the tests read it on
+  every run.
+- **Tests guard the set:** every listed file exists, reads, matches the schema and
+  imports; every file in the folder is listed; each has 3 to 6 questions and a purpose;
+  names differ; no wording stems from diagnosis, treatment or therapy. `SurveyTemplate`'s
+  own tests pin the default survey's questions and options.
+- **Wording is original.** No template takes items from a published item set. One that
+  does must credit the source in its purpose, only from a source whose licence allows
+  reuse.
 
 ## Decisions
 

@@ -1,0 +1,45 @@
+{
+  "formatVersion": 1,
+  "name": "Mind-wandering",
+  "sampling": {
+    "promptsPerDay": 5,
+    "windowStart": "09:00",
+    "windowEnd": "21:00",
+    "minGapMinutes": 60,
+    "expiryMinutes": 15
+  },
+  "journalSummary": ["where", "tone"],
+  "questions": [
+    {
+      "id": "where",
+      "kind": "singleChoice",
+      "label": "Just before this prompt, where was your mind?",
+      "required": true,
+      "options": ["On what I was doing", "Somewhere else", "Not sure"]
+    },
+    {
+      "kind": "multiChoice",
+      "label": "If it was somewhere else, what was it on?",
+      "expandable": true,
+      "options": ["Plans", "Memories", "Other people", "Things to do", "Daydreams", "Worries"]
+    },
+    {
+      "id": "tone",
+      "kind": "spectrum",
+      "label": "How did those thoughts feel?",
+      "spectrum": {
+        "zones": [
+          { "label": "Unpleasant" },
+          { "label": "Neutral" },
+          { "label": "Pleasant" }
+        ]
+      }
+    },
+    {
+      "kind": "singleChoice",
+      "label": "What were you doing?",
+      "expandable": true,
+      "options": ["Working", "Studying", "Reading", "Commuting", "Eating", "Chores", "Resting", "Talking"]
+    }
+  ]
+}

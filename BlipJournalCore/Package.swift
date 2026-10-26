@@ -17,6 +17,8 @@ let package = Package(
             // Each component keeps a DESIGN.md next to its code (see AGENTS.md).
             // SwiftPM has no glob here, so add every new one to this list.
             exclude: ["Analytics/DESIGN.md", "Export/DESIGN.md", "Journal/DESIGN.md", "Model/DESIGN.md", "Sampling/DESIGN.md", "Storage/DESIGN.md", "SurveyFile/DESIGN.md"],
+            // The template gallery's survey files, read through SurveyFile like any other.
+            resources: [.copy("SurveyFile/Templates")],
             swiftSettings: [.swiftLanguageMode(.v6)]
         ),
         .testTarget(

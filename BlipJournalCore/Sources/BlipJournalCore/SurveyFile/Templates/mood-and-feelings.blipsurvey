@@ -1,0 +1,39 @@
+{
+  "formatVersion": 1,
+  "name": "Mood & feelings",
+  "questions": [
+    {
+      "kind": "spectrum",
+      "label": "How are you feeling right now?",
+      "required": true
+    },
+    {
+      "kind": "multiChoice",
+      "label": "What best describes this feeling?",
+      "expandable": true,
+      "options": ["Calm", "Content", "Happy", "Excited", "Focused", "Tired", "Bored", "Anxious", "Stressed", "Irritated", "Sad", "Lonely"]
+    },
+    {
+      "kind": "multiChoice",
+      "label": "What is having the biggest impact?",
+      "expandable": true,
+      "options": ["Work", "Study", "Family", "Partner", "Friends", "Health", "Sleep", "Exercise", "Food", "Money", "Weather", "News", "Hobbies"]
+    },
+    {
+      "kind": "singleChoice",
+      "label": "What are you doing?",
+      "expandable": true,
+      "options": ["Working", "Studying", "Commuting", "Eating", "Socialising", "Exercising", "Resting", "Chores", "Screen time", "Outdoors"]
+    },
+    {
+      "kind": "multiChoice",
+      "label": "Who are you with?",
+      "expandable": true,
+      "options": ["Alone", "Partner", "Family", "Friends", "Colleagues", "Strangers"]
+    },
+    {
+      "kind": "text",
+      "label": "Anything else?"
+    }
+  ]
+}
