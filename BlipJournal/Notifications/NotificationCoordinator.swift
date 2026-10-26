@@ -211,10 +211,13 @@ final class NotificationCoordinator: NotificationCoordinating {
     /// Step 5 targets pending prompts scheduled after `now` for active, enabled surveys;
     /// requests missing from that target are added, requests present but stale (rendered
     /// content changed under the same identifier and time) are replaced, and requests for
-    /// anything outside the target are removed. Step 6 then drops delivered notifications
+    /// anything outside the target are removed. The last few target prompts by fire time
+    /// carry the running-out warning, recomputed here every time so it always sits on
+    /// whatever is currently last. Step 6 then drops delivered notifications
     /// whose prompt is gone or no longer pending, and delivered notifications whose
     /// content no longer matches what the survey would render now (a preview or rename
-    /// change), without touching any other survey's delivered notifications.
+    /// change; a delivered running-out warning still counts as current), without touching
+    /// any other survey's delivered notifications.
     private func reconcile(now: Date, generation myGeneration: Int) async throws {
         let surveys = try store.surveys(includeArchived: true)
         let surveysById = Dictionary(uniqueKeysWithValues: surveys.map { ($0.id, $0) })
@@ -234,9 +237,13 @@ final class NotificationCoordinator: NotificationCoordinating {
         if !toRemove.isEmpty {
             client.removePendingRequests(withIdentifiers: Array(toRemove))
         }
+        let remainingById = RunningOutWarning.remainingCounts(scheduled: target)
         for prompt in target {
             guard let survey = activeSurveysById[prompt.surveyId] else { continue }
-            let content = survey.notificationPreview.content(surveyName: survey.name)
+            var content = survey.notificationPreview.content(surveyName: survey.name)
+            if let remaining = remainingById[prompt.id] {
+                content = RunningOutWarning.content(content, remaining: remaining)
+            }
             if currentIds.contains(prompt.id), currentContent[prompt.id] == content { continue }
             let spec = Self.makeSpec(prompt: prompt, content: content, calendar: calendar)
             try await client.add(spec)
@@ -257,7 +264,7 @@ final class NotificationCoordinator: NotificationCoordinating {
             }
             guard pendingIds.contains(promptId), let survey = surveysById[prompt.surveyId] else { continue }
             let expected = survey.notificationPreview.content(surveyName: survey.name)
-            if let content = note.content, content != expected {
+            if let content = note.content, !RunningOutWarning.matches(content, base: expected) {
                 deliveredToRemove.append(note.identifier)
             }
         }
