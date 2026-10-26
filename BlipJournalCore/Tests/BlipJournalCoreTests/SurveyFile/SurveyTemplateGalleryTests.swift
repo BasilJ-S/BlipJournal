@@ -6,8 +6,8 @@ import Testing
 /// schema and import, or the gallery would offer something that cannot be added.
 @Suite("SurveyTemplateGallery")
 struct SurveyTemplateGalleryTests {
-    private typealias Gallery = SurveyTemplateGallery
-    private typealias Support = SurveyFileTestSupport
+    typealias Gallery = SurveyTemplateGallery
+    typealias Support = SurveyFileTestSupport
 
     private static func contents(_ template: Gallery.Template) throws -> SurveyFileContents {
         try SurveyFile.decode(contentsOf: template.url).get()
