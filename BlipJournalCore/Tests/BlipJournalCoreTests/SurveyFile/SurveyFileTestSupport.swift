@@ -16,7 +16,7 @@ enum SurveyFileTestSupport {
 
     /// A file around one question, so a test only spells out what it is about.
     static func file(question: String) -> String {
-        #"{"formatVersion": 1, "name": "Survey", "questions": ["# + question + "]}"#
+        #"{"formatVersion": 1, "name": "Survey", "questions": ["# + question + "]}"
     }
 
     /// A file with one text question and the given extra top-level fields.
