@@ -144,7 +144,8 @@ struct StoreNotificationAnswersTests {
         try store.insertPrompts([p])
         _ = try store.saveNotificationAnswer(
             promptId: p.id, questionId: first.id, actionIdentifier: try action(survey, .yesNo(true)), now: t(150))
-        let before = try #require(try store.answers(entryId: try #require(try entry(store, promptId: p.id)).id).first)
+        let saved = try #require(try entry(store, promptId: p.id))
+        let before = try #require(try store.answers(entryId: saved.id).first)
 
         _ = try store.saveNotificationAnswer(
             promptId: p.id, questionId: first.id, actionIdentifier: try action(survey, .yesNo(false)), now: t(200))
