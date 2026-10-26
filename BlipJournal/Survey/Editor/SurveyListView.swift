@@ -1,5 +1,6 @@
 import BlipJournalCore
 import SwiftUI
+import UniformTypeIdentifiers
 
 struct SurveyListView: View {
     @Environment(AppModel.self) private var appModel
@@ -8,6 +9,8 @@ struct SurveyListView: View {
     @State private var name = ""
     @State private var copySource: Survey?
     @State private var errorMessage: String?
+    @State private var showingFileImporter = false
+    @State private var pendingImport: PendingSurveyImport?
 
     init() {}
 
@@ -32,6 +35,9 @@ struct SurveyListView: View {
                 Menu {
                     Button("Blank survey") { name = ""; copySource = nil; showingNewSurvey = true }
                     Button("Copy an existing survey") { showingCopySurvey = true }
+                    Divider()
+                    Button("Import a survey file") { showingFileImporter = true }
+                    Button("Paste survey text") { pendingImport = .paste() }
                 } label: {
                     Image(systemName: "plus").accessibilityLabel("Add survey")
                 }
@@ -52,6 +58,13 @@ struct SurveyListView: View {
                 .blipScreen("Copy survey")
             }
         }
+        .fileImporter(isPresented: $showingFileImporter, allowedContentTypes: [.blipSurvey, .json]) { result in
+            switch result {
+            case .success(let url): pendingImport = PendingSurveyImport(fileAt: url)
+            case .failure(let error): errorMessage = error.localizedDescription
+            }
+        }
+        .sheet(item: $pendingImport) { pending in SurveyImportSheet(outcome: pending.outcome) }
         .alert("Could not save survey", isPresented: Binding(
             get: { errorMessage != nil }, set: { if !$0 { errorMessage = nil } })) {
             Button("OK", role: .cancel) {}
@@ -60,12 +73,7 @@ struct SurveyListView: View {
 
     private func summary(for survey: Survey) -> String {
         guard survey.sampling.isEnabled else { return "Notifications paused" }
-        return "\(survey.sampling.promptsPerDay) prompts a day, \(clock(survey.sampling.windowStartMinutes)) to \(clock(survey.sampling.windowEndMinutes))"
-    }
-
-    private func clock(_ minutes: Int) -> String {
-        guard minutes != 1440 else { return "midnight" }
-        return String(format: "%02d:%02d", minutes / 60, minutes % 60)
+        return EditorText.window(survey.sampling)
     }
 
     private func create() {

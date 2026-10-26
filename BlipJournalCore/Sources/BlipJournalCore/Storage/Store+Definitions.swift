@@ -264,10 +264,8 @@ extension Store {
         journalSummaryQuestionIds: [String]? = nil, now: Date
     ) throws -> Survey {
         let surveyId = Identifier.make()
-        let summaryIds = journalSummaryQuestionIds ?? questions
-            .filter { !$0.isArchived && ($0.kind == .scale || $0.kind == .spectrum) }
-            .sorted { ($0.position, $0.id) < ($1.position, $1.id) }
-            .prefix(1).map(\.id)
+        let summaryIds = journalSummaryQuestionIds
+            ?? Survey.defaultJournalSummaryQuestionIds(for: questions)
         guard summaryIds.count <= 2, Set(summaryIds).count == summaryIds.count,
               summaryIds.allSatisfy({ id in questions.contains { $0.id == id && !$0.isArchived } })
         else { throw StoreError.invalidJournalSummary }

@@ -66,8 +66,11 @@ public struct SamplingConfig: Sendable, Equatable, Hashable, Codable {
             errors.append(.minGapOutOfRange)
         }
 
+        // In `Double` so an extreme `promptsPerDay` from an imported file cannot overflow;
+        // every in-range product is far below 2^53, where `Double` is exact.
         if windowIsWellFormed, gapIsInRange,
-           (promptsPerDay - 1) * minGapMinutes >= windowEndMinutes - windowStartMinutes {
+           (Double(promptsPerDay) - 1) * Double(minGapMinutes)
+            >= Double(windowEndMinutes - windowStartMinutes) {
             errors.append(.gapDoesNotFit)
         }
 

@@ -51,6 +51,7 @@ struct QuestionEditorView: View {
             ToolbarItem(placement: .confirmationAction) {
                 Button("Save question") { save() }
                     .accessibilityLabel("Save question")
+                    .disabled(isBlank(label))
             }
             ToolbarItem(placement: .topBarLeading) {
                 Button(editMode == .active ? "Done" : "Reorder") {
@@ -77,8 +78,10 @@ struct QuestionEditorView: View {
     }
 
     private func load() { guard let q = question else { return }; label = q.label; required = q.isRequired; scale = q.scale ?? ScaleConfig(); spectrum = q.spectrum ?? SpectrumConfig(); customOptions = q.allowsCustomOptions }
+    /// Blank labels are never saved: a survey file could not carry them back in.
+    private func isBlank(_ text: String) -> Bool { text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
     private func save() {
-        guard var q = question else { return }; q.label = label; q.isRequired = required; q.scale = q.kind == .scale ? scale : nil; q.spectrum = q.kind == .spectrum ? spectrum : nil; q.allowsCustomOptions = q.kind.usesOptions && customOptions
+        guard !isBlank(label), var q = question else { return }; q.label = label; q.isRequired = required; q.scale = q.kind == .scale ? scale : nil; q.spectrum = q.kind == .spectrum ? spectrum : nil; q.allowsCustomOptions = q.kind.usesOptions && customOptions
         do {
             try EditorModel(store: appModel.store, notifications: appModel.notifications).updateQuestion(q)
             try appModel.refresh()
@@ -86,7 +89,7 @@ struct QuestionEditorView: View {
         } catch { errorMessage = String(describing: error) }
     }
     private func addOption() { do { _ = try EditorModel(store: appModel.store, notifications: appModel.notifications).addOption(questionId: questionId, label: "New option"); try appModel.refresh() } catch { errorMessage = String(describing: error) } }
-    private func rename(_ option: ChoiceOption, value: String) { var updated = option; updated.label = value; do { try EditorModel(store: appModel.store, notifications: appModel.notifications).updateOption(updated); try appModel.refresh() } catch { errorMessage = String(describing: error) } }
+    private func rename(_ option: ChoiceOption, value: String) { guard !isBlank(value) else { return }; var updated = option; updated.label = value; do { try EditorModel(store: appModel.store, notifications: appModel.notifications).updateOption(updated); try appModel.refresh() } catch { errorMessage = String(describing: error) } }
     private func archive(_ option: ChoiceOption) { var updated = option; updated.isArchived = true; do { try EditorModel(store: appModel.store, notifications: appModel.notifications).updateOption(updated); try appModel.refresh() } catch { errorMessage = String(describing: error) } }
     private func moveOptions(from: IndexSet, to: Int) { do { try EditorModel(store: appModel.store, notifications: appModel.notifications).moveOptions(questionId: questionId, from: from, to: to); try appModel.refresh() } catch { errorMessage = String(describing: error) } }
 }

@@ -56,7 +56,8 @@ column because a spectrum answer is a `Double` in `0...1` where a scale answer i
 `Int`, so they cannot share `numericValue`.
 
 Migration `v3` adds the Journal summary fields to `surveyVersion`. New surveys record
-their first active scale or spectrum question by default. An upgraded row has
+their first active scale or spectrum question by default
+(`Survey.defaultJournalSummaryQuestionIds`, shared with the survey file reader). An upgraded row has
 `journalSummaryIsConfigured == false`, which preserves the former first-mood summary
 until a choice is saved. Saving even an empty choice sets it true. The question IDs have
 no foreign keys: hard-erasing an archived question must not rewrite immutable history;

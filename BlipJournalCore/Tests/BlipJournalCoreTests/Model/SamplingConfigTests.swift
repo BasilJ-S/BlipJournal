@@ -35,6 +35,13 @@ struct SamplingConfigTests {
         #expect(config.validationErrors == [.promptsPerDayOutOfRange, .gapDoesNotFit])
     }
 
+    @Test("an extreme count is reported, not trapped on, however large", arguments: [Int.max, Int.min, 1_000_000_000_000_000])
+    func extremePromptsPerDay(count: Int) {
+        var config = SamplingConfig.default
+        config.promptsPerDay = count
+        #expect(config.validationErrors.first == .promptsPerDayOutOfRange)
+    }
+
     @Test("the edges of the promptsPerDay range are accepted")
     func promptsPerDayEdges() {
         var none = SamplingConfig.default
