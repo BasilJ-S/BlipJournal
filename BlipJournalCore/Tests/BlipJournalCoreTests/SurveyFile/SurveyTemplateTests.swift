@@ -4,7 +4,8 @@ import BlipJournalCore
 
 @Suite("SurveyTemplate")
 struct SurveyTemplateTests {
-    /// The six default questions as the README and the C1 handoff specify them.
+    /// The six default questions as the README and the C1 handoff specify them, read from
+    /// the bundled `mood-and-feelings` template.
     private static let expected: [(kind: QuestionKind, label: String, options: Int, isRequired: Bool)] = [
         (.spectrum, "How are you feeling right now?", 0, true),
         (.multiChoice, "What best describes this feeling?", 12, false),
@@ -86,7 +87,8 @@ struct SurveyTemplateTests {
         #expect(survey.createdAt == now)
         #expect(!survey.isArchived)
         #expect(survey.sampling == .default)
-        #expect(!survey.name.isEmpty)
+        #expect(survey.name == "Mood & feelings")
+        #expect(survey.journalSummaryQuestionIds == [survey.activeQuestions[0].id])
     }
 
     @Test("every identifier in the survey is unique")

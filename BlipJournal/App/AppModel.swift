@@ -26,6 +26,9 @@ final class AppModel {
     /// True from init until `unlock()`, and again whenever the lock policy says so.
     private(set) var isLocked = true
     var lockPolicy = LockPolicy()
+    /// A survey file another app opened in Blip Journal, waiting for `RootView` to show
+    /// its preview once the app is unlocked.
+    var pendingSurveyImport: PendingSurveyImport?
 
     @ObservationIgnored private var backgroundedAt: Date?
 

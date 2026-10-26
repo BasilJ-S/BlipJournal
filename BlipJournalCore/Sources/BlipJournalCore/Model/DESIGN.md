@@ -23,7 +23,7 @@ Entry ──< Answer ─ AnswerValue                one response and its answers
   └─ answeredFromNotification                 an answer came from the notification
 
 [LabelVersion].label(at:)                     rename history lookup, used by export
-SurveyTemplate.makeDefault()                  the six-question survey a new install gets
+Survey.defaultJournalSummaryQuestionIds(for:) the summary a new survey gets when none is named
 NotificationAnswers(survey:)                  answers a prompt notification offers, or nil
 ```
 
@@ -141,7 +141,9 @@ which a single-user app with one screen at a time does not allow.
   once. The order is fixed, and `gapDoesNotFit` is only evaluated once the window and the
   gap are each well formed, so one mistake does not produce a cascade of errors. A gap of
   zero is legal and means "no minimum"; a negative one is not, because the sampler would
-  then be free to place prompts in any order.
+  then be free to place prompts in any order. The `gapDoesNotFit` product is computed in
+  `Double`, so an absurd `promptsPerDay` from an imported survey file is reported rather
+  than overflowing.
 - **`label(at:)` falls back to the earliest version.** An answer can carry a timestamp
   just before the first recorded version (a clock change, or a definition backfilled by a
   migration). Showing the oldest known wording beats showing nothing; only an empty

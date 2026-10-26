@@ -158,7 +158,7 @@ struct StoreExportTests {
             "question": 6, "questionVersion": 6,
             "option": 41, "optionVersion": 41, "prompt": 1, "entry": 1, "answer": 2, "answerOption": 1,
         ])
-        #expect(first.surveyVersions.map(\.name) == ["Check-in", "Renamed", "Renamed again"])
+        #expect(first.surveyVersions.map(\.name) == ["Mood & feelings", "Renamed", "Renamed again"])
         // Save order, which the survey's live reads tie-break on.
         #expect(first.questions.map(\.id) == survey.questions.map(\.id))
         #expect(first.options.map(\.id) == survey.questions.flatMap { $0.options.map(\.id) })

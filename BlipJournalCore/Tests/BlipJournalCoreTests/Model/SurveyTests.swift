@@ -136,6 +136,18 @@ struct SurveyTests {
         #expect(survey.journalSummaryQuestions.map(\.id) == ["q2", "q0"])
     }
 
+    @Test("the default Journal summary is the first active scale or spectrum question by position")
+    func defaultJournalSummary() {
+        let questions = [
+            Question(id: "text", kind: .text, label: "Note", position: 0),
+            Question(id: "late", kind: .scale, label: "Late", position: 3),
+            Question(id: "archived", kind: .spectrum, label: "Old", position: 1, isArchived: true),
+            Question(id: "early", kind: .spectrum, label: "Early", position: 2),
+        ]
+        #expect(Survey.defaultJournalSummaryQuestionIds(for: questions) == ["early"])
+        #expect(Survey.defaultJournalSummaryQuestionIds(for: [questions[0]]).isEmpty)
+    }
+
     @Test("round-trips through JSON")
     func roundTrips() throws {
         let survey = Survey(

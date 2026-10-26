@@ -122,6 +122,53 @@ struct EditorModelTests {
         #expect(archived.first?.0.label == "Retired")
     }
 
+    @Test func copyKeepsTheCurrentDefinitionUnderNewIdentifiers() throws {
+        let store = try Store.inMemory()
+        let editor = model(store: store)
+        let energy = Question(kind: .scale, label: "Energy", position: 0, scale: ScaleConfig(min: 1, max: 5))
+        let doing = Question(
+            kind: .singleChoice, label: "Doing", position: 1, allowsCustomOptions: true,
+            options: [ChoiceOption(label: "Same", position: 0), ChoiceOption(label: "Same", position: 1)])
+        let source = try store.createSurvey(
+            name: "Source", sampling: SamplingConfig(promptsPerDay: 5), questions: [energy, doing],
+            journalSummaryQuestionIds: [doing.id, energy.id], now: now)
+        try store.updateNotificationPreview(surveyId: source.id, .surveyName, now: now)
+
+        let copy = try editor.copySurvey(sourceId: source.id, name: "Copy", now: now.addingTimeInterval(1))
+
+        #expect(copy.name == "Copy")
+        #expect(copy.sampling == SamplingConfig(promptsPerDay: 5, isEnabled: false))
+        #expect(copy.notificationPreview == .private)
+        #expect(copy.activeQuestions.map(\.label) == ["Energy", "Doing"])
+        #expect(copy.activeQuestions[1].activeOptions.map(\.label) == ["Same", "Same"])
+        #expect(copy.journalSummaryQuestions.map(\.label) == ["Doing", "Energy"])
+        #expect(Set(copy.questions.map(\.id)).isDisjoint(with: source.questions.map(\.id)))
+    }
+
+    @Test func onboardingTemplatesStartSamplingOnlyWhenPromptsCanArrive() async throws {
+        let store = try Store.inMemory()
+        let spy = EditorNotificationSpy()
+        let editor = EditorModel(store: store, notifications: spy)
+        var contents = try SurveyFile.decode(contentsOf: SurveyTemplateGallery.templates[1].url).get()
+        let denied = try store.importSurvey(contents, now: now)
+        let blank = try editor.createSurvey(name: "Blank", now: now)
+
+        spy.authorizationStatus = .denied
+        #expect(try await editor.startSamplingAfterOnboarding(surveyId: denied.id, now: now) == false)
+        #expect(try store.survey(denied.id)?.sampling.isEnabled == false)
+
+        spy.authorizationStatus = .authorized
+        #expect(try await editor.startSamplingAfterOnboarding(surveyId: blank.id, now: now) == false)
+        #expect(try store.survey(blank.id)?.sampling.isEnabled == false)
+
+        contents.name = "Allowed"
+        let allowed = try store.importSurvey(contents, now: now)
+        #expect(try await editor.startSamplingAfterOnboarding(surveyId: allowed.id, now: now) == true)
+        // The template's own schedule, switched on: contents always read as enabled.
+        #expect(try store.survey(allowed.id)?.sampling == contents.sampling)
+        #expect(spy.scheduleDates == [now])
+    }
+
     @Test func customPreviewDraftTracksEmptyAndValidMessageChanges() {
         let empty = SamplingSettingsView.effectivePreview(mode: 2, customMessage: " \n")
         #expect(!empty.isValid)
@@ -135,7 +182,7 @@ struct EditorModelTests {
 
 @MainActor
 private final class EditorNotificationSpy: NotificationCoordinating {
-    var authorizationStatus: UNAuthorizationStatus { .notDetermined }
+    var authorizationStatus: UNAuthorizationStatus = .notDetermined
     var isRequestingAuthorization: Bool { false }
     var pendingRoute: String?
     var refreshDates: [Date] = []

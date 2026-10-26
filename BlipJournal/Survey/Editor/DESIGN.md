@@ -19,5 +19,16 @@ states what survives, mentions emptied entries, and ends with “It cannot be un
 Spectrum questions require at least two non-blank labelled zones and ordered interior
 boundaries. Their colour pickers and boundary sliders carry labels naming their zones.
 
+"Copy an existing survey" is `Store.importSurvey` of `SurveyFileContents(source)` under
+the new name, the same path a survey file takes. Question and option labels are never
+saved blank, because a survey file could not carry them back in.
+
+`startSamplingAfterOnboarding` turns sampling on for a template picked in the welcome,
+only when prompts can be delivered and the survey has questions (Onboarding `DESIGN.md`).
+
+Surveys can also come from survey files, and the editor's "Share survey file" writes
+one; see `Survey/SurveyFile/DESIGN.md`. `EditorText` holds wording shared with that
+preview: the clock, the schedule window and the question kind descriptions.
+
 Known limitations: drag reorder is available only in EditMode; question kinds cannot
 change; copying duplicates current active configuration only, never response history.

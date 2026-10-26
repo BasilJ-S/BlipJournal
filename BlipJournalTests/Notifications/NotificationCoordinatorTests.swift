@@ -494,6 +494,71 @@ struct NotificationCoordinatorTests {
         let entry = try #require(try store.entries(surveyId: survey.id, from: nil, to: nil).first)
         #expect(entry.completedAt != nil)
     }
+
+    // MARK: Running out
+
+    /// The last three pending prompts after `date`, by fire time, ties by identifier.
+    private func lastThreeScheduledIds(store: Store, after date: Date) throws -> [String] {
+        try store.prompts(status: .pending)
+            .filter { $0.scheduledAt > date }
+            .sorted { ($0.scheduledAt, $0.id) < ($1.scheduledAt, $1.id) }
+            .suffix(3)
+            .map(\.id)
+    }
+
+    @Test func runningOutWarningSitsOnTheLastThreePromptsAndMovesWhenMoreAreScheduled() async throws {
+        let store = try Store.inMemory()
+        try makeSurvey(store: store, now: now)
+        let client = FakeNotificationCenterClient()
+        client.authorizationStatusToReturn = .authorized
+        let coordinator = makeCoordinator(store: store, client: client)
+        let plain = NotificationPreview.private.content(surveyName: "Check-in")
+
+        await coordinator.refresh(now: now)
+        let firstLast = try lastThreeScheduledIds(store: store, after: now)
+        try #require(firstLast.count == 3)
+        var content = await client.pendingRequestContent()
+        #expect(content.count > 3)
+        #expect(content[firstLast[0]] == RunningOutWarning.content(plain, remaining: 3))
+        #expect(content[firstLast[1]] == RunningOutWarning.content(plain, remaining: 2))
+        #expect(content[firstLast[2]] == RunningOutWarning.content(plain, remaining: 1))
+        #expect(content.filter { !firstLast.contains($0.key) }.values.allSatisfy { $0 == plain })
+
+        // A day later the app opens again and schedules a new day at the far end.
+        let later = now.addingTimeInterval(24 * 3600)
+        await coordinator.refresh(now: later)
+        let secondLast = try lastThreeScheduledIds(store: store, after: later)
+        try #require(secondLast.count == 3)
+        #expect(Set(secondLast).isDisjoint(with: firstLast))
+        content = await client.pendingRequestContent()
+        for id in firstLast {
+            #expect(content[id] == plain)
+        }
+        #expect(content[secondLast[0]] == RunningOutWarning.content(plain, remaining: 3))
+        #expect(content[secondLast[1]] == RunningOutWarning.content(plain, remaining: 2))
+        #expect(content[secondLast[2]] == RunningOutWarning.content(plain, remaining: 1))
+    }
+
+    @Test func deliveredRunningOutNotificationIsNotSweptAsStale() async throws {
+        let store = try Store.inMemory()
+        try makeSurvey(store: store, now: now)
+        let client = FakeNotificationCenterClient()
+        client.authorizationStatusToReturn = .authorized
+        let coordinator = makeCoordinator(store: store, client: client)
+        await coordinator.refresh(now: now)
+
+        let lastId = try #require(try lastThreeScheduledIds(store: store, after: now).last)
+        let last = try #require(try store.prompts(status: .pending).first { $0.id == lastId })
+        client.simulateDelivery(identifier: last.id, promptId: last.id)
+
+        // Opened from the app icon a minute after the last prompt fired, still answerable.
+        await coordinator.refresh(now: last.scheduledAt.addingTimeInterval(60))
+
+        let delivered = await client.deliveredNotifications()
+        #expect(delivered.map(\.identifier) == [last.id])
+        let plain = NotificationPreview.private.content(surveyName: "Check-in")
+        #expect(delivered.first?.content == RunningOutWarning.content(plain, remaining: 1))
+    }
 }
 
 @MainActor

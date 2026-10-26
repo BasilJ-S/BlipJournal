@@ -154,6 +154,15 @@ public struct Survey: Identifiable, Sendable, Equatable, Hashable, Codable {
             .sorted { ($0.position, $0.id) < ($1.position, $1.id) }
     }
 
+    /// The Journal summary a survey gets when whoever creates it names none: its first
+    /// active scale or spectrum question, or nothing when it has neither.
+    public static func defaultJournalSummaryQuestionIds(for questions: [Question]) -> [String] {
+        questions
+            .filter { !$0.isArchived && ($0.kind == .scale || $0.kind == .spectrum) }
+            .sorted { ($0.position, $0.id) < ($1.position, $1.id) }
+            .prefix(1).map(\.id)
+    }
+
     /// Active summary questions in the order chosen for Journal rows.
     public var journalSummaryQuestions: [Question] {
         journalSummaryQuestionIds.compactMap { id in

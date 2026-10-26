@@ -37,36 +37,13 @@ final class EditorModel {
         return try store.createSurvey(name: name, sampling: sampling, questions: [], now: now)
     }
 
+    /// A new survey with the source's current definition under a new name, through the
+    /// same import a survey file takes: fresh identifiers, paused, private preview.
     @discardableResult
     func copySurvey(sourceId: String, name: String, now: Date = Date()) throws -> Survey {
-        let source = try survey(sourceId)
-        var copiedIdsBySourceId: [String: String] = [:]
-        let questions = source.activeQuestions.enumerated().map { index, question in
-            let copied = Question(
-                kind: question.kind,
-                label: question.label,
-                position: index,
-                isRequired: question.isRequired,
-                scale: question.scale,
-                spectrum: question.spectrum,
-                allowsCustomOptions: question.allowsCustomOptions,
-                options: question.activeOptions.enumerated().map { optionIndex, option in
-                    ChoiceOption(label: option.label, position: optionIndex)
-                })
-            copiedIdsBySourceId[question.id] = copied.id
-            return copied
-        }
-        var sampling = source.sampling
-        sampling.isEnabled = false
-        let summaryIds = source.journalSummaryQuestionIds.compactMap { copiedIdsBySourceId[$0] }
-        let copy = try store.createSurvey(
-            name: name, sampling: sampling, questions: questions,
-            journalSummaryQuestionIds: summaryIds, now: now)
-        // New surveys always start privately, even when the source used another preview.
-        if source.notificationPreview != .default {
-            try store.updateNotificationPreview(surveyId: copy.id, .default, now: now)
-        }
-        return try survey(copy.id)
+        var contents = try SurveyFileContents(survey(sourceId))
+        contents.name = name
+        return try store.importSurvey(contents, now: now)
     }
 
     func rename(surveyId: String, to name: String, now: Date = Date()) throws {
@@ -163,6 +140,21 @@ final class EditorModel {
         }
         try store.updateSampling(surveyId: surveyId, config, now: now)
         await notifications.scheduleChanged(surveyId: surveyId, now: now)
+    }
+
+    /// Turns sampling on for a survey just added from the welcome's template gallery: the
+    /// person picked it right after deciding on notifications, so that pick is their choice
+    /// of when the phone buzzes. Only when prompts can be delivered and the survey has
+    /// questions (so never a blank one); otherwise it stays paused like any new survey.
+    /// Returns whether sampling is now on.
+    @discardableResult
+    func startSamplingAfterOnboarding(surveyId: String, now: Date = Date()) async throws -> Bool {
+        let added = try survey(surveyId)
+        guard notifications.canDeliverPrompts, !added.activeQuestions.isEmpty else { return false }
+        var sampling = added.sampling
+        sampling.isEnabled = true
+        try await saveSampling(surveyId: surveyId, sampling, now: now)
+        return true
     }
 
     func saveNotificationPreview(surveyId: String, _ preview: NotificationPreview, now: Date = Date()) async throws {

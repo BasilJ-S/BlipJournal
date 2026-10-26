@@ -44,6 +44,24 @@ targets:
         NSFaceIDUsageDescription: Blip Journal uses Face ID to keep your journal private.
         ITSAppUsesNonExemptEncryption: false
         UIAppFonts: [Nunito.ttf, JetBrainsMono.ttf]
+        # Survey files (docs/survey-format.md): Blip Journal owns .blipsurvey and is
+        # offered for any .json. Files are read in place inside their security scope.
+        LSSupportsOpeningDocumentsInPlace: true
+        CFBundleDocumentTypes:
+          - CFBundleTypeName: Blip Journal survey
+            CFBundleTypeRole: Viewer
+            LSHandlerRank: Owner
+            LSItemContentTypes: [io.github.basilj-s.BlipJournal.survey]
+          - CFBundleTypeName: JSON survey file
+            CFBundleTypeRole: Viewer
+            LSHandlerRank: Alternate
+            LSItemContentTypes: [public.json]
+        UTExportedTypeDeclarations:
+          - UTTypeIdentifier: io.github.basilj-s.BlipJournal.survey
+            UTTypeDescription: Blip Journal survey
+            UTTypeConformsTo: [public.json]
+            UTTypeTagSpecification:
+              public.filename-extension: [blipsurvey]
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: io.github.basilj-s.BlipJournal

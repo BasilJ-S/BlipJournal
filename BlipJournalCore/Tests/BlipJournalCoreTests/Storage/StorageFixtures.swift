@@ -33,6 +33,28 @@ enum Fixture {
             .appendingPathComponent("blipjournal-storage-tests-\(UUID().uuidString)", isDirectory: true)
     }
 
+    /// Fills `store` with two surveys, an edit history, a prompt and entries with scale,
+    /// multi-choice and text answers, so a backup of it has a row in every table.
+    static func populated(_ store: Store) throws {
+        let survey = try seed(store, now: at(0))
+        try seed(store, name: "Other", now: at(1))
+        try store.renameSurvey(survey.id, to: "Renamed", now: at(2))
+        let feeling = try survey.question(labelled: "How are you feeling right now?")
+        let describes = try survey.question(labelled: "What best describes this feeling?")
+        let anything = try survey.question(labelled: "Anything else?")
+        let scheduled = Fixture.prompt(survey, scheduledAt: at(50))
+        try store.insertPrompts([scheduled])
+        try store.record(
+            in: survey, promptId: scheduled.id, startedAt: at(100),
+            answers: [
+                (feeling, .scale(4)),
+                (describes, .multi(optionIds: [
+                    try describes.option(labelled: "Calm").id, try describes.option(labelled: "Happy").id])),
+                (anything, .text("Walked to the lake with Sam")),
+            ])
+        try store.record(in: survey, startedAt: at(200), answers: [])
+    }
+
     /// A pending prompt for `survey` at `scheduledAt`, expiring twenty minutes later.
     static func prompt(
         _ survey: Survey, day: String = "2026-05-01", scheduledAt: Date,

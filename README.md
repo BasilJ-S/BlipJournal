@@ -1,8 +1,22 @@
 # Blip Journal
 
-An open source Experience Sampling Method (ESM) journal for iOS. Blip Journal pings you
-at random moments during the day and asks a short, fully customisable survey. Every
-answer stays on your phone, encrypted at rest, and can be exported to CSV at any time.
+**A personal research tool for iOS. Your memory lies about your days; Blip asks you in
+the moment.**
+
+Blip Journal asks *your own* questions at *random moments* during the day, and keeps the
+answers private on your phone. Asked at the end of the day, you remember the peaks and
+the last few hours. A random prompt catches the ordinary hour you would have forgotten.
+Researchers call this the Experience Sampling Method (ESM); Blip makes it a tool for one
+person studying their own life.
+
+- **Random prompts.** Each survey gets its own schedule, and prompts land at
+  unpredictable times inside your daily window.
+- **Your questions.** Write any survey you like: scales, choices, yes/no, short text.
+  The default survey asks how you feel, but mood is one example, not the point.
+- **Honest data.** Prompts you miss are counted, so the response rate shows how much of
+  your day the answers really cover.
+- **Private and open.** No network access, no account, no server. Answers are encrypted
+  at rest, export to CSV or JSON whenever you like, and the code is MIT licensed.
 
 <p align="center">
   <img src="brand/blip-mark.svg" width="96" alt="Blip stacked-card mark" />
@@ -16,9 +30,6 @@ uses warm paper (`#FBF7F2`), sand (`#F6EFE5`), ink (`#1F1A17`), and one violet a
 on the front card. The source artwork is [`brand/blip-mark.svg`](brand/blip-mark.svg),
 and the app recreates the mark in SwiftUI for flexible sizing.
 
-Think of Apple's State of Mind logging, but with random sampling, surveys you define
-yourself, and no cloud.
-
 ## Name
 
 The app is **Blip Journal**. The repository, the Swift package, the Xcode target, the
@@ -26,9 +37,10 @@ module and the bundle identifier are all `BlipJournal`, one word, no space: noth
 shipped yet, so there was no cost to lining the plumbing up with the product name.
 
 "Open" as a prefix reads as "open weights" or "open standard" (OpenAI, OpenCV), which is
-not what this is. The App Store subtitle carries the open source signal explicitly, and
-it is searchable in a way a prefix never was. Subtitle: "Open source experience sampler"
-(30 characters, the App Store limit exactly).
+not what this is. The open source signal lives in the App Store keyword field and the
+first lines of the description instead, where it is searchable in a way a prefix never
+was. The subtitle, keywords and description are in
+[docs/app-store-listing.md](docs/app-store-listing.md).
 
 Any string a person reads says **Blip Journal**, two words. Anything a compiler, a path,
 or Apple reads says `BlipJournal`, one word.
@@ -42,13 +54,19 @@ or Apple reads says `BlipJournal`, one word.
   within the window so they are unpredictable but never clump.
 - **Customisable surveys.** Arbitrarily many surveys. Each is a list of questions:
   scale, single choice, multiple choice, yes/no, or short text. Choice lists are
-  expandable in place while answering.
+  expandable in place while answering. Start from blank or from a premade template
+  (see [Defaults](#defaults)).
 - **Fast.** A prompt should take under 30 seconds to answer. One scrolling screen, big
   tap targets, autosave, no confirmation step. When a survey opens with a yes/no or a
   short scale (up to five values), that first answer can be picked straight from the
   notification after unlocking, without opening the app.
 - **Local and encrypted.** SQLite on device, protected with iOS Data Protection
   (`complete` class). Face ID or passcode to open the app. No network access at all.
+- **Surveys as files.** A survey's questions and schedule can be written by hand, or by
+  describing it to any AI assistant, in a documented JSON format
+  ([docs/survey-format.md](docs/survey-format.md)), then imported from Files, the share
+  sheet or pasted text. Any survey can be shared as a file. Survey files never hold
+  answers, and importing one only ever adds a new survey, paused until you turn it on.
 - **Exportable.** CSV in wide and long formats, plus a JSON backup that includes survey
   definitions.
 - **Honest data.** Unprompted (manual) entries are tagged as such. Expired prompts are
@@ -92,13 +110,15 @@ BlipJournalCore/    Swift package. No UIKit. Tested with `swift test` on macOS.
   Storage/           GRDB schema, migrations, insert-only versioning, queries
   Sampling/          Stratified random day sampler and multi-survey prompt planner
   Export/            CSV (wide, long) and JSON backup
+  SurveyFile/        Survey file format: read, validate, write, import; bundled templates
   Journal/           Journal filter and sort rules
 BlipJournal/        iOS app target. SwiftUI only.
   App/               Entry point, app model, biometric lock, app-switcher cover
-  Onboarding/        One-time welcome that asks for notification permission
+  Onboarding/        One-time welcome: notification permission, then the template gallery
   Journal/           Entries list and entry detail with delete
   Notifications/     UNUserNotificationCenter adapter for the prompt planner
-  Survey/            Survey runner (answering) and survey editor
+  Survey/            Survey runner (answering), survey editor, survey file import and export,
+                     template gallery
   Insights/          Swift Charts views
   Settings/          Surveys, sampling, export, about
 ```
@@ -136,6 +156,10 @@ BlipJournal/        iOS app target. SwiftUI only.
 - Every time the app comes to the foreground: expire overdue prompts, generate prompts
   for any day inside the horizon that has none yet, persist them, then reconcile the
   notification center so it holds exactly the pending prompts.
+- New prompts are only scheduled when the app opens, so the last 3 pending prompts across
+  all surveys warn that they are running out, counting down to the last one. Opening the
+  app, from one of them or otherwise, schedules more and moves the warning onto whatever
+  is now last.
 - Sampling per survey per day: split the window into N equal blocks, choose one uniform
   random time per block, enforce the minimum gap. Times are rounded to the minute.
 - Changing a survey's schedule discards that survey's future pending prompts and
@@ -175,7 +199,8 @@ BlipJournal/        iOS app target. SwiftUI only.
 | Minimum gap | 60 min |
 | Expiry | 20 min |
 
-Default survey, all questions optional except the first:
+Default survey, "Mood & feelings", all questions optional except the first. It is the
+bundled `mood-and-feelings` template file, read through the survey file importer:
 
 1. How are you feeling right now? Spectrum from "Very unpleasant" to "Very pleasant".
 2. What best describes this feeling? Multiple choice.
@@ -183,6 +208,22 @@ Default survey, all questions optional except the first:
 4. What are you doing? Single choice, expandable.
 5. Who are you with? Multiple choice, expandable.
 6. Anything else? Short text.
+
+### Survey templates
+
+Premade surveys bundled with the app as survey files, in
+`BlipJournalCore/Sources/BlipJournalCore/SurveyFile/Templates/`. The gallery is under
+Settings, Surveys, +, New survey, and is offered once at the end of the
+welcome. Each shows its purpose, questions and schedule before it is added, and becomes
+an ordinary survey, paused until you turn it on; one picked during the welcome starts
+at once if notifications are allowed. Blank is always offered beside them.
+
+Templates: Mood & feelings (the default survey above), Focus & energy, Social time,
+Mind-wandering and Phone use. Each file holds its questions and schedule; the gallery's
+order and one-line purposes are in `SurveyTemplateGallery.swift`.
+
+The wording is written for Blip Journal, not taken from a published item set. A template
+that adapts published items credits them and uses them only where their licence allows.
 
 ## Export formats
 
@@ -192,7 +233,8 @@ Default survey, all questions optional except the first:
 - **Long CSV.** One row per answer, or per selected option for choice questions. Includes
   the entry metadata, question ID, question kind, label at time of answer, current label, option ID, option
   label at time of answer, current option label, and the raw value.
-- **JSON backup.** Every table, including version history, with a schema version number.
+- **JSON backup.** Every table, including version history, with a schema version number
+  and a SHA-256 checksum, so restore refuses a file that changed after export.
 
 Exported files are not encrypted. The app says so before sharing.
 

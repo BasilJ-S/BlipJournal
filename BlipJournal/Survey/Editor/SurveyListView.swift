@@ -1,13 +1,17 @@
 import BlipJournalCore
 import SwiftUI
+import UniformTypeIdentifiers
 
 struct SurveyListView: View {
     @Environment(AppModel.self) private var appModel
     @State private var showingNewSurvey = false
+    @State private var showingGallery = false
     @State private var showingCopySurvey = false
     @State private var name = ""
     @State private var copySource: Survey?
     @State private var errorMessage: String?
+    @State private var showingFileImporter = false
+    @State private var pendingImport: PendingSurveyImport?
 
     init() {}
 
@@ -30,8 +34,11 @@ struct SurveyListView: View {
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 Menu {
-                    Button("Blank survey") { name = ""; copySource = nil; showingNewSurvey = true }
+                    Button("New survey") { showingGallery = true }
                     Button("Copy an existing survey") { showingCopySurvey = true }
+                    Divider()
+                    Button("Import a survey file") { showingFileImporter = true }
+                    Button("Paste survey text") { pendingImport = .paste() }
                 } label: {
                     Image(systemName: "plus").accessibilityLabel("Add survey")
                 }
@@ -52,6 +59,22 @@ struct SurveyListView: View {
                 .blipScreen("Copy survey")
             }
         }
+        .sheet(isPresented: $showingGallery) {
+            NavigationStack {
+                TemplateGalleryView { _ in showingGallery = false }
+                    .blipScreen("New survey")
+                    .toolbar {
+                        ToolbarItem(placement: .cancellationAction) { Button("Cancel") { showingGallery = false } }
+                    }
+            }
+        }
+        .fileImporter(isPresented: $showingFileImporter, allowedContentTypes: [.blipSurvey, .json]) { result in
+            switch result {
+            case .success(let url): pendingImport = PendingSurveyImport(fileAt: url)
+            case .failure(let error): errorMessage = error.localizedDescription
+            }
+        }
+        .sheet(item: $pendingImport) { pending in SurveyImportSheet(outcome: pending.outcome) }
         .alert("Could not save survey", isPresented: Binding(
             get: { errorMessage != nil }, set: { if !$0 { errorMessage = nil } })) {
             Button("OK", role: .cancel) {}
@@ -60,20 +83,15 @@ struct SurveyListView: View {
 
     private func summary(for survey: Survey) -> String {
         guard survey.sampling.isEnabled else { return "Notifications paused" }
-        return "\(survey.sampling.promptsPerDay) prompts a day, \(clock(survey.sampling.windowStartMinutes)) to \(clock(survey.sampling.windowEndMinutes))"
+        return EditorText.window(survey.sampling)
     }
 
-    private func clock(_ minutes: Int) -> String {
-        guard minutes != 1440 else { return "midnight" }
-        return String(format: "%02d:%02d", minutes / 60, minutes % 60)
-    }
-
+    /// Copies `copySource` under the chosen name. A blank survey starts in the gallery.
     private func create() {
-        guard !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
+        guard let copySource, !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
         do {
             let model = EditorModel(store: appModel.store, notifications: appModel.notifications)
-            if let copySource { _ = try model.copySurvey(sourceId: copySource.id, name: name) }
-            else { _ = try model.createSurvey(name: name) }
+            _ = try model.copySurvey(sourceId: copySource.id, name: name)
             try appModel.refresh(); self.copySource = nil; name = ""
         } catch { errorMessage = String(describing: error) }
     }

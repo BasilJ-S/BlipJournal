@@ -1,0 +1,38 @@
+{
+  "formatVersion": 1,
+  "name": "Phone use",
+  "sampling": {
+    "promptsPerDay": 4,
+    "windowStart": "09:00",
+    "windowEnd": "23:00",
+    "minGapMinutes": 90,
+    "expiryMinutes": 20
+  },
+  "journalSummary": ["amount", "worth"],
+  "questions": [
+    {
+      "id": "amount",
+      "kind": "singleChoice",
+      "label": "In the 15 minutes before this prompt, how much were you on your phone?",
+      "required": true,
+      "options": ["Not at all", "A little", "Most of the time"]
+    },
+    {
+      "kind": "multiChoice",
+      "label": "What was it for?",
+      "expandable": true,
+      "options": ["Messages", "Social media", "News", "Video", "Games", "Work", "Music or podcasts", "Looking something up"]
+    },
+    {
+      "kind": "singleChoice",
+      "label": "What made you pick it up?",
+      "options": ["Something specific", "A notification", "Habit", "Not sure"]
+    },
+    {
+      "id": "worth",
+      "kind": "scale",
+      "label": "How do you feel about that time?",
+      "scale": { "min": 1, "max": 5, "minLabel": "Not worth it", "maxLabel": "Well spent" }
+    }
+  ]
+}

@@ -63,7 +63,6 @@ struct SamplingSettingsView: View {
             } catch { errorMessage = String(describing: error) }
         }
     }
-    private func minutePicker(_ title: String, minutes: Binding<Int>) -> some View { Stepper("\(title): \(clock(minutes.wrappedValue))", value: minutes, in: 0...1440, step: 15) }
-    private func clock(_ minutes: Int) -> String { minutes == 1440 ? "midnight" : String(format: "%02d:%02d", minutes / 60, minutes % 60) }
+    private func minutePicker(_ title: String, minutes: Binding<Int>) -> some View { Stepper("\(title): \(EditorText.clock(minutes.wrappedValue))", value: minutes, in: 0...1440, step: 15) }
     private func errorText(_ error: SamplingConfig.ValidationError) -> String { switch error { case .promptsPerDayOutOfRange: "Prompts per day must be from 0 to 20."; case .windowOutOfRange: "The window must be between midnight and midnight, with a later end."; case .minGapOutOfRange: "Minimum gap must be from 0 to 1440 minutes."; case .gapDoesNotFit: "The prompts and minimum gap do not fit in this window."; case .expiryOutOfRange: "Expiry must be from 1 to 240 minutes." } }
 }

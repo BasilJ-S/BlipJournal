@@ -72,14 +72,21 @@ whose rendered content actually changed — nothing else is touched.
 ## Notification content
 
 `Survey.notificationPreview.content(surveyName:)` (`BlipJournalCore`) is the only source
-of a notification's title and body. Never anything from inside the survey beyond its name
-in `.surveyName` mode. Sound is the default; interruption level is left at its default
-(`.active`) rather than `.timeSensitive`, gated by
-`LiveNotificationCenterClient.useTimeSensitiveInterruption` (currently `false`), since
-letting prompts through Focus needs the
+of a notification's title and body; the running-out line (below) is the one addition.
+Never anything from inside the survey beyond its name in `.surveyName` mode. Sound is the
+default; interruption level is left at its default (`.active`) rather than
+`.timeSensitive`, gated by `LiveNotificationCenterClient.useTimeSensitiveInterruption`
+(currently `false`), since letting prompts through Focus needs the
 `com.apple.developer.usernotifications.time-sensitive` entitlement, which isn't available
 under Personal Team signing; `categoryIdentifier` is `"PROMPT"` (no actions) or a
 per-question answer category, below. Answer actions add nothing to the title or body.
+
+**Running out.** Every reconcile applies `RunningOutWarning` (rule in Sampling
+`DESIGN.md`, text in `RunningOutWarning.message`) to the target, so the last 3 target
+prompts get a countdown line and a refresh that schedules more restores plain text on
+the ones no longer last (a content change, so the request is replaced). The delivered
+sweep treats a warned body as current (`RunningOutWarning.matches`), so a fired warning
+is not removed when the app next opens.
 
 ## Answering from the notification
 
@@ -90,8 +97,8 @@ offers that question's answers as notification actions (`NotificationAnswers` in
 - **Actions, not a content extension.** Plain `UNNotificationAction`s need no extra
   target in `project.yml`, no app group and no shared database access from a second
   process. The cost: the person sees buttons, not the question. Five values is the cap
-  (`NotificationAnswers.maxScaleChoices`) to keep the action list short; how many iOS
-  shows without scrolling has not been checked on a device.
+  (`NotificationAnswers.maxScaleChoices`) to keep the action list short; the iOS 26.3
+  simulator (iPhone 17) shows all five without scrolling.
 - **Categories.** One per question that offers answers, `"PROMPT.answers." + questionId`,
   plus the plain `"PROMPT"`. The coordinator registers the whole set on every reconcile,
   before adding requests, so an edited scale range updates the actions of requests
@@ -187,7 +194,8 @@ which read as the notification bouncing back to the Home Screen. Do not go back 
   leaves headroom, shared across every survey, so a person running several
   high-frequency surveys sees a shorter horizon on each (see Sampling `DESIGN.md`).
 - No background refresh: the schedule is only as fresh as the last foreground or
-  schedule-affecting write.
+  schedule-affecting write. The running-out warning is what tells the person; opening
+  the app, or any of the warned notifications, schedules more.
 - Unarchiving a survey (`Store.unarchiveSurvey`, from the editor's Archived screen)
   restores its scheduling when the saved configuration is enabled: an unarchived, enabled
   survey is eligible the same as any other. No coordinator test exercises that path yet.
