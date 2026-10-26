@@ -441,8 +441,8 @@ trace of a sentinel string in the database files.
 ### A7. Release readiness
 
 Scope: app icon, launch appearance, accessibility audit with Xcode's Accessibility
-Inspector, privacy manifest review, App Store listing copy with no medical claims,
-TestFlight build. Depends on everything above.
+Inspector, privacy manifest review, App Store listing copy with no medical claims
+([app-store-listing.md](app-store-listing.md)), TestFlight build. Depends on everything above.
 
 ## Follow-ups (not v0)
 

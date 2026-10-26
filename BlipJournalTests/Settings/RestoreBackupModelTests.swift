@@ -14,6 +14,7 @@ struct RestoreBackupModelTests {
             #expect(!message.contains("BlipJournal"))
         }
         #expect(newer != unreadable)
+        #expect(unreadable.contains("damaged"))   // also shown for a checksum mismatch (#47)
 
         let damaged = RestoreBackupModel.message(for: RestoreError.rejected)
         #expect(damaged.contains("Nothing was changed"))
