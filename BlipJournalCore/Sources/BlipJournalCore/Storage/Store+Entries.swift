@@ -67,6 +67,11 @@ extension Store {
         }
     }
 
+    /// The current persisted entry, or nil after deletion.
+    public func entry(_ id: String) throws -> Entry? {
+        try dbQueue.read { db in try EntryRow.fetchOne(db, key: id).map(Entry.init) }
+    }
+
     /// Entries whose `startedAt` is in `from ..< to`, ascending. Nil bounds are
     /// unbounded; a nil `surveyId` means every survey.
     public func entries(surveyId: String?, from: Date?, to: Date?) throws -> [Entry] {
