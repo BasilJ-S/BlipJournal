@@ -41,6 +41,12 @@ struct NotificationAnswerResponse: Sendable, Equatable {
 }
 
 extension NotificationCoordinating {
+    /// A callback from a replaced sheet must not consume the newer notification.
+    func finishRoute(_ promptId: String) {
+        guard pendingRoute == promptId else { return }
+        pendingRoute = nil
+    }
+
     /// Whether the system will deliver prompts: the one rule for "notifications are on",
     /// used by the reconcile step and by any view that offers to turn them on.
     var canDeliverPrompts: Bool {
