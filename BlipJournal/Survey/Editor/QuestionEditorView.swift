@@ -5,11 +5,7 @@ struct QuestionEditorView: View {
     @Environment(AppModel.self) private var appModel
     let surveyId: String
     let questionId: String
-    @State private var label = ""
-    @State private var required = false
-    @State private var scale = ScaleConfig()
-    @State private var spectrum = SpectrumConfig()
-    @State private var customOptions = false
+    @State private var draft = QuestionEditDraft()
     @State private var editMode = EditMode.inactive
     @State private var errorMessage: String?
     @State private var savedMessage = false
@@ -18,16 +14,16 @@ struct QuestionEditorView: View {
     var body: some View {
         Form {
             Section {
-                TextField("Question label", text: $label).accessibilityLabel("Question label")
-                Toggle("Required", isOn: $required)
+                TextField("Question label", text: $draft.label).accessibilityLabel("Question label")
+                Toggle("Required", isOn: $draft.isRequired)
                 if let question {
                     Text("Kind: \(question.kind.rawValue)").foregroundStyle(.secondary)
                     Text("The kind cannot change because answers depend on it.").font(.footnote).foregroundStyle(.secondary)
                     Text("Question fields save when you tap Save question. Option changes are saved immediately.").font(.footnote).foregroundStyle(.secondary)
-                    if question.kind == .scale { ScaleFields(scale: $scale) }
-                    if question.kind == .spectrum { SpectrumFields(spectrum: $spectrum) }
+                    if question.kind == .scale { ScaleFields(scale: $draft.scale) }
+                    if question.kind == .spectrum { SpectrumFields(spectrum: $draft.spectrum) }
                     if question.kind.usesOptions {
-                        Toggle("Allow adding options while answering", isOn: $customOptions)
+                        Toggle("Allow adding options while answering", isOn: $draft.allowsCustomOptions)
                     }
                 }
             }
@@ -51,7 +47,7 @@ struct QuestionEditorView: View {
             ToolbarItem(placement: .confirmationAction) {
                 Button("Save question") { save() }
                     .accessibilityLabel("Save question")
-                    .disabled(isBlank(label))
+                    .disabled(isBlank(draft.label))
             }
             ToolbarItem(placement: .topBarLeading) {
                 Button(editMode == .active ? "Done" : "Reorder") {
@@ -61,6 +57,7 @@ struct QuestionEditorView: View {
             }
         }
         .task(id: appModel.revision) { load() }
+        .onChange(of: questionId) { _, _ in load() }
         .overlay(alignment: .bottom) {
             if savedMessage {
                 Text("Question saved")
@@ -77,11 +74,12 @@ struct QuestionEditorView: View {
         .alert("Could not save question", isPresented: Binding(get: { errorMessage != nil }, set: { if !$0 { errorMessage = nil } })) { Button("OK", role: .cancel) {} } message: { Text(errorMessage ?? "") }
     }
 
-    private func load() { guard let q = question else { return }; label = q.label; required = q.isRequired; scale = q.scale ?? ScaleConfig(); spectrum = q.spectrum ?? SpectrumConfig(); customOptions = q.allowsCustomOptions }
+    private func load() { if let question { draft.load(question) } }
     /// Blank labels are never saved: a survey file could not carry them back in.
     private func isBlank(_ text: String) -> Bool { text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
     private func save() {
-        guard !isBlank(label), var q = question else { return }; q.label = label; q.isRequired = required; q.scale = q.kind == .scale ? scale : nil; q.spectrum = q.kind == .spectrum ? spectrum : nil; q.allowsCustomOptions = q.kind.usesOptions && customOptions
+        guard !isBlank(draft.label), let question else { return }
+        let q = draft.applying(to: question)
         do {
             try EditorModel(store: appModel.store, notifications: appModel.notifications).updateQuestion(q)
             try appModel.refresh()
