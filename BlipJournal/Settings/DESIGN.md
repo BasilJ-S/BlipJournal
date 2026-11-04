@@ -57,3 +57,8 @@ move, never words, which its tests check.
 ## Known limitations
 
 - Restore replaces and never merges; JSON backups cannot be date-filtered. "Saved" means the share sheet reported a completed action, which includes sharing to an app, not only Save to Files.
+
+`ExportDisclosure` precedes Share on Export and Save a backup of current data on
+Restore. Both warn that files are unencrypted; JSON backups also disclose all surveys
+and dates. The isolated UI regression in `scripts/test-backup-disclosure.py` renders
+both production screens with generated in-memory data and never shares or restores.
