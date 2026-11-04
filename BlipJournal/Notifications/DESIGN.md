@@ -199,3 +199,12 @@ which read as the notification bouncing back to the Home Screen. Do not go back 
 - Unarchiving a survey (`Store.unarchiveSurvey`, from the editor's Archived screen)
   restores its scheduling when the saved configuration is enabled: an unarchived, enabled
   survey is eligible the same as any other. No coordinator test exercises that path yet.
+
+`PromptRouteSession` owns the resolved route and runner draft. A prompt-ID-keyed task
+flushes the old draft before installing a replacement; cancellation/generation checks
+prevent an older task winning. The runner is identified by entry ID. Controls are disabled
+during the handoff. A failed flush retains the old draft and offers retry or return to it.
+Close/Done and sheet dismissal clear only the matching pending prompt ID.
+
+The route decision and outcome live in Core `PromptRoute`; the SwiftUI view only renders
+them. Completed detail views, like runners, have entry-based identity.

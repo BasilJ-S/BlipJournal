@@ -12,6 +12,7 @@ struct RootView: View {
     @AppStorage("hasSeenWelcome") private var hasSeenWelcome = false
 
     var body: some View {
+        let presentedPromptId = appModel.notifications.pendingRoute
         TabView {
             Tab("Journal", systemImage: "book.closed") {
                 NavigationStack { JournalView() }
@@ -30,14 +31,14 @@ struct RootView: View {
         .toolbarBackground(.visible, for: .tabBar)
         .blipScreenBackground()
         .sheet(isPresented: Binding(
-            get: { hasSeenWelcome && appModel.notifications.pendingRoute != nil },
+            get: { hasSeenWelcome && presentedPromptId != nil },
             set: { isPresented in
-                if !isPresented { appModel.notifications.pendingRoute = nil }
+                if !isPresented, let presentedPromptId { appModel.notifications.finishRoute(presentedPromptId) }
             }
         ), onDismiss: { try? appModel.refresh() }) {
-            if let promptId = appModel.notifications.pendingRoute {
+            if let promptId = presentedPromptId {
                 PromptRouteView(promptId: promptId) {
-                    appModel.notifications.pendingRoute = nil
+                    appModel.notifications.finishRoute(promptId)
                 }
             }
         }

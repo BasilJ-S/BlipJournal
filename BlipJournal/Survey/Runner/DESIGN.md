@@ -24,3 +24,6 @@ termination; quick notes are limited to 500 Swift characters.
 Scale and spectrum questions use adjustable sliders with explicit accessibility labels.
 An unanswered spectrum shows "Not selected" and no thumb; its first adjustment begins
 from the midpoint. Invalid spectrum configuration is rendered inert rather than trapping.
+
+Notification routes supply an existing draft to the runner. Their session flushes it before
+replacing the runner, preserving text that is still inside the debounce window.
