@@ -334,3 +334,6 @@ README promises no more than that.
 - Single-connection `DatabaseQueue`: readers wait for writers. Fine for one person and one
   screen; a later switch to `DatabasePool` would need WAL, which the vacuum helper already
   anticipates.
+
+`entry(_:)` reads one current entry by ID; missing/deleted rows return nil. Runner resume
+and detail refresh use it instead of trusting a retained entry value.

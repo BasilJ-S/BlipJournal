@@ -6,7 +6,9 @@ import SwiftUI
 struct EntryDetailView: View {
     @Environment(AppModel.self) private var appModel
     @Environment(\.dismiss) private var dismiss
-    let entry: Entry
+    @State private var entry: Entry
+
+    init(entry: Entry) { _entry = State(initialValue: entry) }
 
     @State private var answers: [Answer] = []
     @State private var prompt: Prompt?
@@ -63,7 +65,7 @@ struct EntryDetailView: View {
             }
 
             Section {
-                if entry.completedAt == nil {
+                if hasLoadedAnswers && entry.completedAt == nil {
                     Button("Continue entry") { runnerEntry = entry }
                         .frame(maxWidth: .infinity, minHeight: 44)
                         .accessibilityLabel("Continue entry")
@@ -124,6 +126,7 @@ struct EntryDetailView: View {
         do {
             let loaded = try await Self.read(store: appModel.store, entry: entry)
             guard !Task.isCancelled else { return }
+            entry = loaded.entry
             answers = loaded.answers
             prompt = loaded.prompt
             hasLoadedAnswers = true
@@ -132,11 +135,12 @@ struct EntryDetailView: View {
         }
     }
 
-    private nonisolated static func read(
+    nonisolated static func read(
         store: Store, entry: Entry
-    ) async throws -> (answers: [Answer], prompt: Prompt?) {
+    ) async throws -> (entry: Entry, answers: [Answer], prompt: Prompt?) {
+        guard let entry = try store.entry(entry.id) else { throw StoreError.notFound }
         let answers = try store.answers(entryId: entry.id)
-        guard let promptId = entry.promptId else { return (answers, nil) }
+        guard let promptId = entry.promptId else { return (entry, answers, nil) }
         let calendar = Calendar.current
         let days = [entry.startedAt, calendar.date(byAdding: .day, value: -1, to: entry.startedAt)]
             .compactMap { $0 }
@@ -144,12 +148,12 @@ struct EntryDetailView: View {
         for day in days {
             if let prompt = try store.prompts(surveyId: entry.surveyId, day: day)
                 .first(where: { $0.id == promptId }) {
-                return (answers, prompt)
+                return (entry, answers, prompt)
             }
         }
         // Stored day keys retain their original time zone. A zone change can miss
         // both candidate days, so fall back to the identifier across all prompts.
-        return (answers, try store.prompts(status: nil).first { $0.id == promptId })
+        return (entry, answers, try store.prompts(status: nil).first { $0.id == promptId })
     }
 
     private var deleteMessage: String {
