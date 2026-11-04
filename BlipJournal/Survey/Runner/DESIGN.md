@@ -8,7 +8,8 @@ saves at open and reuses its entry on reopen. If its entry is closed at expiry w
 runner is open (an entry started from notification answers), the next save fails with
 `.completed` instead of reopening it. The runner does not load while locked, so
 a rebuild during relock teardown cannot open a second draft. `EntryDraft` preserves
-answer IDs and first timestamps, and writes through one ordered queue. Text edits debounce
+answer IDs, first timestamps, and saved question versions on resume. Only an explicit
+answer edit adopts the displayed question version. It writes through one ordered queue. Text edits debounce
 for 300ms and flush on close, completion, and backgrounding. Quick Note uses a locally
 focused `TextEditor`, explicitly requests
 focus from the first tap, and owns its editing buffer so draft observation updates cannot
