@@ -17,6 +17,44 @@ struct EntryDraftTests {
     private func entryCount(_ store: Store, _ survey: Survey) throws -> Int { try store.entries(surveyId: survey.id, from: nil, to: nil).count }
     private func firstQuestion(_ survey: Survey, _ kind: QuestionKind) throws -> Question { try #require(survey.activeQuestions.first { $0.kind == kind }) }
 
+    private func rename(_ store: Store, _ question: Question) throws { try store.updateQuestion(question.id, label: "Renamed question", position: question.position, isRequired: question.isRequired, isArchived: false, scale: question.scale, spectrum: question.spectrum, allowsCustomOptions: question.allowsCustomOptions, now: now.addingTimeInterval(10)) }
+
+    @Test func resumedDraftKeepsUntouchedAnswerVersion() async throws {
+        let (store, survey) = try fixture()
+        let question = try firstQuestion(survey, .spectrum)
+        let text = try firstQuestion(survey, .text)
+        let draft = try EntryDraft(store: store, survey: survey, promptId: nil, now: now)
+        try await draft.set(.spectrum(0.3), for: question.id, now: now)
+        let original = try #require(try store.answers(entryId: draft.entry.id).first)
+        try rename(store, question)
+        let resumed = try EntryDraft(store: store, entry: draft.entry)
+        resumed.setText("Another answer", for: text.id, now: now.addingTimeInterval(20))
+        try await resumed.complete(now: now.addingTimeInterval(30))
+        let saved = try #require(try store.answers(entryId: draft.entry.id).first { $0.questionId == question.id })
+        #expect(saved == original)
+        var snapshot = try store.exportSnapshot(surveyId: survey.id)
+        snapshot.entries = snapshot.entries.filter { $0.entry.id == draft.entry.id }
+        let csv = CSVExporter.long(snapshot, calendar: Calendar(identifier: .gregorian))
+        #expect(csv.contains(question.label))
+        #expect(csv.contains("Renamed question"))
+    }
+
+    @Test func editingResumedAnswerAdoptsCurrentVersion() async throws {
+        let (store, survey) = try fixture()
+        let question = try firstQuestion(survey, .spectrum)
+        let draft = try EntryDraft(store: store, survey: survey, promptId: nil, now: now)
+        try await draft.set(.spectrum(0.1), for: question.id, now: now)
+        let original = try #require(try store.answers(entryId: draft.entry.id).first)
+        try rename(store, question)
+        let editing = try EntryDraft(store: store, entry: draft.entry)
+        try await editing.set(.spectrum(0.8), for: question.id, now: now.addingTimeInterval(40))
+        let edited = try #require(try store.answers(entryId: draft.entry.id).first)
+        #expect(edited.id == original.id)
+        #expect(edited.answeredAt == original.answeredAt)
+        #expect(edited.questionVersionId != original.questionVersionId)
+        #expect(edited.questionVersionId == (try store.currentQuestionVersionIds(surveyId: survey.id)[question.id]))
+    }
+
     @Test func manualDraftIsSavedOnFirstAnswerAndResumes() async throws {
         let (store, survey) = try fixture()
         let first = try EntryDraft(store: store, survey: survey, promptId: nil, now: now)
@@ -123,6 +161,30 @@ struct EntryDraftTests {
         let prompt = Prompt(surveyId: survey.id, day: "2026-01-01", scheduledAt: now, expiresAt: now.addingTimeInterval(1))
         try store.insertPrompts([prompt])
         #expect(throws: EntryDraft.Error.expiredPrompt) { try EntryDraft(store: store, survey: survey, promptId: prompt.id, now: now.addingTimeInterval(1)) }
+    }
+
+    @Test func staleEntryCannotResumeAfterCompletion() async throws {
+        let (store, survey) = try fixture()
+        let draft = try EntryDraft(store: store, survey: survey, promptId: nil, now: now)
+        let question = try firstQuestion(survey, .spectrum)
+        try await draft.set(.spectrum(0.4), for: question.id, now: now)
+        let stale = draft.entry
+        try await draft.complete(now: now.addingTimeInterval(30))
+        let before = try store.answers(entryId: stale.id)
+        #expect(throws: EntryDraft.Error.completed) { try EntryDraft(store: store, entry: stale) }
+        let saved = try #require(try store.entries(surveyId: survey.id, from: nil, to: nil).first)
+        #expect(saved.completedAt == now.addingTimeInterval(30))
+        #expect(try store.answers(entryId: stale.id) == before)
+    }
+
+    @Test func deletedEntryCannotResumeFromStaleValue() async throws {
+        let (store, survey) = try fixture()
+        let draft = try EntryDraft(store: store, survey: survey, promptId: nil, now: now)
+        let question = try firstQuestion(survey, .spectrum)
+        try await draft.set(.spectrum(0.4), for: question.id, now: now)
+        try store.deleteEntry(draft.entry.id)
+        #expect(throws: StoreError.notFound) { try EntryDraft(store: store, entry: draft.entry) }
+        #expect(try entryCount(store, survey) == 0)
     }
 
     @Test func draftDoesNotReopenAnEntryClosedAtExpiry() async throws {
