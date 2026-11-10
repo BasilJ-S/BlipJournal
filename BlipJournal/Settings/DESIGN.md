@@ -41,6 +41,11 @@ save step is `ExportModel` in JSON backup mode behind the shared `shareSheet` mo
 the reset after a restore is `DeleteAllDataModel.reset`, shared with delete-all. How the
 restore itself works is in Storage `DESIGN.md`.
 
+`ExportModel.Format.disclosure` owns the wording shared by Export and Restore.
+`ExportDisclosure` renders it before their share buttons. JSON includes the all-surveys
+and dates scope; every format warns that files are unencrypted. `ExportModelTests` and
+`RestoreBackupModelTests` cover the wording; button placement is checked in view review.
+
 ## About
 
 Shows the version and build from the bundle, the app's MIT licence, and

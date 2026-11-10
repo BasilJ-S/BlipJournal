@@ -29,6 +29,7 @@ struct RestoreBackupView: View {
                         .foregroundStyle(.red)
                 }
                 Section {
+                    ExportDisclosure(lines: model.disclosure)
                     Button {
                         do { shareURL = try model.makeCurrentBackupFile() } catch { model.errorMessage = error.localizedDescription }
                     } label: { Label("Save a backup of current data", systemImage: "square.and.arrow.up") }

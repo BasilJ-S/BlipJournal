@@ -10,6 +10,10 @@ final class ExportModel {
         var title: String {
             switch self { case .wideCSV: "Wide CSV"; case .longCSV: "Long CSV"; case .jsonBackup: "JSON backup" }
         }
+        var disclosure: [String] {
+            let warning = "Exported files are not encrypted. Anyone with the file can read your answers."
+            return self == .jsonBackup ? ["Includes all surveys and dates.", warning] : [warning]
+        }
         var detail: String {
             switch self {
             case .wideCSV: "One row per entry, with a column for each question. Easiest to read in Numbers or Excel."
