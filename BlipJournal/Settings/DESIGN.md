@@ -41,6 +41,11 @@ save step is `ExportModel` in JSON backup mode behind the shared `shareSheet` mo
 the reset after a restore is `DeleteAllDataModel.reset`, shared with delete-all. How the
 restore itself works is in Storage `DESIGN.md`.
 
+`ExportModel.Format.disclosure` owns the wording shared by Export and Restore.
+`ExportDisclosure` renders it before their share buttons. JSON includes the all-surveys
+and dates scope; every format warns that files are unencrypted. `ExportModelTests` and
+`RestoreBackupModelTests` cover the wording; button placement is checked in view review.
+
 ## About
 
 Shows the version and build from the bundle, the app's MIT licence, and
@@ -53,11 +58,6 @@ continuations. `OFL.txt` stays verbatim in the bundle and is reflowed for displa
 `LicenceText.reflowed`: lines within a paragraph join, blank-line breaks stay, dash rules
 go, and headings and `Copyright <year>` lines keep their own line. Only line breaks
 move, never words, which its tests check.
-
-`ExportModel.Format.disclosure` owns the wording shared by Export and Restore.
-`ExportDisclosure` renders it before their share buttons. JSON includes the all-surveys
-and dates scope; every format warns that files are unencrypted. `ExportModelTests` and
-`RestoreBackupModelTests` cover the wording; button placement is checked in view review.
 
 ## Known limitations
 
