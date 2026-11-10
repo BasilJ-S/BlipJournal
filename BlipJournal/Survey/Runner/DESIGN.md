@@ -10,12 +10,12 @@ runner is open (an entry started from notification answers), the next save fails
 a rebuild during relock teardown cannot open a second draft. `EntryDraft` preserves
 answer IDs and first timestamps, and writes through one ordered queue. Text edits debounce
 for 300ms and flush on close, completion, and backgrounding. Quick Note uses a locally
-focused `TextEditor`, explicitly requests
-focus from the first tap, and owns its editing buffer so draft observation updates cannot
-replace the focused editor. The runner keeps cards in an eager stack to avoid lazy height
+focused `TextEditor` and owns its editing buffer so draft observation updates cannot
+replace the focused editor. Taps inside the editor are left to it; a focus request on top
+of a native tap can land after the first keystroke and move the caret to the start (#59). The runner keeps cards in an eager stack to avoid lazy height
 estimates shifting the scroll position during edits. Each text input has a stable scroll
 ID and a bounded, internally scrolling editor; focus and keyboard viewport shrinkage
-scroll that input into view. The entire box, including padding, accepts the first tap.
+scroll that input into view. Taps on the box's padding request focus explicitly, so the whole box accepts the first tap.
 This trades lazy rendering for stable editing in long surveys. Custom options are inserted
 before reloading the survey so their creation order remains recoverable. Resuming by entry
 ID checks the stored row and refuses completed or deleted entries.
