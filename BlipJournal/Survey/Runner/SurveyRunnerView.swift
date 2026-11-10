@@ -10,6 +10,10 @@ struct SurveyRunnerView: View {
     @State private var focusedTextQuestionID: String?
     init(survey: Survey, promptId: String?, onFinish: @escaping () -> Void) { self.survey = survey; entry = nil; self.promptId = promptId; self.onFinish = onFinish }
     init(entry: Entry, onFinish: @escaping () -> Void) { survey = nil; self.entry = entry; promptId = nil; self.onFinish = onFinish }
+    init(draft: EntryDraft, onFinish: @escaping () -> Void) {
+        survey = draft.survey; entry = nil; promptId = draft.entry.promptId
+        self.onFinish = onFinish; _draft = State(initialValue: draft)
+    }
     var body: some View {
         Group { if let draft { content(draft) } else { ProgressView("Loading entry") } }
             .blipScreen(draft?.survey.name ?? survey?.name ?? "Entry", titleStyle: .inline)

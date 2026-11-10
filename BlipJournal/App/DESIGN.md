@@ -51,3 +51,7 @@ Extension points (fixed signatures in the A1 handoff):
 Known limits: refresh eagerly reads all entries on the main actor; no notification
 routing until A2/A3. Simulator storage
 does not establish device Data Protection. Visible product name is Blip Journal.
+
+Prompt sheet callbacks capture the presented prompt ID and clear only that route, so a
+late dismissal cannot consume a newer notification. Route content handles ordered draft
+replacement when the pending ID changes without dismissing the sheet.

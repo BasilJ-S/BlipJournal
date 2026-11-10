@@ -1,11 +1,9 @@
 import BlipJournalCore
 import Foundation
 import Testing
-@testable import BlipJournal
 
-@MainActor
-@Suite("PromptRouteView.route")
-struct PromptRouteViewTests {
+@Suite("PromptRoute.resolve")
+struct PromptRouteTests {
     let now = Date(timeIntervalSince1970: 1_800_000_000)
 
     private func makeSurvey(store: Store, now: Date) throws -> Survey {
@@ -17,7 +15,7 @@ struct PromptRouteViewTests {
     @Test func unavailableWhenPromptMissing() throws {
         let store = try Store.inMemory()
         let survey = try makeSurvey(store: store, now: now)
-        let outcome = PromptRouteView.route(
+        let outcome = PromptRoute.resolve(
             promptId: "nonexistent", now: now, store: store, surveysById: surveysById(survey))
         #expect(outcome == .unavailable(message: "This prompt is no longer available."))
     }
@@ -30,7 +28,7 @@ struct PromptRouteViewTests {
             scheduledAt: now.addingTimeInterval(600), expiresAt: now.addingTimeInterval(1800))
         try store.insertPrompts([prompt])
 
-        let outcome = PromptRouteView.route(promptId: prompt.id, now: now, store: store, surveysById: [:])
+        let outcome = PromptRoute.resolve(promptId: prompt.id, now: now, store: store, surveysById: [:])
         #expect(outcome == .unavailable(message: "This prompt's survey has been deleted."))
     }
 
@@ -42,7 +40,7 @@ struct PromptRouteViewTests {
             scheduledAt: now.addingTimeInterval(-60), expiresAt: now.addingTimeInterval(600))
         try store.insertPrompts([prompt])
 
-        let outcome = PromptRouteView.route(
+        let outcome = PromptRoute.resolve(
             promptId: prompt.id, now: now, store: store, surveysById: surveysById(survey))
         #expect(outcome == .runner(survey: survey, promptId: prompt.id))
     }
@@ -58,7 +56,7 @@ struct PromptRouteViewTests {
         let entry = Entry(surveyId: survey.id, promptId: prompt.id, startedAt: now.addingTimeInterval(-3500))
         try store.saveEntry(entry, answers: [])
 
-        let outcome = PromptRouteView.route(
+        let outcome = PromptRoute.resolve(
             promptId: prompt.id, now: now, store: store, surveysById: surveysById(survey))
         #expect(outcome == .runner(survey: survey, promptId: prompt.id))
     }
@@ -76,7 +74,7 @@ struct PromptRouteViewTests {
             completedAt: now.addingTimeInterval(-3000))
         try store.saveEntry(entry, answers: [])
 
-        let outcome = PromptRouteView.route(
+        let outcome = PromptRoute.resolve(
             promptId: prompt.id, now: now, store: store, surveysById: surveysById(survey))
         #expect(outcome == .detail(entry: entry))
     }
@@ -89,7 +87,7 @@ struct PromptRouteViewTests {
             scheduledAt: now.addingTimeInterval(-3600), expiresAt: now.addingTimeInterval(-1800))
         try store.insertPrompts([prompt])
 
-        let outcome = PromptRouteView.route(
+        let outcome = PromptRoute.resolve(
             promptId: prompt.id, now: now, store: store, surveysById: surveysById(survey))
         #expect(outcome == .deadEnd(message: "This prompt expired before it was answered.", survey: survey))
 
@@ -107,7 +105,7 @@ struct PromptRouteViewTests {
         try store.insertPrompts([prompt])
         // No entry: it was deleted after answering.
 
-        let outcome = PromptRouteView.route(
+        let outcome = PromptRoute.resolve(
             promptId: prompt.id, now: now, store: store, surveysById: surveysById(survey))
         #expect(outcome == .deadEnd(
             message: "This prompt was already answered, but its entry was deleted.", survey: survey))
@@ -127,7 +125,7 @@ struct PromptRouteViewTests {
             status: .missed, respondedAt: respondedAt)
         try store.insertPrompts([prompt])
 
-        let outcome = PromptRouteView.route(
+        let outcome = PromptRoute.resolve(
             promptId: prompt.id, now: now, store: store, surveysById: surveysById(survey))
         #expect(outcome == .deadEnd(message: "This prompt expired before it was answered.", survey: survey))
 
