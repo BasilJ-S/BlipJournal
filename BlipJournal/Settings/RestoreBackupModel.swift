@@ -28,6 +28,8 @@ final class RestoreBackupModel {
         self.current = Self.currentSummary(appModel.store)
     }
 
+    var disclosure: [String] { ExportModel.Format.jsonBackup.disclosure }
+
     var backupSummary: BackupSummary? { backup?.summary }
 
     /// Reads and validates the chosen file. Writes nothing to the store.

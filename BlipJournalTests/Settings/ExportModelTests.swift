@@ -5,6 +5,20 @@ import BlipJournalCore
 
 @MainActor
 struct ExportModelTests {
+    @Test func jsonDisclosureIncludesScopeAndWarning() {
+        #expect(ExportModel.Format.jsonBackup.disclosure == [
+            "Includes all surveys and dates.",
+            "Exported files are not encrypted. Anyone with the file can read your answers."
+        ])
+    }
+
+    @Test(arguments: [ExportModel.Format.wideCSV, .longCSV])
+    func csvDisclosureIncludesWarningOnly(format: ExportModel.Format) {
+        #expect(format.disclosure == [
+            "Exported files are not encrypted. Anyone with the file can read your answers."
+        ])
+    }
+
     private let now = Date(timeIntervalSince1970: 1_800_000_000)
 
     private func makeModel() throws -> (ExportModel, URL) {
