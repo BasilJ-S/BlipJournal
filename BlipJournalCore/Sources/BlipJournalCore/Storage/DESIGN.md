@@ -14,7 +14,7 @@ Rows.swift              one GRDB record struct per table, no logic
 Store.swift             open/inMemory, configuration, StoreError, current-view resolution
 Store+Definitions.swift insert-only edits, surveys(), survey(), label histories
 Store+Prompts.swift     prompt reads, insert, status, deleteFuturePendingPrompts
-Store+Entries.swift     saveEntry upsert, entries(), answers(entryId:/questionIds:), deleteEntry
+Store+Entries.swift     saveEntry upsert, entry(_:) by ID (nil if missing), entries(), answers(entryId:/questionIds:), deleteEntry
 Store+NotificationAnswers.swift  saveNotificationAnswer, settleExpiredPrompts
 Store+HardDelete.swift  deletionImpact, hardDelete*, eraseEverything, DeletionImpact
 Store+Export.swift      exportSnapshot, backup
@@ -334,6 +334,3 @@ README promises no more than that.
 - Single-connection `DatabaseQueue`: readers wait for writers. Fine for one person and one
   screen; a later switch to `DatabasePool` would need WAL, which the vacuum helper already
   anticipates.
-
-`entry(_:)` reads one current entry by ID; missing/deleted rows return nil. Runner resume
-and detail refresh use it instead of trusting a retained entry value.

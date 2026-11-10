@@ -17,7 +17,8 @@ estimates shifting the scroll position during edits. Each text input has a stabl
 ID and a bounded, internally scrolling editor; focus and keyboard viewport shrinkage
 scroll that input into view. The entire box, including padding, accepts the first tap.
 This trades lazy rendering for stable editing in long surveys. Custom options are inserted
-before reloading the survey so their creation order remains recoverable. Resuming by entry ID checks the stored row and refuses completed or deleted entries.
+before reloading the survey so their creation order remains recoverable. Resuming by entry
+ID checks the stored row and refuses completed or deleted entries.
 Known limitations: no conditional questions, no
 undo, no completed-entry editing, and a brief text-loss window before debounce or forced
 termination; quick notes are limited to 500 Swift characters.

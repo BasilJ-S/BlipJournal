@@ -131,7 +131,12 @@ struct EntryDetailView: View {
             prompt = loaded.prompt
             hasLoadedAnswers = true
         } catch {
-            errorMessage = String(describing: error)
+            guard !Task.isCancelled else { return }
+            if let storeError = error as? StoreError, storeError == .notFound {
+                dismiss()
+            } else {
+                errorMessage = String(describing: error)
+            }
         }
     }
 
