@@ -41,14 +41,14 @@ struct TextInput: View {
                 .accessibilityLabel("Quick note")
             }
             .padding(4)
-            // Include the box's padding in the first-tap focus target while leaving
-            // native cursor placement and selection available inside the editor.
-            .contentShape(Rectangle())
-            .simultaneousGesture(
-                TapGesture().onEnded {
-                    if !isFocused { isFocused = true }
-                }
-            )
+            // Taps on the padding focus the editor; taps inside it stay native. A
+            // focus request on top of a native tap can land after the first keystroke
+            // and reset the caret to the start, so "Hello" becomes "elloH" (#59).
+            .background {
+                Color.clear
+                    .contentShape(Rectangle())
+                    .onTapGesture { isFocused = true }
+            }
             .background(BlipBrand.paper, in: RoundedRectangle(cornerRadius: 8))
             .overlay {
                 RoundedRectangle(cornerRadius: 8)
