@@ -147,7 +147,8 @@ rules live in `BlipJournalCore/Sources/BlipJournalCore/Prompts/DESIGN.md`.
 flushes the old draft before installing a replacement; cancellation/generation checks
 prevent an older task winning. Already-completed entries permit the handoff. Other save
 failures retain the old draft and offer retry or return to it. Controls are disabled
-during handoff. Runner and detail views have entry-based identity. Close/Done and sheet
+during handoff. Manual-start failures show an OK alert; retry uses "Log an entry anyway".
+Runner and detail views have entry-based identity. Close/Done and sheet
 dismissal clear only the matching pending prompt ID.
 
 `pendingRoute` is retained while locked: `RootView` only exists once unlocked, so the

@@ -14,6 +14,8 @@ struct PromptRouteView: View {
 
     @State private var session = PromptRouteSession()
     @State private var errorMessage: String?
+    @State private var manualStartFailed = false
+    private static let routeFailureMessage = "Your entry couldn’t be saved or opened. Try again, or keep the current entry open."
 
     var body: some View {
         Group {
@@ -43,13 +45,17 @@ struct PromptRouteView: View {
         .disabled(session.promptId != promptId)
         .interactiveDismissDisabled(session.promptId != promptId)
         .task(id: promptId) { await resolve() }
-        .alert("Could not open prompt", isPresented: Binding(
+        .alert(manualStartFailed ? "Could not start entry" : "Could not open prompt", isPresented: Binding(
             get: { errorMessage != nil }, set: { if !$0 { errorMessage = nil } }
         )) {
-            Button("Retry") { Task { await resolve() } }
-            Button(session.promptId == nil ? "Dismiss" : "Keep current entry", role: .cancel) {
-                if let previous = session.promptId { appModel.notifications.pendingRoute = previous }
-                else { onFinish() }
+            if manualStartFailed {
+                Button("OK", role: .cancel) { }
+            } else {
+                Button("Retry") { Task { await resolve() } }
+                Button(session.promptId == nil ? "Dismiss" : "Keep current entry", role: .cancel) {
+                    if let previous = session.promptId { appModel.notifications.pendingRoute = previous }
+                    else { onFinish() }
+                }
             }
         } message: { Text(errorMessage ?? "") }
     }
@@ -65,7 +71,10 @@ struct PromptRouteView: View {
                 if let survey {
                     Button("Log an entry anyway") {
                         do { try session.startManual(survey: survey, store: appModel.store) }
-                        catch { errorMessage = "Your entry couldn’t be saved or opened. Try again, or keep the current entry open." }
+                        catch {
+                            manualStartFailed = true
+                            errorMessage = "Couldn’t start an entry. Try again."
+                        }
                     }
                 }
                 Button("Dismiss") { onFinish() }
@@ -79,7 +88,10 @@ struct PromptRouteView: View {
             try? appModel.refresh()
         } catch is CancellationError {
             // A newer route owns the next resolution.
-        } catch { errorMessage = "Your entry couldn’t be saved or opened. Try again, or keep the current entry open." }
+        } catch {
+            manualStartFailed = false
+            errorMessage = Self.routeFailureMessage
+        }
     }
 
 }
