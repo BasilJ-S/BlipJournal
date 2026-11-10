@@ -30,9 +30,8 @@ Surveys can also come from survey files, and the editor's "Share survey file" wr
 one; see `Survey/SurveyFile/DESIGN.md`. `EditorText` holds wording shared with that
 preview: the clock, the schedule window and the question kind descriptions.
 
+Unsaved question fields live in Core `QuestionEditDraft` (see `Editing/DESIGN.md`),
+so option edits do not reset them.
+
 Known limitations: drag reorder is available only in EditMode; question kinds cannot
 change; copying duplicates current active configuration only, never response history.
-
-Question fields live in Core `QuestionEditDraft`, initialized once per question ID.
-Revision refreshes update options without resetting unsaved fields. Save merges the
-draft into the latest question so immediate option edits are retained.

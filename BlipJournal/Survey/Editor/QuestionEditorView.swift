@@ -57,7 +57,6 @@ struct QuestionEditorView: View {
             }
         }
         .task(id: appModel.revision) { load() }
-        .onChange(of: questionId) { _, _ in load() }
         .overlay(alignment: .bottom) {
             if savedMessage {
                 Text("Question saved")
