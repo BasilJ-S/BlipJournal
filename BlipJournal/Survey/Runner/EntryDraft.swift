@@ -22,6 +22,7 @@ final class EntryDraft {
     private let store: Store
     private let queue = SaveQueue()
     private let versions: [String: String]
+    private var answerVersions: [String: String] = [:]
     private var ids: [String: String] = [:]
     private var dates: [String: Date] = [:]
     private var pendingText = false
@@ -54,23 +55,25 @@ final class EntryDraft {
     }
 
     init(store: Store, entry: Entry) throws {
+        guard let entry = try store.entry(entry.id) else { throw StoreError.notFound }
         guard entry.completedAt == nil else { throw Error.completed }
         guard let survey = try store.survey(entry.surveyId) else { throw StoreError.notFound }
         self.store = store; self.survey = survey; self.entry = entry; self.versions = try store.currentQuestionVersionIds(surveyId: survey.id); self.values = [:]; try load()
     }
 
-    private func load() throws { for answer in try store.answers(entryId: entry.id) { ids[answer.questionId] = answer.id; dates[answer.questionId] = answer.answeredAt; values[answer.questionId] = answer.value } }
+    private func load() throws { for answer in try store.answers(entryId: entry.id) { answerVersions[answer.questionId] = answer.questionVersionId; ids[answer.questionId] = answer.id; dates[answer.questionId] = answer.answeredAt; values[answer.questionId] = answer.value } }
 
     func set(_ value: AnswerValue?, for questionId: String, now: Date = Date()) async throws {
         if pendingText { try await flush() }
-        if let value, !value.isEmptyForRunner { values[questionId] = value; if ids[questionId] == nil { ids[questionId] = Identifier.make(); dates[questionId] = now } }
-        else { values.removeValue(forKey: questionId); ids.removeValue(forKey: questionId); dates.removeValue(forKey: questionId) }
+        if let value, !value.isEmptyForRunner { answerVersions[questionId] = versions[questionId]; values[questionId] = value; if ids[questionId] == nil { ids[questionId] = Identifier.make(); dates[questionId] = now } }
+        else { answerVersions.removeValue(forKey: questionId); values.removeValue(forKey: questionId); ids.removeValue(forKey: questionId); dates.removeValue(forKey: questionId) }
         revision += 1; dirty = true
         try await save()
     }
 
     func setText(_ text: String, for questionId: String, now: Date = Date()) {
         guard text.count <= 500 else { return }
+        answerVersions[questionId] = versions[questionId]
         values[questionId] = .text(text)
         if text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { ids.removeValue(forKey: questionId); dates.removeValue(forKey: questionId) }
         else if ids[questionId] == nil { ids[questionId] = Identifier.make(); dates[questionId] = now }
@@ -93,7 +96,7 @@ final class EntryDraft {
 
     private func save() async throws {
         let answers = try values.compactMap { questionId, value -> Answer? in
-            guard !value.isEmptyForRunner else { return nil }; guard let id = ids[questionId], let version = versions[questionId] else { throw Error.missingVersion }
+            guard !value.isEmptyForRunner else { return nil }; guard let id = ids[questionId], let version = answerVersions[questionId] else { throw Error.missingVersion }
             return Answer(id: id, entryId: entry.id, questionId: questionId, questionVersionId: version, answeredAt: dates[questionId] ?? Date(), value: value)
         }
         let revisionAtStart = revision
