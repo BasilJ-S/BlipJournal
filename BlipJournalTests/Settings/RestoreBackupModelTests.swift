@@ -5,6 +5,15 @@ import BlipJournalCore
 
 @MainActor
 struct RestoreBackupModelTests {
+    @Test func restoreDisclosureMatchesJSONExport() throws {
+        let model = RestoreBackupModel(appModel: try AppModel(store: try Store.inMemory(), notifications: NoopNotificationCoordinator()))
+        #expect(model.disclosure == ExportModel.Format.jsonBackup.disclosure)
+        #expect(model.disclosure == [
+            "Includes all surveys and dates.",
+            "Exported files are not encrypted. Anyone with the file can read your answers."
+        ])
+    }
+
     @Test func refusalMessagesAreWordedForAPersonAndPromiseNothingChanged() {
         let newer = RestoreBackupModel.message(for: RestoreError.newerSchema(found: 9, supported: 4))
         let unreadable = RestoreBackupModel.message(for: RestoreError.unreadable)

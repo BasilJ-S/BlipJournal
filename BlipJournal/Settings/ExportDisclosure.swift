@@ -1,15 +1,14 @@
 import SwiftUI
 
-/// The same disclosure precedes every action that shares journal data.
+/// Disclosure lines end with the warning, which receives emphasis.
 struct ExportDisclosure: View {
-    let includesAllData: Bool
+    let lines: [String]
 
     var body: some View {
-        if includesAllData {
-            Text("Includes all surveys and dates.").font(.footnote)
+        ForEach(Array(lines.enumerated()), id: \.offset) { index, line in
+            Text(line)
+                .font(.footnote)
+                .foregroundStyle(index == lines.count - 1 ? Color.orange : Color.primary)
         }
-        Text("Exported files are not encrypted. Anyone with the file can read your answers.")
-            .font(.footnote)
-            .foregroundStyle(.orange)
     }
 }

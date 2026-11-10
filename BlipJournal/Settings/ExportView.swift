@@ -19,7 +19,7 @@ struct ExportView: View {
                     if model.range == .custom { DatePicker("Start date", selection: Binding(get: { model.customStart }, set: { model.customStart = $0 }), in: ...Date(), displayedComponents: .date); DatePicker("End date", selection: Binding(get: { model.customEnd }, set: { model.customEnd = $0 }), in: ...Date(), displayedComponents: .date) }
                     Text("Based on when each entry was started.").font(.footnote).foregroundStyle(.secondary)
                 }
-                ExportDisclosure(includesAllData: model.format == .jsonBackup)
+                ExportDisclosure(lines: model.format.disclosure)
                 Button { do { shareURL = try model.makeFile() } catch { errorMessage = error.localizedDescription } } label: { Label("Share", systemImage: "square.and.arrow.up") }.accessibilityLabel("Share export")
                 Text("A JSON backup can be restored from Settings, Restore from backup. CSV files open in Numbers and Excel.").font(.footnote).foregroundStyle(.secondary)
             }

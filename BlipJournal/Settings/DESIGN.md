@@ -54,11 +54,11 @@ continuations. `OFL.txt` stays verbatim in the bundle and is reflowed for displa
 go, and headings and `Copyright <year>` lines keep their own line. Only line breaks
 move, never words, which its tests check.
 
+`ExportModel.Format.disclosure` owns the wording shared by Export and Restore.
+`ExportDisclosure` renders it before their share buttons. JSON includes the all-surveys
+and dates scope; every format warns that files are unencrypted. `ExportModelTests` and
+`RestoreBackupModelTests` cover the wording; button placement is checked in view review.
+
 ## Known limitations
 
 - Restore replaces and never merges; JSON backups cannot be date-filtered. "Saved" means the share sheet reported a completed action, which includes sharing to an app, not only Save to Files.
-
-`ExportDisclosure` precedes Share on Export and Save a backup of current data on
-Restore. Both warn that files are unencrypted; JSON backups also disclose all surveys
-and dates. The isolated UI regression in `scripts/test-backup-disclosure.py` renders
-both production screens with generated in-memory data and never shares or restores.
