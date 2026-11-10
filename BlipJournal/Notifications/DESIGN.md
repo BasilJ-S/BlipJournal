@@ -11,6 +11,7 @@ against a fake.
 NotificationCenterClient.swift   protocol over UNUserNotificationCenter; live and fake
 NotificationCoordinator.swift    protocol (A1) + NotificationCoordinator + Noop stand-in
 NotificationDelegate.swift       UNUserNotificationCenterDelegate, set at launch
+PromptRouteSession.swift         owns route, draft and asynchronous handoff
 PromptRouteView.swift            what a tapped notification opens
 NotificationSettingsView.swift   Settings → Notifications
 ```
@@ -138,21 +139,16 @@ shield can stay down for it (App `DESIGN.md`). Launch, foreground, `scheduleChan
 `promptsDestroyed` and displaying the settings screen never call it. Manual journaling, survey editing,
 Insights and export never check authorization.
 
-## Routing states (`PromptRouteView`)
+## Routing
 
-Resolves the prompt, its survey (`AppModel.surveysById`, archived included so a deleted
-survey is still distinguishable from a missing one), and any entry already linked to the
-prompt, in that order:
-
-| Entry | Prompt status | Result |
-|---|---|---|
-| unfinished (no `completedAt`) | any | resumes in the runner, even past expiry or after the planner marked it missed |
-| completed | any | read-only detail; v0 has no edit |
-| none | pending, not expired | fresh runner |
-| none | pending, expired | marks it missed, then the dead end below |
-| none | missed / dismissed | dead end: "expired before it was answered", offers a manual entry (`promptId: nil`) or Dismiss |
-| none | answered | dead end: "already answered, entry deleted", offers a manual entry or Dismiss; never creates a second prompted entry |
-| — | prompt or survey missing | "not available", Dismiss only |
+Core `PromptRoute` resolves stored prompts and entries; its outcome table and mutation
+rules live in `BlipJournalCore/Sources/BlipJournalCore/Prompts/DESIGN.md`.
+`PromptRouteSession` owns the resolved route and runner draft. A prompt-ID-keyed task
+flushes the old draft before installing a replacement; cancellation/generation checks
+prevent an older task winning. Already-completed entries permit the handoff. Other save
+failures retain the old draft and offer retry or return to it. Controls are disabled
+during handoff. Runner and detail views have entry-based identity. Close/Done and sheet
+dismissal clear only the matching pending prompt ID.
 
 `pendingRoute` is retained while locked: `RootView` only exists once unlocked, so the
 sheet cannot appear until then. Clearing `pendingRoute` (finish, dismiss, or
@@ -199,12 +195,3 @@ which read as the notification bouncing back to the Home Screen. Do not go back 
 - Unarchiving a survey (`Store.unarchiveSurvey`, from the editor's Archived screen)
   restores its scheduling when the saved configuration is enabled: an unarchived, enabled
   survey is eligible the same as any other. No coordinator test exercises that path yet.
-
-`PromptRouteSession` owns the resolved route and runner draft. A prompt-ID-keyed task
-flushes the old draft before installing a replacement; cancellation/generation checks
-prevent an older task winning. The runner is identified by entry ID. Controls are disabled
-during the handoff. A failed flush retains the old draft and offers retry or return to it.
-Close/Done and sheet dismissal clear only the matching pending prompt ID.
-
-The route decision and outcome live in Core `PromptRoute`; the SwiftUI view only renders
-them. Completed detail views, like runners, have entry-based identity.

@@ -16,7 +16,9 @@ final class PromptRouteSession {
         guard self.promptId != promptId, !appModel.isLocked else { return }
         let request = generation
         do { try await draft?.flush() }
-        catch {
+        catch EntryDraft.Error.completed {
+            // The stored entry is closed; its rejected edits cannot block another prompt.
+        } catch {
             guard request == generation, !Task.isCancelled else { return }
             throw error
         }

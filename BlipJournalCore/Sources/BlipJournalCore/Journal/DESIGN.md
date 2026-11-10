@@ -45,7 +45,3 @@ the app loads entries and the answers a query needs, then calls `JournalQuery.ap
 ## Limitations
 
 One answer condition at a time. Text answers are neither searchable nor sortable.
-
-`PromptRoute` resolves notification taps to a runner, completed detail, or an explanatory
-dead end using stored prompts/entries. It marks expired pending prompts missed; existing
-drafts remain resumable. The app owns presentation and draft-flush ordering.

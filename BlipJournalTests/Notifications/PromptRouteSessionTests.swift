@@ -14,6 +14,35 @@ struct PromptRouteSessionTests {
         #expect(notifications.pendingRoute == nil)
     }
 
+    @Test func storeFailureRetainsCurrentDraftAndRoute() async throws {
+        let now = Date(timeIntervalSince1970: 1_800_000_000)
+        let store = try Store.inMemory()
+        let option = ChoiceOption(label: "Temporary", position: 0)
+        let question = Question(kind: .singleChoice, label: "Choice", position: 0, options: [option])
+        let survey = try store.createSurvey(name: "Test", sampling: .default, questions: [question], now: now)
+        let a = Prompt(surveyId: survey.id, day: "2027-01-15", scheduledAt: now, expiresAt: now.addingTimeInterval(600))
+        let b = Prompt(surveyId: survey.id, day: a.day, scheduledAt: now, expiresAt: a.expiresAt)
+        try store.insertPrompts([a, b])
+        let model = try AppModel(store: store, notifications: NoopNotificationCoordinator(), now: now)
+        model.unlock()
+        let session = PromptRouteSession()
+        try await session.resolve(promptId: a.id, appModel: model, now: now)
+        let draft = try #require(session.draft)
+        // An option removed after the runner loaded produces a real foreign-key failure.
+        try store.updateOption(option.id, label: option.label, position: 0, isArchived: true, now: now.addingTimeInterval(1))
+        try store.hardDeleteOption(option.id)
+        await #expect(throws: (any Error).self) {
+            try await draft.set(.single(optionId: option.id), for: question.id, now: now)
+        }
+        await #expect(throws: (any Error).self) {
+            try await session.resolve(promptId: b.id, appModel: model, now: now)
+        }
+        #expect(session.draft === draft)
+        #expect(session.promptId == a.id)
+        #expect(try store.entries(surveyId: survey.id, from: nil, to: nil).allSatisfy { $0.promptId == a.id })
+        #expect(try store.answers(entryId: draft.entry.id).isEmpty)
+    }
+
     @Test func replacingRouteFlushesFirstDraftAndAssociatesAnswersWithSecondPrompt() async throws {
         let now = Date(timeIntervalSince1970: 1_800_000_000)
         let store = try Store.inMemory()
@@ -46,16 +75,15 @@ struct PromptRouteSessionTests {
         try await session.resolve(promptId: pb.id, appModel: model, now: now)
         #expect(session.draft === second)
 
-        // A failed flush must not discard B or create a replacement runner.
+        // A completed stored entry cannot accept more edits; it must not block the next route.
         var completed = second.entry
         completed.completedAt = now.addingTimeInterval(30)
         try store.saveEntry(completed, answers: try store.answers(entryId: completed.id))
         second.setText("Unsaved B", for: b.questions[0].id, now: now)
-        await #expect(throws: EntryDraft.Error.completed) {
-            try await session.resolve(promptId: pa.id, appModel: model, now: now)
-        }
-        #expect(session.draft === second)
-        #expect(session.promptId == pb.id)
+        try await session.resolve(promptId: pa.id, appModel: model, now: now)
+        #expect(session.draft?.entry.id == first.entry.id)
+        #expect(session.promptId == pa.id)
+        #expect(session.outcome == .runner(survey: a, promptId: pa.id))
         #expect(try store.answers(entryId: completed.id).first?.value == .text("Answer B"))
     }
 }

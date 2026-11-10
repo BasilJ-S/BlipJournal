@@ -6,7 +6,7 @@ import SwiftUI
 ///
 /// Resolves the prompt, its survey, and any entry already linked to it, then decides
 /// between resuming a draft, showing a completed entry read-only, opening a fresh runner,
-/// or explaining why none of those apply. See `DESIGN.md` for the full decision table.
+/// or explaining why none of those apply. See Core `Prompts/DESIGN.md` for the full decision table.
 struct PromptRouteView: View {
     @Environment(AppModel.self) private var appModel
     let promptId: String
@@ -65,7 +65,7 @@ struct PromptRouteView: View {
                 if let survey {
                     Button("Log an entry anyway") {
                         do { try session.startManual(survey: survey, store: appModel.store) }
-                        catch { errorMessage = String(describing: error) }
+                        catch { errorMessage = "Your entry couldn’t be saved or opened. Try again, or keep the current entry open." }
                     }
                 }
                 Button("Dismiss") { onFinish() }
@@ -79,7 +79,7 @@ struct PromptRouteView: View {
             try? appModel.refresh()
         } catch is CancellationError {
             // A newer route owns the next resolution.
-        } catch { errorMessage = String(describing: error) }
+        } catch { errorMessage = "Your entry couldn’t be saved or opened. Try again, or keep the current entry open." }
     }
 
 }
