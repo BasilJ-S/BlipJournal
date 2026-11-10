@@ -38,7 +38,9 @@ unanswered choices are omitted. Badges wrap at large Dynamic Type.
   and its "Turn on prompts" link pushes `NotificationSettingsView` onto the Journal tab's
   own stack. Once prompts can be delivered it says answered prompts will appear there.
 - Unfinished entries offer Continue entry, resuming the same entry. Completed entries
-  are read-only.
+  are read-only. Detail reloads the persisted entry by ID with its answers on every
+  revision; Continue appears only after a successful load of an unfinished entry.
+  An entry deleted while detail is open closes detail; cancelled reads show no error.
   Sheet dismissal reloads the model, including swipe dismissal.
 - `EntryDetailView` shows answered questions only, archived included, in position
   order. Choice answers use current option labels; scales include their end labels.

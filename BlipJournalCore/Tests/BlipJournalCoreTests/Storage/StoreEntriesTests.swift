@@ -6,6 +6,19 @@ import BlipJournalCore
 struct StoreEntriesTests {
     private let t = Fixture.at
 
+    @Test func entryLookupTracksCompletionAndDeletion() throws {
+        let (store, survey) = try Fixture.seeded()
+        var entry = Entry(surveyId: survey.id, startedAt: t(100))
+        #expect(try store.entry(entry.id) == nil)
+        try store.saveEntry(entry, answers: [])
+        #expect(try store.entry(entry.id) == entry)
+        entry.completedAt = t(200)
+        try store.saveEntry(entry, answers: [])
+        #expect(try store.entry(entry.id) == entry)
+        try store.deleteEntry(entry.id)
+        #expect(try store.entry(entry.id) == nil)
+    }
+
     @Test("saveEntry twice with the same entry ID upserts: one entry row, answers reconciled by ID")
     func saveTwice() throws {
         let (store, survey) = try Fixture.seeded()

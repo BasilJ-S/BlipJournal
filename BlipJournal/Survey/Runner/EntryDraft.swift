@@ -55,6 +55,7 @@ final class EntryDraft {
     }
 
     init(store: Store, entry: Entry) throws {
+        guard let entry = try store.entry(entry.id) else { throw StoreError.notFound }
         guard entry.completedAt == nil else { throw Error.completed }
         guard let survey = try store.survey(entry.surveyId) else { throw StoreError.notFound }
         self.store = store; self.survey = survey; self.entry = entry; self.versions = try store.currentQuestionVersionIds(surveyId: survey.id); self.values = [:]; try load()
